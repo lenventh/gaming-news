@@ -1,41 +1,40 @@
-name: Weekly Gaming News
+  name: Weekly Gaming News
 
-on:
-  schedule:
-    # 每周一 UTC 0:00（北京时间 8:00）
-    - cron: '0 0 * * 1'
-  workflow_dispatch:  # 允许手动触发
+  on:
+    schedule:
+      - cron: '0 0 * * 1'
+    workflow_dispatch:
 
-jobs:
-  generate-news:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  jobs:
+    generate-news:
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
 
-    steps:
-      - uses: actions/checkout@v4
+      steps:
+        - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+        - name: Setup Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+            cache: 'pip'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+        - name: Install dependencies
+          run: pip install -r requirements.txt
 
-      - name: Run news pipeline
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
-          PYTHONIOENCODING: utf-8
-          NEWS_WINDOW_DAYS: 7
-        run: python main.py
+        - name: Run news pipeline
+          env:
+            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+            OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+            OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+            PYTHONIOENCODING: utf-8
+            NEWS_WINDOW_DAYS: 7
+          run: python main.py
 
-      - name: Commit and push output
-        run: |
-          git config user.name "gaming-news-bot"
-          git config user.email "bot@gaming-news.local"
-          git add output/
-          git diff --staged --quiet || git commit -m "$(date +%G-W%V) weekly report"
-          git push
+        - name: Commit and push output
+          run: |
+            git config user.name "gaming-news-bot"
+            git config user.email "bot@gaming-news.local"
+            git add output/
+            git diff --staged --quiet || git commit -m "$(date +%G-W%V) weekly report"
+            git push
