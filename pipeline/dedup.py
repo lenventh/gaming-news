@@ -1,0 +1,91 @@
+"""基于标题相似度的新闻去重"""
+
+import re
+from difflib import SequenceMatcher
+from rich.console import Console
+
+console = Console()
+
+SIMILARITY_THRESHOLD = 0.75
+
+
+def _normalize(text: str) -> str:
+    """规范化文本用于比较"""
+    text = text.lower().strip()
+    # 去除非中英文数字的字符
+    text = re.sub(r"[^\w一-鿿]", "", text)
+    return text
+
+
+def _similarity(a: str, b: str) -> float:
+    """计算两个字符串的相似度 (0.0 ~ 1.0)"""
+    return SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
+
+
+def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> list[dict]:
+    """对新闻标题计算相似度，合并重复条目。
+
+    策略：
+    1. 将标题规范化后计算两两相似度
+    2. 相似度 > threshold 的条目视为同一事件，归入同一簇
+    3. 保留发布时间最早的版本，合并来源和素材链接
+    """
+    if len(items) <= 1:
+        return items
+
+    titles = [item.get("title", "") for item in items]
+    if not all(titles):
+        return items
+
+    # 贪心聚类
+    clusters = []
+    visited = set()
+
+    for i in range(len(items)):
+        if i in visited:
+            continue
+        cluster = [i]
+        visited.add(i)
+
+        for j in range(i + 1, len(items)):
+            if j in visited:
+                continue
+            # 检查 j 和当前簇中任一条是否相似
+            for member in cluster:
+                if _similarity(titles[member], titles[j]) > threshold:
+                    cluster.append(j)
+                    visited.add(j)
+                    break
+
+        clusters.append(cluster)
+
+    # 合并每个簇
+    merged = []
+    for cluster in clusters:
+        cluster_items = [items[idx] for idx in cluster]
+        # 保留最早发布时间的
+        cluster_items.sort(key=lambda x: x.get("published_at") or "")
+        primary = cluster_items[0]
+
+        # 合并来源名和素材链接
+        all_sources = list(set(it.get("source_name", "") for it in cluster_items))
+        all_materials = []
+        for it in cluster_items:
+            for link in it.get("material_links", []):
+                if link not in all_materials:
+                    all_materials.append(link)
+
+        copied = dict(primary)
+        copied["merged_sources"] = all_sources
+        copied["material_links"] = all_materials[:10]
+        if "raw_data" in copied:
+            copied["raw_data"] = dict(copied["raw_data"])
+            copied["raw_data"]["duplicate_count"] = len(cluster)
+
+        merged.append(copied)
+
+    removed = len(items) - len(merged)
+    if removed > 0:
+        console.log(f"[yellow]去重: {len(items)} → {len(merged)} (移除 {removed} 条重复)[/yellow]")
+
+    return merged
