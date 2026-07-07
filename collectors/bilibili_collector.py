@@ -19,6 +19,7 @@ BILIBILI_SEARCH_QUERIES = {
     "steam_deck": [
         "Steam Deck",
         "Steam Deck 掌机 评测",
+        "Steam Deck 新消息",
     ],
     "windows_handheld": [
         "ROG Ally 掌机",
@@ -26,28 +27,38 @@ BILIBILI_SEARCH_QUERIES = {
         "Windows 掌机",
         "GPD Win",
         "Legion Go 掌机",
+        "Windows 掌机 发布会",
+        "掌机 新品 发布",
     ],
     "android_handheld": [
         "安卓掌机",
         "Retroid 掌机",
         "Odin 掌机",
         "沙雕掌机",
+        "安卓掌机 新品",
     ],
     "linux_handheld": [
         "开源掌机",
         "Anbernic 掌机",
         "Miyoo 掌机",
         "周哥 掌机",
+        "开源掌机 新品",
     ],
     "console": [
         "Switch 2",
         "PS5 Pro",
         "任天堂 新机",
+        "Switch 2 新消息",
+        "掌机 发布会 直播",
     ],
     "handheld_rumors": [
         "掌机 爆料",
         "掌机 新品 发布",
         "Switch 2 传闻",
+        "掌机 发布会",
+        "掌机 新机 预告",
+        "掌机 新品 发布会",
+        "新掌机 官宣",
     ],
     "emulator": [
         "模拟器 更新",

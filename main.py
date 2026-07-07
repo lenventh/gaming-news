@@ -29,6 +29,7 @@ from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
 from collectors.bilibili_collector import BilibiliCollector
+from collectors.bilibili_account_collector import BilibiliAccountCollector
 from collectors.tieba_collector import TiebaCollector
 from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, get_week_label, get_week_range
@@ -80,6 +81,11 @@ def collect_all() -> list[dict]:
     console.print("\n[yellow]B站搜索:[/yellow]")
     bili = BilibiliCollector()
     all_items.extend(bili.fetch())
+
+    # B站厂商官号监控
+    console.print("\n[yellow]B站厂商官号:[/yellow]")
+    bili_acc = BilibiliAccountCollector()
+    all_items.extend(bili_acc.fetch())
 
     # 贴吧
     console.print("\n[yellow]贴吧:[/yellow]")

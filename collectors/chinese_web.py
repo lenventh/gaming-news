@@ -33,6 +33,8 @@ SITE_QUERIES = {
         "GPD Win 掌机 site:smzdm.com",
         "ROG Ally 评测 site:gamersky.com",
         "MSI Claw 掌机 site:3dmgame.com",
+        "AYANEO 发布会 直播 site:gamersky.com",
+        "掌机 新品 发布 会 site:bilibili.com",
     ],
     "android_handheld": [
         "安卓掌机 site:bilibili.com",

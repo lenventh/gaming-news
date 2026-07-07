@@ -44,6 +44,8 @@ CATEGORY_SEARCH_QUERIES = {
         "Razer Edge 掌机 新闻",
         "Logitech G Cloud 云掌机",
         "ACER Nitro 掌机",
+        "AYANEO 发布会 新品 发布",
+        "GPD 掌机 新品 发布",
     ],
     "android_handheld": [
         "安卓掌机 新品 2026",
