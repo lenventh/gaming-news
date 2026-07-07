@@ -189,9 +189,14 @@ RSS_SOURCES = [
     },
     # --- 英文源 ---
     {
-        "name": "The Verge - Gaming",
-        "url": "https://www.theverge.com/rss/gaming/index.xml",
+        "name": "The Verge",
+        "url": "https://www.theverge.com/rss/index.xml",
         "category_hint": None,
+        "filter_keywords": [
+            "gaming", "handheld", "steam deck", "playstation", "xbox",
+            "nintendo", "switch", "controller", "game", "gpu", "rtx",
+            "显卡", "amd", "intel", "laptop", "pc gaming", "vr",
+        ],
     },
     {
         "name": "Nintendo Life",
@@ -209,8 +214,8 @@ RSS_SOURCES = [
         "category_hint": None,
     },
     {
-        "name": "PC Gamer - Hardware",
-        "url": "https://www.pcgamer.com/feed/",
+        "name": "PC Gamer",
+        "url": "https://www.pcgamer.com/rss/",
         "category_hint": "windows_handheld",
     },
     {
