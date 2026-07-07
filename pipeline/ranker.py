@@ -4,7 +4,7 @@ from rich.console import Console
 
 console = Console()
 
-TOP_PER_CATEGORY = 5
+TOP_PER_CATEGORY = 10
 
 
 def select_top_items(items: list[dict], top_n: int = TOP_PER_CATEGORY) -> dict[str, list[dict]]:

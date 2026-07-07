@@ -118,29 +118,35 @@ class NewsClassifier:
 
 
 def detect_sub_types(items: list[dict]) -> list[dict]:
-    """检测每条新闻的子类型：leak（新机爆料）、release（新机发售）或 general（其他）"""
+    """检测每条新闻的子类型：leak（爆料）、release（发售）、system（系统更新）、general（其他）"""
     from config import NEWS_SUB_TAGS
 
     leak_kws = NEWS_SUB_TAGS["leak"]["keywords"]
     release_kws = NEWS_SUB_TAGS["release"]["keywords"]
+    system_kws = NEWS_SUB_TAGS["system"]["keywords"]
 
-    # 排除词：含这些词的内容通常不是新机爆料/发售，而是软件更新、评测等
+    # 排除词：含这些词的内容不归入爆料/发售/系统更新（纯评测、游戏推荐等）
     exclude_kws = [
-        "固件", "系统更新", "驱动", "模拟器", "emulator",
         "评测", "review", "游戏推荐", "折扣", "促销",
-        "补丁", "patch", "dlc", "mod", "特卖",
+        "dlc", "mod", "特卖", "电影", "电视剧",
+        "汽车", "金融", "股票", "基金",
     ]
 
     for item in items:
         text = (item.get("title", "") + " " + item.get("summary", "")).lower()
 
-        # 含排除词的内容直接归类为 general
-        excluded = any(kw.lower() in text for kw in exclude_kws)
+        # 1. 先检测系统更新
+        system_score = sum(1 for kw in system_kws if kw.lower() in text)
+        if system_score > 0:
+            item["sub_type"] = "system"
+            continue
 
-        if excluded:
+        # 2. 含排除词直接归 general
+        if any(kw.lower() in text for kw in exclude_kws):
             item["sub_type"] = "general"
             continue
 
+        # 3. 检测爆料/发售
         release_score = sum(1 for kw in release_kws if kw.lower() in text)
         leak_score = sum(1 for kw in leak_kws if kw.lower() in text)
 

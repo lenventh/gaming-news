@@ -139,8 +139,9 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     classified = detect_sub_types(classified)
     leak_count = sum(1 for it in classified if it.get("sub_type") == "leak")
     release_count = sum(1 for it in classified if it.get("sub_type") == "release")
+    system_count = sum(1 for it in classified if it.get("sub_type") == "system")
     general_count = sum(1 for it in classified if it.get("sub_type") == "general")
-    console.print(f"  🔮 爆料: {leak_count}  |  🆕 发售: {release_count}  |  📋 其他: {general_count}")
+    console.print(f"  🔮 爆料: {leak_count}  |  🆕 发售: {release_count}  |  📱 系统: {system_count}  |  📋 其他: {general_count}")
 
     # 统计
     cat_counts = {}
