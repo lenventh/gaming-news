@@ -67,24 +67,36 @@ class BilibiliAccountCollector(BaseCollector):
         self._uid_cache: dict[str, int] = {}
 
     def _resolve_uid(self, keyword: str) -> int | None:
-        """通过 Google 搜索找到 B站空间 UID"""
+        """通过 B站网页搜索找到用户 UID"""
         if keyword in self._uid_cache:
             return self._uid_cache[keyword]
 
+        # 方式 1：B站 upuser 搜索页（公开页面）
         try:
-            query = f'site:space.bilibili.com "{keyword}"'
-            params = {"q": query, "num": 5, "hl": "zh-CN"}
-            resp = _session.get(GOOGLE_SEARCH_URL, params=params, timeout=10)
-
-            # 从搜索结果中提取 UID
+            search_url = f"https://search.bilibili.com/upuser?keyword={quote(keyword)}"
+            resp = _session.get(search_url, timeout=15)
+            # 从页面中的 __INITIAL_STATE__ 或链接提取 UID
             uids = re.findall(r'space\.bilibili\.com/(\d+)', resp.text)
             if uids:
                 uid = int(uids[0])
-                console.log(f"[dim]Google -> B站UID: {keyword} = {uid}[/dim]")
+                console.log(f"[dim]B站搜索 -> UID: {keyword} = {uid}[/dim]")
+                self._uid_cache[keyword] = uid
+                return uid
+        except Exception:
+            pass
+
+        # 方式 2：B站主搜索页（搜索用户 tab）
+        try:
+            search_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}&search_type=user"
+            resp = _session.get(search_url, timeout=15)
+            uids = re.findall(r'space\.bilibili\.com/(\d+)', resp.text)
+            if uids:
+                uid = int(uids[0])
+                console.log(f"[dim]B站搜索 -> UID: {keyword} = {uid}[/dim]")
                 self._uid_cache[keyword] = uid
                 return uid
         except Exception as e:
-            console.log(f"[dim]Google搜UID失败 [{keyword[:15]}]: {e}[/dim]")
+            console.log(f"[dim]B站搜UID失败 [{keyword[:15]}]: {e}[/dim]")
 
         return None
 
