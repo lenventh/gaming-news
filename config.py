@@ -223,6 +223,16 @@ RSS_SOURCES = [
         "url": "https://retrododo.com/feed/",
         "category_hint": "linux_handheld",
     },
+    {
+        "name": "Retro Game Corps",
+        "url": "https://retrogamecorps.com/feed/",
+        "category_hint": "android_handheld",
+    },
+    {
+        "name": "Retro Handhelds",
+        "url": "https://www.retrohandhelds.gg/feed/",
+        "category_hint": "android_handheld",
+    },
     # --- Reddit RSS (old.reddit.com, 每个请求间隔 1.5s 防限流) ---
     # 核心 6 个板块，按重要性排序
     {
@@ -254,6 +264,16 @@ RSS_SOURCES = [
         "name": "Reddit r/GamingLeaksAndRumours",
         "url": "https://old.reddit.com/r/GamingLeaksAndRumours/.rss",
         "category_hint": "handheld_rumors",
+    },
+    {
+        "name": "Reddit r/retroid",
+        "url": "https://old.reddit.com/r/retroid/.rss",
+        "category_hint": "android_handheld",
+    },
+    {
+        "name": "Reddit r/OdinHandheld",
+        "url": "https://old.reddit.com/r/OdinHandheld/.rss",
+        "category_hint": "android_handheld",
     },
     # --- 中文游戏/科技媒体 ---
     {
