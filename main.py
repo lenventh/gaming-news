@@ -28,7 +28,6 @@ from storage.db import init_db, insert_news_item, save_weekly_output, get_stats
 from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
-from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_account_collector import BilibiliAccountCollector
 from collectors.tieba_collector import TiebaCollector
 from pipeline.dedup import deduplicate
@@ -77,12 +76,7 @@ def collect_all() -> list[dict]:
     cn = ChineseWebCollector()
     all_items.extend(cn.fetch())
 
-    # B站 API 直连
-    console.print("\n[yellow]B站搜索:[/yellow]")
-    bili = BilibiliCollector()
-    all_items.extend(bili.fetch())
-
-    # B站厂商官号监控
+    # B站厂商官号监控（空间页面抓取 + Google UID查询）
     console.print("\n[yellow]B站厂商官号:[/yellow]")
     bili_acc = BilibiliAccountCollector()
     all_items.extend(bili_acc.fetch())

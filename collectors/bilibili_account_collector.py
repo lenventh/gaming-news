@@ -1,9 +1,11 @@
 """B站厂商官号监控采集器
 
-通过 B站搜索 API 查找厂商官方号 → 空间 API 拉取最新视频。
-抓取发布会、新品预告等第一手消息，解决传统 RSS 覆盖不到的问题。
+通过 Google 搜索找到厂商 B站空间 UID → 直接抓取空间视频列表页。
+不依赖 B站 API，从 GitHub Actions US IP 可用。
 """
 
+import re
+import json
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -13,134 +15,110 @@ from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
-from .bilibili_wbi import sign_params
 
 console = Console()
 
-# 各分类需监控的 B站厂商/UP 搜索关键词
-MANUFACTURER_QUERIES = {
-    "steam_deck": [
-        "Steam Deck 掌机",
-    ],
+# 厂商搜索名（自动通过 Google 解析 B站 UID）
+MANUFACTURER_SEARCH_NAMES = {
+    "steam_deck": [],
     "windows_handheld": [
         "AYANEO掌机",
-        "GPD掌机",
-        "壹号本科技",
-        "ROG玩家国度",
-        "微星笔记本",
-        "联想拯救者",
-        "AOKZOE",
+        "GPD掌机官方",
+        "壹号本科技 OneXPlayer",
+        "ROG玩家国度官方",
+        "AOKZOE掌机",
     ],
     "android_handheld": [
-        "Retroid",
-        "AYN Odin",
-        "Abxylute",
+        "AYN掌机 Odin",
+        "Retroid掌机",
+        "沙雕掌机",
     ],
     "linux_handheld": [
-        "ANBERNIC",
-        "Anbernic安博尼克",
+        "ANBERNIC安伯尼克官方",
         "Miyoo掌机",
         "霸王小子",
-        "TrimUI",
-        "PowKiddy",
+        "TrimUI掌机",
+        "PowKiddy掌机",
     ],
     "console": [
-        "PlayStation中国",
-        "任天堂Switch",
-        "Xbox中国",
+        "PlayStation中国官方",
+        "任天堂Switch官方",
+        "Xbox中国官方",
     ],
-    "handheld_rumors": [
-        "掌机 新品 发布会",
-    ],
-    "emulator": [
-        "模拟器",
-    ],
+    "handheld_rumors": [],
+    "emulator": [],
 }
 
-SPACE_API = "https://api.bilibili.com/x/space/arc/search"
-USER_SEARCH_API = "https://api.bilibili.com/x/web-interface/search/type"
+GOOGLE_SEARCH_URL = "https://www.google.com/search"
+BILIBILI_SPACE_VIDEO = "https://space.bilibili.com/{uid}/video"
+
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+})
 
 
 class BilibiliAccountCollector(BaseCollector):
-    """监控 B站厂商官号最新视频"""
+    """监控 B站厂商官号最新视频（Google 解 UID + 页面抓取）"""
 
     def __init__(self):
         super().__init__("BilibiliAccount")
         self._uid_cache: dict[str, int] = {}
 
-    def _search_uid(self, keyword: str) -> int | None:
-        """搜索厂商 B站 UID（带缓存 + Wbi 签名 + web scrape 兜底）"""
+    def _resolve_uid(self, keyword: str) -> int | None:
+        """通过 Google 搜索找到 B站空间 UID"""
         if keyword in self._uid_cache:
             return self._uid_cache[keyword]
 
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": "https://www.bilibili.com",
-        }
-
-        # 方式 1：Wbi 签名 API
         try:
-            params = sign_params({"search_type": "bili_user", "keyword": keyword, "page": 1})
-            resp = requests.get(USER_SEARCH_API, params=params, headers=headers, timeout=10)
-            data = resp.json()
-            if data.get("code") == 0:
-                users = data.get("data", {}).get("result", [])
-                if users:
-                    uid = users[0]["mid"]
-                    uname = users[0].get("uname", "")
-                    console.log(f"[dim]B站官号: {keyword} -> {uname} (UID:{uid})[/dim]")
-                    self._uid_cache[keyword] = uid
-                    return uid
-        except Exception:
-            pass
+            query = f'site:space.bilibili.com "{keyword}"'
+            params = {"q": query, "num": 5, "hl": "zh-CN"}
+            resp = _session.get(GOOGLE_SEARCH_URL, params=params, timeout=10)
 
-        # 方式 2：Web scrape 兜底
-        try:
-            from urllib.parse import quote
-            search_url = f"https://search.bilibili.com/upuser?keyword={quote(keyword)}"
-            resp = requests.get(search_url, headers=headers, timeout=10)
-            soup = BeautifulSoup(resp.text, "html.parser")
-            user_link = soup.select_one("a[href*='space.bilibili.com/']")
-            if user_link:
-                href = user_link.get("href", "")
-                # 从 URL 提取 UID
-                import re
-                m = re.search(r'space\.bilibili\.com/(\d+)', href)
-                if m:
-                    uid = int(m.group(1))
-                    uname = user_link.get_text(strip=True)
-                    console.log(f"[dim]B站官号(scrape): {keyword} -> {uname} (UID:{uid})[/dim]")
-                    self._uid_cache[keyword] = uid
-                    return uid
+            # 从搜索结果中提取 UID
+            uids = re.findall(r'space\.bilibili\.com/(\d+)', resp.text)
+            if uids:
+                uid = int(uids[0])
+                console.log(f"[dim]Google -> B站UID: {keyword} = {uid}[/dim]")
+                self._uid_cache[keyword] = uid
+                return uid
         except Exception as e:
-            console.log(f"[dim]B站用户搜索失败 [{keyword[:15]}]: {e}[/dim]")
+            console.log(f"[dim]Google搜UID失败 [{keyword[:15]}]: {e}[/dim]")
 
         return None
 
-    def _fetch_account_videos(self, keyword: str, max_results: int = 5) -> list[dict]:
-        """获取厂商官号最新视频"""
-        uid = self._search_uid(keyword)
-        if not uid:
-            return []
-
+    def _fetch_account_videos(self, uid: int, account_name: str, max_results: int = 5) -> list[dict]:
+        """抓取 B站空间视频列表页"""
         results = []
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": "https://space.bilibili.com",
-        }
+        url = BILIBILI_SPACE_VIDEO.format(uid=uid)
 
-        # API + Wbi 签名
         try:
-            params = sign_params({"mid": uid, "ps": max_results, "tid": 0, "order": "pubdate"})
-            resp = requests.get(SPACE_API, params=params, headers=headers, timeout=10)
-            data = resp.json()
-            if data.get("code") != 0:
+            resp = _session.get(url, timeout=15)
+            # B站空间页会在 <script> 中嵌入 __INITIAL_STATE__ JSON
+            match = re.search(
+                r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});\s*\(function\(\)',
+                resp.text, re.DOTALL
+            )
+            if not match:
                 return results
 
-            videos = data.get("data", {}).get("list", {}).get("vlist", [])
-            for v in videos:
+            data = json.loads(match.group(1))
+            vlist = []
+            # 尝试多个可能的 JSON 路径
+            try:
+                vlist = data["video"]["list"]["vlist"]
+            except (KeyError, TypeError):
+                try:
+                    vlist = data["video"]["vlist"]
+                except (KeyError, TypeError):
+                    try:
+                        vlist = data["vlist"]
+                    except (KeyError, TypeError):
+                        return results
+
+            for v in vlist[:max_results]:
                 bvid = v.get("bvid", "")
-                url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
                 title = v.get("title", "")
                 description = v.get("description", "")[:200]
                 pub_ts = v.get("created", 0)
@@ -150,34 +128,33 @@ class BilibiliAccountCollector(BaseCollector):
                         pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
                     except Exception:
                         pass
-
                 results.append({
                     "title": title,
-                    "url": url,
+                    "url": f"https://www.bilibili.com/video/{bvid}" if bvid else "",
                     "summary": description,
-                    "source_name": f"B站@{v.get('author', keyword)}",
+                    "source_name": f"B站@{account_name}",
                     "published_at": pub_date,
                     "raw_data": {
-                        "bvid": bvid,
-                        "play": v.get("play", 0),
-                        "comment": v.get("comment", 0),
-                        "uid": uid,
-                        "keyword": keyword,
+                        "bvid": bvid, "play": v.get("play", 0),
+                        "comment": v.get("comment", 0), "uid": uid,
                     },
                 })
 
         except Exception as e:
-            console.log(f"[dim]B站空间抓取失败 [{keyword[:15]}]: {e}[/dim]")
+            console.log(f"[dim]B站空间抓取失败 [{account_name}]: {e}[/dim]")
 
         return results
 
     def fetch_by_category(self, cat_key: str) -> list[dict]:
-        queries = MANUFACTURER_QUERIES.get(cat_key, [])
+        names = MANUFACTURER_SEARCH_NAMES.get(cat_key, [])
         items = []
         seen_urls = set()
 
-        for query in queries:
-            results = self._fetch_account_videos(query)
+        for name in names:
+            uid = self._resolve_uid(name)
+            if not uid:
+                continue
+            results = self._fetch_account_videos(uid, name)
             for r in results:
                 if r["url"] and r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
