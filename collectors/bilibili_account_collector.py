@@ -8,10 +8,12 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 import requests
+from bs4 import BeautifulSoup
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .bilibili_wbi import sign_params
 
 console = Console()
 
@@ -67,7 +69,7 @@ class BilibiliAccountCollector(BaseCollector):
         self._uid_cache: dict[str, int] = {}
 
     def _search_uid(self, keyword: str) -> int | None:
-        """搜索厂商 B站 UID（带缓存）"""
+        """搜索厂商 B站 UID（带缓存 + Wbi 签名 + web scrape 兜底）"""
         if keyword in self._uid_cache:
             return self._uid_cache[keyword]
 
@@ -75,8 +77,10 @@ class BilibiliAccountCollector(BaseCollector):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer": "https://www.bilibili.com",
         }
+
+        # 方式 1：Wbi 签名 API
         try:
-            params = {"search_type": "bili_user", "keyword": keyword, "page": 1}
+            params = sign_params({"search_type": "bili_user", "keyword": keyword, "page": 1})
             resp = requests.get(USER_SEARCH_API, params=params, headers=headers, timeout=10)
             data = resp.json()
             if data.get("code") == 0:
@@ -84,7 +88,28 @@ class BilibiliAccountCollector(BaseCollector):
                 if users:
                     uid = users[0]["mid"]
                     uname = users[0].get("uname", "")
-                    console.log(f"[dim]B站官号: {keyword} → {uname} (UID:{uid})[/dim]")
+                    console.log(f"[dim]B站官号: {keyword} -> {uname} (UID:{uid})[/dim]")
+                    self._uid_cache[keyword] = uid
+                    return uid
+        except Exception:
+            pass
+
+        # 方式 2：Web scrape 兜底
+        try:
+            from urllib.parse import quote
+            search_url = f"https://search.bilibili.com/upuser?keyword={quote(keyword)}"
+            resp = requests.get(search_url, headers=headers, timeout=10)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            user_link = soup.select_one("a[href*='space.bilibili.com/']")
+            if user_link:
+                href = user_link.get("href", "")
+                # 从 URL 提取 UID
+                import re
+                m = re.search(r'space\.bilibili\.com/(\d+)', href)
+                if m:
+                    uid = int(m.group(1))
+                    uname = user_link.get_text(strip=True)
+                    console.log(f"[dim]B站官号(scrape): {keyword} -> {uname} (UID:{uid})[/dim]")
                     self._uid_cache[keyword] = uid
                     return uid
         except Exception as e:
@@ -103,8 +128,10 @@ class BilibiliAccountCollector(BaseCollector):
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer": "https://space.bilibili.com",
         }
+
+        # API + Wbi 签名
         try:
-            params = {"mid": uid, "ps": max_results, "tid": 0, "order": "pubdate"}
+            params = sign_params({"mid": uid, "ps": max_results, "tid": 0, "order": "pubdate"})
             resp = requests.get(SPACE_API, params=params, headers=headers, timeout=10)
             data = resp.json()
             if data.get("code") != 0:

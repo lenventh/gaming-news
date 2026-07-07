@@ -7,10 +7,12 @@ from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 import requests
+from bs4 import BeautifulSoup
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .bilibili_wbi import sign_params
 
 console = Console()
 
@@ -75,63 +77,80 @@ class BilibiliCollector(BaseCollector):
         super().__init__("Bilibili")
 
     def _search(self, keyword: str, max_results: int = 5) -> list[dict]:
-        """通过 B站 API 搜索视频"""
+        """通过 B站 API 搜索视频（Wbi 签名 + web scrape 兜底）"""
         results = []
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer": "https://www.bilibili.com",
         }
 
+        # 方式 1：Wbi 签名 API
         try:
-            params = {
+            params = sign_params({
                 "search_type": "video",
                 "keyword": keyword,
                 "page": 1,
                 "order": "pubdate",
-            }
+            })
             resp = requests.get(BILIBILI_API, params=params, headers=headers, timeout=15)
             data = resp.json()
 
-            if data.get("code") != 0:
-                return results
+            if data.get("code") == 0:
+                video_list = data.get("data", {}).get("result", [])
+                for v in video_list[:max_results]:
+                    title = v.get("title", "").replace('<em class="keyword">', "").replace("</em>", "")
+                    bvid = v.get("bvid", "")
+                    url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
+                    description = v.get("description", "")[:200]
+                    pub_ts = v.get("pubdate", 0)
+                    pub_date = None
+                    if pub_ts:
+                        try:
+                            pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
+                        except Exception:
+                            pass
+                    play = v.get("play", 0)
+                    results.append({
+                        "title": title, "url": url, "summary": description,
+                        "source_name": "B站", "published_at": pub_date,
+                        "raw_data": {"bvid": bvid, "play": play, "keyword": keyword},
+                    })
+                if results:
+                    return results
+        except Exception:
+            pass
 
-            video_list = data.get("data", {}).get("result", [])
-            for v in video_list[:max_results]:
-                title = v.get("title", "").replace('<em class="keyword">', "").replace("</em>", "")
-                bvid = v.get("bvid", "")
-                url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
+        # 方式 2：Web scrape 搜索页兜底
+        try:
+            from urllib.parse import quote
+            search_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}&order=pubdate"
+            resp = requests.get(search_url, headers=headers, timeout=15)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-                # 描述
-                description = v.get("description", "")[:200]
+            for card in soup.select(".bili-video-card")[:max_results]:
+                link = card.select_one("a[href*='/video/']")
+                if not link:
+                    continue
+                title = link.get("title", "") or link.get_text(strip=True)
+                href = link.get("href", "")
+                if href.startswith("//"):
+                    href = f"https:{href}"
+                elif href.startswith("/"):
+                    href = f"https://www.bilibili.com{href}"
 
-                # 发布时间
-                pub_ts = v.get("pubdate", 0)
-                pub_date = None
-                if pub_ts:
-                    try:
-                        pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
-                    except Exception:
-                        pass
+                bvid = ""
+                if "/video/" in href:
+                    bvid = href.split("/video/")[-1].split("/")[0].split("?")[0]
 
-                play = v.get("play", 0)
-                danmaku = v.get("video_review", 0)
-
-                results.append({
-                    "title": title,
-                    "url": url,
-                    "summary": description,
-                    "source_name": "B站",
-                    "published_at": pub_date,
-                    "raw_data": {
-                        "bvid": bvid,
-                        "play": play,
-                        "danmaku": danmaku,
-                        "keyword": keyword,
-                    },
-                })
-
+                if title and href:
+                    results.append({
+                        "title": title.replace('<em class="keyword">', "").replace("</em>", ""),
+                        "url": href, "summary": "",
+                        "source_name": "B站", "published_at": None,
+                        "raw_data": {"bvid": bvid, "play": 0, "keyword": keyword},
+                    })
         except Exception as e:
-            console.log(f"[dim]B站 API 搜索失败 [{keyword[:20]}]: {e}[/dim]")
+            console.log(f"[dim]B站搜索失败 [{keyword[:20]}]: {e}[/dim]")
 
         return results
 
