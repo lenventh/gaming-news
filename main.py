@@ -28,6 +28,8 @@ from storage.db import init_db, insert_news_item, save_weekly_output, get_stats
 from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
+from collectors.bilibili_collector import BilibiliCollector
+from collectors.tieba_collector import TiebaCollector
 from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
@@ -73,6 +75,16 @@ def collect_all() -> list[dict]:
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
     all_items.extend(cn.fetch())
+
+    # B站 API 直连
+    console.print("\n[yellow]B站搜索:[/yellow]")
+    bili = BilibiliCollector()
+    all_items.extend(bili.fetch())
+
+    # 贴吧
+    console.print("\n[yellow]贴吧:[/yellow]")
+    tieba = TiebaCollector()
+    all_items.extend(tieba.fetch())
 
     console.print(f"\n[bold]共采集 {len(all_items)} 条原始新闻[/bold]")
     return all_items

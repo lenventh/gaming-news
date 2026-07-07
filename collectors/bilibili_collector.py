@@ -1,13 +1,12 @@
 """B站搜索采集器
 
-通过 B站网页搜索 + Google 搜索补充（B站 API 反爬较严）。
+通过 B站公开搜索 API 直接采集视频内容，时效性优于 Google 中转。
 """
 
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
@@ -15,130 +14,150 @@ from .base import BaseCollector
 
 console = Console()
 
-BILIBILI_QUERIES = {
-    "steam_deck": ["Steam Deck 掌机"],
-    "windows_handheld": ["ROG Ally 掌机", "AYANEO 掌机"],
-    "linux_handheld": ["开源掌机 新品", "Anbernic"],
-    "console": ["Switch 2 评测"],
-    "android_handheld": ["安卓掌机"],
-    "emulator": ["模拟器 更新"],
-    "handheld_rumors": ["掌机 爆料 新品"],
+# 每个分类的关键词，直接搜 B站 API
+BILIBILI_SEARCH_QUERIES = {
+    "steam_deck": [
+        "Steam Deck",
+        "Steam Deck 掌机 评测",
+    ],
+    "windows_handheld": [
+        "ROG Ally 掌机",
+        "AYANEO 掌机",
+        "Windows 掌机",
+        "GPD Win",
+        "Legion Go 掌机",
+    ],
+    "android_handheld": [
+        "安卓掌机",
+        "Retroid 掌机",
+        "Odin 掌机",
+        "沙雕掌机",
+    ],
+    "linux_handheld": [
+        "开源掌机",
+        "Anbernic 掌机",
+        "Miyoo 掌机",
+        "周哥 掌机",
+    ],
+    "console": [
+        "Switch 2",
+        "PS5 Pro",
+        "任天堂 新机",
+    ],
+    "handheld_rumors": [
+        "掌机 爆料",
+        "掌机 新品 发布",
+        "Switch 2 传闻",
+    ],
+    "emulator": [
+        "模拟器 更新",
+        "Switch 模拟器",
+        "Yuzu 模拟器",
+    ],
 }
+
+BILIBILI_API = "https://api.bilibili.com/x/web-interface/search/type"
 
 
 class BilibiliCollector(BaseCollector):
     def __init__(self):
         super().__init__("Bilibili")
 
-    def _search(self, keyword: str, max_results: int = 10) -> list[dict]:
-        """通过 B站搜索页 + Google fallback"""
+    def _search(self, keyword: str, max_results: int = 5) -> list[dict]:
+        """通过 B站 API 搜索视频"""
         results = []
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://www.bilibili.com",
+        }
 
-        # 方案1：B站 Web 搜索
         try:
-            url = f"https://search.bilibili.com/all?keyword={quote(keyword)}&order=pubdate"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "zh-CN,zh;q=0.9",
+            params = {
+                "search_type": "video",
+                "keyword": keyword,
+                "page": 1,
+                "order": "pubdate",
             }
-            resp = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resp.text, "html.parser")
+            resp = requests.get(BILIBILI_API, params=params, headers=headers, timeout=15)
+            data = resp.json()
 
-            # B站搜索结果通常在 .video-list 或 script 标签中
-            cards = soup.select(".video-list-item") or soup.select(".bili-video-card")
-            if not cards:
-                cards = soup.select("[class*=video]")
+            if data.get("code") != 0:
+                return results
 
-            for card in cards[:max_results]:
-                title_el = card.select_one("a[title]") or card.select_one(".title") or card.select_one("h3 a")
-                if not title_el:
-                    continue
-                title = title_el.get("title", "") or title_el.get_text(strip=True)
-                href = title_el.get("href", "")
-                if href.startswith("//"):
-                    href = f"https:{href}"
+            video_list = data.get("data", {}).get("result", [])
+            for v in video_list[:max_results]:
+                title = v.get("title", "").replace('<em class="keyword">', "").replace("</em>", "")
+                bvid = v.get("bvid", "")
+                url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
 
-                # 从 URL 提取 BV 号
-                bvid = ""
-                if "/video/" in href:
-                    bvid = href.split("/video/")[-1].split("/")[0].split("?")[0]
+                # 描述
+                description = v.get("description", "")[:200]
 
-                if title and href:
-                    results.append({
-                        "title": title,
-                        "url": href,
-                        "summary": "",
-                        "source_name": f"B站",
-                        "raw_data": {"bvid": bvid, "keyword": keyword},
-                    })
-        except Exception as e:
-            console.log(f"[dim]B站网页搜索失败 [{keyword}]: {e}[/dim]")
-
-        # 方案2：如果 B站没结果，用 Google site 搜索补充
-        if not results:
-            results = self._google_site_search(keyword)
-
-        return results
-
-    def _google_site_search(self, keyword: str) -> list[dict]:
-        """用 Google 搜索 site:bilibili.com 找 B站视频"""
-        results = []
-        try:
-            import feedparser
-            query = f"site:bilibili.com {keyword}"
-            url = f"https://news.google.com/rss/search?q={quote(query)}&hl=zh-CN"
-            resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-            feed = feedparser.parse(resp.content)
-
-            for entry in feed.entries[:5]:
-                title = getattr(entry, "title", "").strip()
-                link = getattr(entry, "link", "")
-
-                # 提取真实 URL
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(link)
-                params = parse_qs(parsed.query)
-                real_url = params.get("url", [link])[0]
-
+                # 发布时间
+                pub_ts = v.get("pubdate", 0)
                 pub_date = None
-                tp = getattr(entry, "published_parsed", None)
-                if tp:
+                if pub_ts:
                     try:
-                        pub_date = datetime(*tp[:6], tzinfo=timezone.utc)
+                        pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
                     except Exception:
                         pass
 
+                play = v.get("play", 0)
+                danmaku = v.get("video_review", 0)
+
                 results.append({
-                    "title": title.replace(" - 哔哩哔哩", ""),
-                    "url": real_url,
-                    "summary": "",
-                    "source_name": "B站(via Google)",
-                    "raw_data": {"keyword": keyword},
+                    "title": title,
+                    "url": url,
+                    "summary": description,
+                    "source_name": "B站",
                     "published_at": pub_date,
+                    "raw_data": {
+                        "bvid": bvid,
+                        "play": play,
+                        "danmaku": danmaku,
+                        "keyword": keyword,
+                    },
                 })
-        except Exception:
-            pass
+
+        except Exception as e:
+            console.log(f"[dim]B站 API 搜索失败 [{keyword[:20]}]: {e}[/dim]")
 
         return results
 
-    def fetch(self) -> list[dict]:
-        all_items = []
-        for cat_key, queries in BILIBILI_QUERIES.items():
-            for query in queries:
-                results = self._search(query)
-                for r in results:
+    def fetch_by_category(self, cat_key: str) -> list[dict]:
+        queries = BILIBILI_SEARCH_QUERIES.get(cat_key, [])
+        items = []
+        seen_urls = set()
+
+        for query in queries:
+            results = self._search(query)
+            for r in results:
+                if r["url"] and r["url"] not in seen_urls:
+                    seen_urls.add(r["url"])
+                    pub = r.get("published_at")
+                    if pub and pub < CUTOFF_DATE:
+                        continue
                     item = self.normalize_item(
                         title=r["title"],
                         url=r["url"],
                         source_name=r["source_name"],
                         source_type="bilibili",
-                        published_at=r.get("published_at"),
-                        summary=r.get("summary", ""),
+                        published_at=pub,
+                        summary=r["summary"],
                         raw_data=r.get("raw_data", {}),
                     )
                     item["category"] = cat_key
-                    all_items.append(item)
+                    items.append(item)
 
-        console.log(f"[green]B站搜索: {len(all_items)} 条[/green]")
+        return items
+
+    def fetch(self) -> list[dict]:
+        all_items = []
+        for cat_key in CATEGORIES:
+            items = self.fetch_by_category(cat_key)
+            all_items.extend(items)
+            if items:
+                console.log(f"[dim]B站 [{CATEGORIES[cat_key]['name']}]: {len(items)} 条[/dim]")
+
+        console.log(f"[green]B站总计: {len(all_items)} 条[/green]")
         return all_items
