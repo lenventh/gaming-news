@@ -30,7 +30,11 @@ REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "gaming-news-bot/1.0")
 CATEGORIES = {
     "steam_deck": {
         "name": "Steam Deck",
-        "keywords": ["steam deck", "steamdeck", "steamos", "proton", "valve", "steam deck oled"],
+        "keywords": [
+            "steam deck", "steamdeck", "steamos", "proton", "valve", "steam deck oled",
+            "steam deck 2", "steamdeck2", "steam 掌机", "v社掌机", "steam deck lcd",
+            "steam deck 评测", "steam deck 开箱", "steam deck 配件",
+        ],
     },
     "windows_handheld": {
         "name": "Windows 掌机",
@@ -40,6 +44,9 @@ CATEGORIES = {
             "onexplayer", "aokzoe", "player one",
             "掌机", "handheld", "handheld gaming pc",
             "amd z1", "amd z2", "ryzen z1", "ryzen z2",
+            "ayaneo 3", "ayaneo next", "gpd win 5", "gpd win mini",
+            "飞行家", "壹号本", "aya neo", "奥克",
+            "拯救者掌机", "rog掌机",
         ],
     },
     "android_handheld": {
@@ -48,6 +55,8 @@ CATEGORIES = {
             "odin", "retroid pocket", "retroid", "ayaneo pocket", "安卓掌机",
             "android 掌机", "android handheld",
             "rp4", "rp5", "rg557", "rg cube", "ayn odin", "ayn thor",
+            "沙雕", "rp mini", "pocket dmg", "pocket evo",
+            "天玑", "骁龙掌机", "安卓游戏机",
         ],
     },
     "linux_handheld": {
@@ -57,6 +66,11 @@ CATEGORIES = {
             "linux 掌机", "arkos", "jelos", "batocera", "onionos",
             "garlicos", "minui", "knuli", "rg35xx", "rg40xx",
             "rg cube", "rg556", "rg406", "rg arc",
+            "周哥", "霸王小子", "小霸王", "霸王",
+            "miyoo mini", "miyoo flip", "吹雪",
+            "rg34xx", "rg28xx", "rg35xxsp", "rg35xx h",
+            "trimui brick", "trimui smart", "powkiddy x55",
+            "rgb30", "rgb20sx", "m17", "xx40",
         ],
     },
     "console": {
@@ -65,6 +79,9 @@ CATEGORIES = {
             "ps5", "playstation 5", "ps5 pro", "xbox series",
             "switch 2", "switch2", "nintendo switch", "任天堂",
             "sony playstation", "微软 xbox", "主机",
+            "switch oled", "switch lite", "switch pro",
+            "ps portal", "playstation portal", "xbox game pass",
+            "索尼", "次世代主机", "游戏主机",
         ],
     },
     "handheld_rumors": {
@@ -76,6 +93,9 @@ CATEGORIES = {
             "switch 2 传闻", "switch2 爆料", "new handheld rumor",
             "next-gen handheld", "rumor", "rumour", "leak", "leaked",
             "传闻", "爆料", "曝光", "专利", "即将发布", "即将推出",
+            "任天堂新机", "索尼新掌机", "微软新主机",
+            "switch2 规格", "switch2 价格", "switch2 发售",
+            "ps6", "xbox 新主机", "下一代 switch",
         ],
     },
     "emulator": {
@@ -85,6 +105,10 @@ CATEGORIES = {
             "citra", "vita3k", "xenia", "xemu", "melonDS",
             "模拟器", "emulator", "aethersx2", "nethersx2",
             "sudachi", "suyu", "uzuy",
+            "switch 模拟器", "ps4 模拟器", "ps3 模拟器",
+            "shadps4", "血缘模拟器", "血源诅咒pc",
+            "模拟器更新", "模拟器安卓", "模拟器pc",
+            "rpcs3 更新", "cemu 2", "dolphin 更新",
         ],
     },
 }
@@ -175,6 +199,18 @@ RSS_SOURCES = [
         "name": "Reddit r/GamingLeaksAndRumours",
         "url": "https://old.reddit.com/r/GamingLeaksAndRumours/.rss",
         "category_hint": "handheld_rumors",
+    },
+    # --- 中文游戏/科技媒体 ---
+    {
+        "name": "IGN中国",
+        "url": "https://www.ign.com.cn/rss",
+        "category_hint": None,
+        "filter_keywords": [
+            "掌机", "主机", "Switch", "PlayStation", "Xbox", "Steam Deck",
+            "手柄", "硬件", "芯片", "显卡", "屏幕", "显示器",
+            "模拟器", "配件", "键盘", "鼠标", "VR", "头显",
+            "开箱", "评测", "发售", "发布", "泄露", "传闻",
+        ],
     },
 ]
 
