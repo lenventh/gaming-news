@@ -41,6 +41,9 @@ CATEGORY_SEARCH_QUERIES = {
         "Windows 掌机 新品 发布 2026",
         "壹号本 飞行家 掌机 新闻",
         "OneXPlayer 掌机",
+        "Razer Edge 掌机 新闻",
+        "Logitech G Cloud 云掌机",
+        "ACER Nitro 掌机",
     ],
     "android_handheld": [
         "安卓掌机 新品 2026",
@@ -48,6 +51,9 @@ CATEGORY_SEARCH_QUERIES = {
         "安卓掌机 评测 推荐",
         "Android gaming handheld 2026",
         "天玑 骁龙 掌机",
+        "GAMEMT MagicX GKD 掌机 新品",
+        "盖世小鸡 八位堂 手柄 2026",
+        "拉伸手柄 新品 2026",
     ],
     "linux_handheld": [
         "开源掌机 新品 2026",
@@ -81,6 +87,7 @@ CATEGORY_SEARCH_QUERIES = {
         "PS4 模拟器 PS3 模拟器 新闻",
         "emulator release update 2026",
         "模拟器 安卓 PC 最新",
+        "PPSSPP DuckStation 模拟器 更新",
     ],
 }
 

@@ -39,6 +39,9 @@ SITE_QUERIES = {
         "Retroid 掌机 site:zhihu.com",
         "Odin 掌机 评测 site:bilibili.com",
         "安卓掌机 推荐 site:smzdm.com",
+        "盖世小鸡 手柄 site:smzdm.com",
+        "拉伸手柄 评测 site:bilibili.com",
+        "GAMEMT 掌机 site:tieba.baidu.com",
     ],
     "linux_handheld": [
         "开源掌机 site:bilibili.com",
