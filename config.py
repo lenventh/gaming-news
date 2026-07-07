@@ -189,6 +189,39 @@ BILIBILI_SEARCH_KEYWORDS = [
     "掌机 新品发布",
 ]
 
+# ========== 新闻子类型 ==========
+NEWS_SUB_TAGS = {
+    "leak": {
+        "name": "新机爆料",
+        "icon": "🔮",
+        "keywords": [
+            "爆料", "曝光", "泄露", "泄漏", "传闻", "专利",
+            "rumor", "rumour", "leak", "leaked", "leaks",
+            "teaser", "teased", "render", "renders", "concept",
+            "即将发布", "即将推出", "即将上市", "据传",
+            "prototype", "原型", "谍照", "外观曝光",
+            "规格曝光", "参数曝光", "跑分", "benchmark",
+            "传闻称", "消息称", "或将于", "有望",
+            "据透露", "据悉", "或采用",
+        ],
+    },
+    "release": {
+        "name": "新机发售",
+        "icon": "🆕",
+        "keywords": [
+            "发售", "发布", "上市", "开售", "开卖", "预售",
+            "预定", "预订", "到货", "现货", "开箱",
+            "released", "launched", "launch", "launches",
+            "available", "now shipping", "ships", "shipping",
+            "pre-order", "preorder", "pre order",
+            "正式发布", "正式开售", "官宣", "上架",
+            "公布售价", "定价", "售价",
+            "入手", "到手", "首批", "首批发货",
+            "国行", "行货", "开订",
+        ],
+    },
+}
+
 # ========== 网页抓取源（备用） ==========
 WEB_SOURCES = [
     {

@@ -121,7 +121,7 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     # 3. LLM 分类（可用时）或关键词兜底
     if OPENAI_API_KEY and OPENAI_API_KEY != "sk-xxx":
         console.print("\n[yellow]LLM 分类:[/yellow]")
-        from pipeline.classifier import NewsClassifier, count_by_category
+        from pipeline.classifier import NewsClassifier, detect_sub_types, count_by_category
         classifier = NewsClassifier()
         classified = classifier.classify(filtered)
     else:
@@ -133,6 +133,14 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     if irrelevant:
         console.log(f"  丢弃无关条目: {len(irrelevant)} 条")
     classified = [it for it in classified if it.get("category") != "irrelevant"]
+
+    # 子类型检测：新机爆料 / 新机发售
+    console.print("\n[yellow]子类型检测 (爆料/发售):[/yellow]")
+    classified = detect_sub_types(classified)
+    leak_count = sum(1 for it in classified if it.get("sub_type") == "leak")
+    release_count = sum(1 for it in classified if it.get("sub_type") == "release")
+    general_count = sum(1 for it in classified if it.get("sub_type") == "general")
+    console.print(f"  🔮 爆料: {leak_count}  |  🆕 发售: {release_count}  |  📋 其他: {general_count}")
 
     # 统计
     cat_counts = {}

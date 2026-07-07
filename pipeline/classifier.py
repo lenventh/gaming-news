@@ -117,6 +117,43 @@ class NewsClassifier:
                     break
 
 
+def detect_sub_types(items: list[dict]) -> list[dict]:
+    """检测每条新闻的子类型：leak（新机爆料）、release（新机发售）或 general（其他）"""
+    from config import NEWS_SUB_TAGS
+
+    leak_kws = NEWS_SUB_TAGS["leak"]["keywords"]
+    release_kws = NEWS_SUB_TAGS["release"]["keywords"]
+
+    # 排除词：含这些词的内容通常不是新机爆料/发售，而是软件更新、评测等
+    exclude_kws = [
+        "固件", "系统更新", "驱动", "模拟器", "emulator",
+        "评测", "review", "游戏推荐", "折扣", "促销",
+        "补丁", "patch", "dlc", "mod", "特卖",
+    ]
+
+    for item in items:
+        text = (item.get("title", "") + " " + item.get("summary", "")).lower()
+
+        # 含排除词的内容直接归类为 general
+        excluded = any(kw.lower() in text for kw in exclude_kws)
+
+        if excluded:
+            item["sub_type"] = "general"
+            continue
+
+        release_score = sum(1 for kw in release_kws if kw.lower() in text)
+        leak_score = sum(1 for kw in leak_kws if kw.lower() in text)
+
+        if release_score > 0 and release_score >= leak_score:
+            item["sub_type"] = "release"
+        elif leak_score > 0:
+            item["sub_type"] = "leak"
+        else:
+            item["sub_type"] = "general"
+
+    return items
+
+
 def count_by_category(items: list[dict]) -> dict:
     counts = {}
     for item in items:
