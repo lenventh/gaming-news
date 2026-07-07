@@ -29,8 +29,9 @@ jobs:
 
       - name: Start RSSHub (B站/贴吧/国内源代理)
         run: |
-          npx rsshub --port 1200 &
-          for i in $(seq 1 15); do
+          npm install -g rsshub
+          rsshub --port 1200 &
+          for i in $(seq 1 20); do
             if curl -s http://localhost:1200/test/cache > /dev/null 2>&1; then
               echo "RSSHub ready"
               break
