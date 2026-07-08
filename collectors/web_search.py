@@ -1,11 +1,11 @@
 """AI 联网搜索补充采集器
 
-使用 Google News RSS 搜索 + LLM 摘要，为每个板块定向搜索近期资讯。
-弥补 RSS 源覆盖面不足的问题。
+使用 Google News RSS + DuckDuckGo News 双引擎搜索 + LLM 摘要，
+为每个板块定向搜索近期资讯。弥补 RSS 源覆盖面不足的问题。
 
 工作流程：
-1. 对每个板块的关键词用 Google News RSS 搜索
-2. 获取搜索结果（标题、URL、摘要、日期）
+1. 对每个板块的关键词用 Google News + DuckDuckGo News 并行搜索
+2. 合并去重后获取搜索结果（标题、URL、摘要、日期）
 3. 用 LLM 批量提取和去噪
 4. 返回标准化的新闻 dict
 """
@@ -118,7 +118,7 @@ class WebSearchCollector(BaseCollector):
     """用 Google News RSS 搜索补充新闻"""
 
     def __init__(self):
-        super().__init__("GoogleNewsSearch")
+        super().__init__("DualSearch")
 
     def _search_google_news(self, query: str, max_results: int = 10) -> list[dict]:
         """通过 Google News RSS 搜索"""
@@ -180,6 +180,37 @@ class WebSearchCollector(BaseCollector):
 
         except Exception as e:
             console.log(f"[dim]Google News 搜索失败 [{query[:30]}...]: {e}[/dim]")
+
+        return results
+
+    def _search_ddg_news(self, query: str, max_results: int = 10) -> list[dict]:
+        """通过 DuckDuckGo News API 搜索"""
+        results = []
+        try:
+            from duckduckgo_search import DDGS
+            ddgs = DDGS()
+            entries = list(ddgs.news(
+                query, region="cn-zh", max_results=max_results, timelimit="w"
+            ))
+            for entry in entries:
+                pub_date = None
+                date_str = entry.get("date", "")
+                if date_str:
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub_date = parsedate_to_datetime(date_str)
+                    except Exception:
+                        pass
+
+                results.append({
+                    "title": entry.get("title", ""),
+                    "url": entry.get("url", ""),
+                    "published_at": pub_date.isoformat() if pub_date else None,
+                    "summary": entry.get("body", "")[:500],
+                    "source_name": entry.get("source", "DuckDuckGo"),
+                })
+        except Exception as e:
+            console.log(f"[dim]DDG News 搜索失败 [{query[:30]}...]: {e}[/dim]")
 
         return results
 
@@ -257,11 +288,16 @@ class WebSearchCollector(BaseCollector):
         seen_urls = set()
 
         for query in queries:
-            results = self._search_google_news(query, max_results=8)
-            for r in results:
+            # Google + DuckDuckGo 并行搜索
+            google_results = self._search_google_news(query, max_results=8)
+            ddg_results = self._search_ddg_news(query, max_results=8)
+            total = 0
+            for r in google_results + ddg_results:
                 if r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
                     all_results.append(r)
+                    total += 1
+            console.log(f"[dim]  搜索 [{query[:25]}]: G={len(google_results)} D={len(ddg_results)} → {total} 条去重[/dim]")
 
         if not all_results:
             return []
