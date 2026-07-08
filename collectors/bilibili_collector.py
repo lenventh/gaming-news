@@ -1,156 +1,190 @@
 """B站搜索采集器
 
-通过 B站公开搜索 API 直接采集视频内容，时效性优于 Google 中转。
+通过 Google News + DuckDuckGo 文本搜索采集 B站视频。
+不直接调用 B站 API（从 US IP 被封锁），走搜索引擎中转。
 """
 
-from datetime import datetime, timezone, timedelta
+import time
+import random
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup
+import feedparser
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
-from .bilibili_wbi import sign_params
 
 console = Console()
 
-# 每个分类的关键词，直接搜 B站 API
+# 每个分类的关键词，通过搜索引擎 site:bilibili.com 查询
 BILIBILI_SEARCH_QUERIES = {
     "steam_deck": [
-        "Steam Deck",
-        "Steam Deck 掌机 评测",
-        "Steam Deck 新消息",
+        "Steam Deck site:bilibili.com",
+        "Steam Deck 掌机 评测 site:bilibili.com",
+        "Steam Deck 新消息 site:bilibili.com",
     ],
     "windows_handheld": [
-        "ROG Ally 掌机",
-        "AYANEO 掌机",
-        "Windows 掌机",
-        "GPD Win",
-        "Legion Go 掌机",
-        "Windows 掌机 发布会",
-        "掌机 新品 发布",
+        "ROG Ally 掌机 site:bilibili.com",
+        "AYANEO 掌机 site:bilibili.com",
+        "Windows 掌机 site:bilibili.com",
+        "GPD Win site:bilibili.com",
+        "Legion Go 掌机 site:bilibili.com",
+        "Windows 掌机 发布会 site:bilibili.com",
+        "掌机 新品 发布 site:bilibili.com",
     ],
     "android_handheld": [
-        "安卓掌机",
-        "Retroid 掌机",
-        "Odin 掌机",
-        "沙雕掌机",
-        "安卓掌机 新品",
+        "安卓掌机 site:bilibili.com",
+        "Retroid 掌机 site:bilibili.com",
+        "Odin 掌机 site:bilibili.com",
+        "沙雕掌机 site:bilibili.com",
+        "安卓掌机 新品 site:bilibili.com",
     ],
     "linux_handheld": [
-        "开源掌机",
-        "Anbernic 掌机",
-        "Miyoo 掌机",
-        "周哥 掌机",
-        "开源掌机 新品",
+        "开源掌机 site:bilibili.com",
+        "Anbernic 掌机 site:bilibili.com",
+        "Miyoo 掌机 site:bilibili.com",
+        "周哥 掌机 site:bilibili.com",
+        "开源掌机 新品 site:bilibili.com",
     ],
     "console": [
-        "Switch 2",
-        "PS5 Pro",
-        "任天堂 新机",
-        "Switch 2 新消息",
-        "掌机 发布会 直播",
+        "Switch 2 site:bilibili.com",
+        "PS5 Pro site:bilibili.com",
+        "任天堂 新机 site:bilibili.com",
+        "Switch 2 新消息 site:bilibili.com",
+        "掌机 发布会 直播 site:bilibili.com",
     ],
     "handheld_rumors": [
-        "掌机 爆料",
-        "掌机 新品 发布",
-        "Switch 2 传闻",
-        "掌机 发布会",
-        "掌机 新机 预告",
-        "掌机 新品 发布会",
-        "新掌机 官宣",
+        "掌机 爆料 site:bilibili.com",
+        "掌机 新品 发布 site:bilibili.com",
+        "Switch 2 传闻 site:bilibili.com",
+        "掌机 发布会 site:bilibili.com",
+        "掌机 新机 预告 site:bilibili.com",
+        "新掌机 官宣 site:bilibili.com",
     ],
     "emulator": [
-        "模拟器 更新",
-        "Switch 模拟器",
-        "Yuzu 模拟器",
+        "模拟器 更新 site:bilibili.com",
+        "Switch 模拟器 site:bilibili.com",
+        "Yuzu 模拟器 site:bilibili.com",
     ],
 }
 
-BILIBILI_API = "https://api.bilibili.com/x/web-interface/search/type"
+# DDG 实例（延迟加载 + 复用）
+_DDGS = None
+
+def _get_ddgs():
+    global _DDGS
+    if _DDGS is None:
+        try:
+            from duckduckgo_search import DDGS
+            _DDGS = DDGS()
+        except Exception:
+            _DDGS = False
+    return _DDGS if _DDGS is not False else None
 
 
 class BilibiliCollector(BaseCollector):
+    """通过搜索引擎采集 B站视频（绕过 US IP 封锁）"""
+
     def __init__(self):
         super().__init__("Bilibili")
 
-    def _search(self, keyword: str, max_results: int = 5) -> list[dict]:
-        """通过 B站 API 搜索视频（Wbi 签名 + web scrape 兜底）"""
+    def _search_google(self, query: str, max_results: int = 8) -> list[dict]:
+        """Google News RSS 搜索"""
         results = []
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": "https://www.bilibili.com",
-        }
-
-        # 方式 1：Wbi 签名 API
         try:
-            params = sign_params({
-                "search_type": "video",
-                "keyword": keyword,
-                "page": 1,
-                "order": "pubdate",
+            url = f"https://news.google.com/rss/search?q={quote(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+            resp = requests.get(url, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
             })
-            resp = requests.get(BILIBILI_API, params=params, headers=headers, timeout=15)
-            data = resp.json()
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
 
-            if data.get("code") == 0:
-                video_list = data.get("data", {}).get("result", [])
-                for v in video_list[:max_results]:
-                    title = v.get("title", "").replace('<em class="keyword">', "").replace("</em>", "")
-                    bvid = v.get("bvid", "")
-                    url = f"https://www.bilibili.com/video/{bvid}" if bvid else ""
-                    description = v.get("description", "")[:200]
-                    pub_ts = v.get("pubdate", 0)
-                    pub_date = None
-                    if pub_ts:
-                        try:
-                            pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
-                        except Exception:
-                            pass
-                    play = v.get("play", 0)
-                    results.append({
-                        "title": title, "url": url, "summary": description,
-                        "source_name": "B站", "published_at": pub_date,
-                        "raw_data": {"bvid": bvid, "play": play, "keyword": keyword},
-                    })
-                if results:
-                    return results
-        except Exception:
-            pass
+            for entry in feed.entries[:max_results]:
+                title = getattr(entry, "title", "").strip()
+                title = title.split(" - ")[0]
+                link = getattr(entry, "link", "")
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(link)
+                params = parse_qs(parsed.query)
+                real_url = params.get("url", [link])[0]
 
-        # 方式 2：Web scrape 搜索页兜底
-        try:
-            from urllib.parse import quote
-            search_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}&order=pubdate"
-            resp = requests.get(search_url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resp.text, "html.parser")
+                pub_date = None
+                tp = getattr(entry, "published_parsed", None)
+                if tp:
+                    try:
+                        pub_date = datetime(*tp[:6], tzinfo=timezone.utc)
+                    except Exception:
+                        pass
 
-            for card in soup.select(".bili-video-card")[:max_results]:
-                link = card.select_one("a[href*='/video/']")
-                if not link:
-                    continue
-                title = link.get("title", "") or link.get_text(strip=True)
-                href = link.get("href", "")
-                if href.startswith("//"):
-                    href = f"https:{href}"
-                elif href.startswith("/"):
-                    href = f"https://www.bilibili.com{href}"
+                source = getattr(entry, "source", {})
+                source_name = source.get("title", "B站") if isinstance(source, dict) else "B站"
 
-                bvid = ""
-                if "/video/" in href:
-                    bvid = href.split("/video/")[-1].split("/")[0].split("?")[0]
-
-                if title and href:
-                    results.append({
-                        "title": title.replace('<em class="keyword">', "").replace("</em>", ""),
-                        "url": href, "summary": "",
-                        "source_name": "B站", "published_at": None,
-                        "raw_data": {"bvid": bvid, "play": 0, "keyword": keyword},
-                    })
+                results.append({
+                    "title": title,
+                    "url": real_url,
+                    "summary": "",
+                    "source_name": source_name,
+                    "published_at": pub_date,
+                })
         except Exception as e:
-            console.log(f"[dim]B站搜索失败 [{keyword[:20]}]: {e}[/dim]")
+            console.log(f"[dim]B站Google搜索失败 [{query[:30]}]: {e}[/dim]")
+        return results
+
+    def _search_ddg(self, query: str, max_results: int = 5) -> list[dict]:
+        """DDG 文本搜索"""
+        results = []
+        ddgs = _get_ddgs()
+        if ddgs is None:
+            return results
+
+        try:
+            time.sleep(random.uniform(1.0, 2.5))  # DDG 限流保护
+            entries = list(ddgs.text(query, region="cn-zh", max_results=max_results))
+            for entry in entries:
+                pub_date = None
+                date_str = entry.get("date", "")
+                if date_str:
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub_date = parsedate_to_datetime(date_str)
+                    except Exception:
+                        pass
+
+                results.append({
+                    "title": entry.get("title", ""),
+                    "url": entry.get("href", ""),
+                    "summary": entry.get("body", "")[:300],
+                    "source_name": "B站(DDG)",
+                    "published_at": pub_date,
+                })
+        except Exception as e:
+            err = str(e)[:60]
+            console.log(f"[dim]B站DDG失败 [{query[:20]}]: {err}[/dim]")
+        return results
+
+    def _search(self, query: str) -> list[dict]:
+        """双引擎搜索，只保留 bilibili.com 域名的结果"""
+        results = []
+        seen = set()
+
+        g_results = self._search_google(query)
+        d_results = self._search_ddg(query)
+
+        for r in g_results + d_results:
+            url = r.get("url", "")
+            if not url or "bilibili.com" not in url:
+                continue
+            if url in seen:
+                continue
+            seen.add(url)
+
+            pub = r.get("published_at")
+            if pub and pub < CUTOFF_DATE:
+                continue
+
+            results.append(r)
 
         return results
 
@@ -162,19 +196,16 @@ class BilibiliCollector(BaseCollector):
         for query in queries:
             results = self._search(query)
             for r in results:
-                if r["url"] and r["url"] not in seen_urls:
+                if r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
-                    pub = r.get("published_at")
-                    if pub and pub < CUTOFF_DATE:
-                        continue
                     item = self.normalize_item(
                         title=r["title"],
                         url=r["url"],
-                        source_name=r["source_name"],
+                        source_name="B站",
                         source_type="bilibili",
-                        published_at=pub,
-                        summary=r["summary"],
-                        raw_data=r.get("raw_data", {}),
+                        published_at=r.get("published_at"),
+                        summary=r.get("summary", ""),
+                        raw_data={"keyword": query},
                     )
                     item["category"] = cat_key
                     items.append(item)

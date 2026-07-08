@@ -1,14 +1,16 @@
 """贴吧采集器
 
-抓取百度贴吧掌机相关吧的帖子列表。
-覆盖 30+ 贴吧，涵盖厂商、品牌、产品线级别的讨论。
+通过 Google News + DuckDuckGo 文本搜索抓取贴吧帖子。
+不直接抓取贴吧页面（从 US IP 会被拦截），走搜索引擎中转。
 """
 
+import time
+import random
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup
+import feedparser
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
@@ -16,7 +18,7 @@ from .base import BaseCollector
 
 console = Console()
 
-# 贴吧名 → 分类（覆盖厂商、品牌、产品线级别讨论）
+# 贴吧名 → 分类
 TIEBA_BOARDS = {
     # 综合
     "掌机": None,
@@ -56,123 +58,149 @@ TIEBA_BOARDS = {
     "xbox掌机": "handheld_rumors",
 }
 
-TIEBA_URL = "https://tieba.baidu.com/f"
+# DDG 实例（延迟加载 + 复用）
+_DDGS = None
+
+def _get_ddgs():
+    global _DDGS
+    if _DDGS is None:
+        try:
+            from duckduckgo_search import DDGS
+            _DDGS = DDGS()
+        except Exception:
+            _DDGS = False
+    return _DDGS if _DDGS is not False else None
 
 
 class TiebaCollector(BaseCollector):
+    """通过搜索引擎采集贴吧帖子（绕过 US IP 封锁）"""
+
     def __init__(self):
         super().__init__("Tieba")
 
-    def _fetch_board(self, board_name: str, max_pages: int = 2) -> list[dict]:
-        """抓取单个贴吧的帖子列表"""
+    def _search_google(self, query: str, max_results: int = 8) -> list[dict]:
+        """Google News RSS 搜索"""
         results = []
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        }
+        try:
+            url = f"https://news.google.com/rss/search?q={quote(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+            resp = requests.get(url, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
+            })
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
 
-        for page in range(max_pages):
-            try:
-                params = {"kw": board_name, "ie": "utf-8", "pn": page * 50}
-                resp = requests.get(TIEBA_URL, params=params, headers=headers, timeout=15)
-                resp.encoding = "utf-8"
-                soup = BeautifulSoup(resp.text, "html.parser")
+            for entry in feed.entries[:max_results]:
+                title = getattr(entry, "title", "").strip()
+                link = getattr(entry, "link", "")
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(link)
+                params = parse_qs(parsed.query)
+                real_url = params.get("url", [link])[0]
 
-                # 查找帖子列表
-                items = soup.select("li.j_thread_list")
-                if not items:
-                    items = soup.select(".threadlist_li")
+                pub_date = None
+                tp = getattr(entry, "published_parsed", None)
+                if tp:
+                    try:
+                        pub_date = datetime(*tp[:6], tzinfo=timezone.utc)
+                    except Exception:
+                        pass
 
-                for li in items:
-                    title_el = li.select_one("a.j_th_tit") or li.select_one(".threadlist_title a")
-                    if not title_el:
-                        continue
+                source = getattr(entry, "source", {})
+                source_name = source.get("title", "Web") if isinstance(source, dict) else str(source)
 
-                    title = title_el.get("title", "") or title_el.get_text(strip=True)
-                    href = title_el.get("href", "")
-                    if href.startswith("/"):
-                        href = f"https://tieba.baidu.com{href}"
-
-                    # 摘要
-                    abstract_el = li.select_one(".threadlist_abs")
-                    summary = abstract_el.get_text(strip=True) if abstract_el else ""
-
-                    # 作者
-                    author_el = li.select_one(".frs-author-name") or li.select_one(".tb_icon_author")
-                    author = author_el.get_text(strip=True) if author_el else ""
-
-                    # 日期（贴吧的日期可能是"X分钟前"、"X小时前"、"X月X日"）
-                    date_el = li.select_one(".threadlist_reply_date") or li.select_one(".pull_right")
-                    date_str = date_el.get_text(strip=True) if date_el else ""
-                    published_at = self._parse_tieba_date(date_str)
-
-                    results.append({
-                        "title": title,
-                        "url": href,
-                        "summary": summary,
-                        "published_at": published_at,
-                        "source_name": f"贴吧{board_name}吧",
-                        "raw_data": {"author": author, "board": board_name},
-                    })
-
-                if len(items) < 30:
-                    break  # 最后一页
-
-            except Exception as e:
-                console.log(f"[dim]贴吧 [{board_name}] 抓取失败: {e}[/dim]")
-                break
-
+                results.append({
+                    "title": title.split(" - ")[0],
+                    "url": real_url,
+                    "summary": "",
+                    "source_name": source_name,
+                    "published_at": pub_date,
+                })
+        except Exception as e:
+            console.log(f"[dim]贴吧Google搜索失败 [{query[:30]}]: {e}[/dim]")
         return results
 
-    def _parse_tieba_date(self, date_str: str):
-        """解析贴吧时间格式"""
-        if not date_str:
-            return None
+    def _search_ddg(self, query: str, max_results: int = 5) -> list[dict]:
+        """DDG 文本搜索（覆盖 Google News 不索引的贴吧页面）"""
+        results = []
+        ddgs = _get_ddgs()
+        if ddgs is None:
+            return results
 
-        now = datetime.now(timezone.utc)
-        date_str = date_str.strip()
+        try:
+            time.sleep(random.uniform(1.0, 2.5))  # DDG 限流保护
+            entries = list(ddgs.text(query, region="cn-zh", max_results=max_results))
+            for entry in entries:
+                pub_date = None
+                date_str = entry.get("date", "")
+                if date_str:
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub_date = parsedate_to_datetime(date_str)
+                    except Exception:
+                        pass
 
-        if "分钟前" in date_str:
-            try:
-                mins = int(date_str.replace("分钟前", ""))
-                return now - __import__("datetime").timedelta(minutes=mins)
-            except Exception:
-                pass
-        elif "小时前" in date_str:
-            try:
-                hours = int(date_str.replace("小时前", ""))
-                return now - __import__("datetime").timedelta(hours=hours)
-            except Exception:
-                pass
-        elif "-" in date_str:
-            # "07-06" 或 "2025-07-06"
-            parts = date_str.split("-")
-            try:
-                if len(parts) == 2:
-                    return datetime(now.year, int(parts[0]), int(parts[1]), tzinfo=timezone.utc)
-                elif len(parts) == 3:
-                    return datetime(int(parts[0]), int(parts[1]), int(parts[2]), tzinfo=timezone.utc)
-            except Exception:
-                pass
+                results.append({
+                    "title": entry.get("title", ""),
+                    "url": entry.get("href", ""),
+                    "summary": entry.get("body", "")[:300],
+                    "source_name": "DDG",
+                    "published_at": pub_date,
+                })
+        except Exception as e:
+            err = str(e)[:60]
+            console.log(f"[dim]贴吧DDG失败 [{query[:20]}]: {err}[/dim]")
+        return results
 
-        return None
+    def _fetch_board(self, board_name: str) -> list[dict]:
+        """通过搜索引擎搜索贴吧帖子"""
+        results = []
+        seen = set()
+
+        # 两个查询角度：site: + 吧名
+        queries = [
+            f"site:tieba.baidu.com {board_name}",
+            f"{board_name} 吧 site:tieba.baidu.com",
+        ]
+
+        for query in queries:
+            g_results = self._search_google(query)
+            d_results = self._search_ddg(query)
+            for r in g_results + d_results:
+                url = r.get("url", "")
+                if not url or "tieba.baidu.com" not in url:
+                    continue
+                if url in seen:
+                    continue
+                seen.add(url)
+
+                pub = r.get("published_at")
+                if pub and pub < CUTOFF_DATE:
+                    continue
+
+                results.append({
+                    "title": r["title"],
+                    "url": url,
+                    "summary": r.get("summary", ""),
+                    "source_name": f"贴吧{board_name}吧",
+                    "published_at": pub,
+                    "board": board_name,
+                })
+
+        return results
 
     def fetch(self) -> list[dict]:
         all_items = []
         for board_name, cat_hint in TIEBA_BOARDS.items():
             posts = self._fetch_board(board_name)
             for post in posts:
-                published_at = post.get("published_at")
-                if published_at and published_at < CUTOFF_DATE:
-                    continue
-
                 item = self.normalize_item(
                     title=post["title"],
                     url=post["url"],
                     source_name=post["source_name"],
                     source_type="tieba",
-                    published_at=published_at,
-                    summary=post["summary"],
-                    raw_data=post.get("raw_data", {}),
+                    published_at=post.get("published_at"),
+                    summary=post.get("summary", ""),
+                    raw_data={"board": post.get("board", board_name)},
                 )
                 if cat_hint:
                     item["category"] = cat_hint

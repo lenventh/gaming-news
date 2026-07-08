@@ -1,16 +1,16 @@
 """B站厂商官号监控采集器
 
-通过 Google 搜索找到厂商 B站空间 UID → 直接抓取空间视频列表页。
-不依赖 B站 API，从 GitHub Actions US IP 可用。
+通过 Google News + DuckDuckGo 文本搜索，以厂商名 + site:bilibili.com
+查询厂商官方 B站账号发布的视频。不直接调用 B站 API（从 US IP 被封锁）。
 """
 
-import re
-import json
+import time
+import random
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 import requests
-from bs4 import BeautifulSoup
+import feedparser
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
@@ -18,7 +18,7 @@ from .base import BaseCollector
 
 console = Console()
 
-# 厂商搜索名（自动通过 Google 解析 B站 UID）
+# 厂商搜索名（用于搜索引擎查询 site:bilibili.com）
 MANUFACTURER_SEARCH_NAMES = {
     "steam_deck": [],
     "windows_handheld": [
@@ -49,111 +49,127 @@ MANUFACTURER_SEARCH_NAMES = {
     "emulator": [],
 }
 
-GOOGLE_SEARCH_URL = "https://www.google.com/search"
-BILIBILI_SPACE_VIDEO = "https://space.bilibili.com/{uid}/video"
+# DDG 实例（延迟加载 + 复用）
+_DDGS = None
 
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-})
+def _get_ddgs():
+    global _DDGS
+    if _DDGS is None:
+        try:
+            from duckduckgo_search import DDGS
+            _DDGS = DDGS()
+        except Exception:
+            _DDGS = False
+    return _DDGS if _DDGS is not False else None
 
 
 class BilibiliAccountCollector(BaseCollector):
-    """监控 B站厂商官号最新视频（Google 解 UID + 页面抓取）"""
+    """通过搜索引擎监控 B站厂商官号（绕过 US IP 封锁）"""
 
     def __init__(self):
         super().__init__("BilibiliAccount")
-        self._uid_cache: dict[str, int] = {}
 
-    def _resolve_uid(self, keyword: str) -> int | None:
-        """通过 B站网页搜索找到用户 UID"""
-        if keyword in self._uid_cache:
-            return self._uid_cache[keyword]
-
-        # 方式 1：B站 upuser 搜索页（公开页面）
-        try:
-            search_url = f"https://search.bilibili.com/upuser?keyword={quote(keyword)}"
-            resp = _session.get(search_url, timeout=15)
-            # 从页面中的 __INITIAL_STATE__ 或链接提取 UID
-            uids = re.findall(r'space\.bilibili\.com/(\d+)', resp.text)
-            if uids:
-                uid = int(uids[0])
-                console.log(f"[dim]B站搜索 -> UID: {keyword} = {uid}[/dim]")
-                self._uid_cache[keyword] = uid
-                return uid
-        except Exception:
-            pass
-
-        # 方式 2：B站主搜索页（搜索用户 tab）
-        try:
-            search_url = f"https://search.bilibili.com/all?keyword={quote(keyword)}&search_type=user"
-            resp = _session.get(search_url, timeout=15)
-            uids = re.findall(r'space\.bilibili\.com/(\d+)', resp.text)
-            if uids:
-                uid = int(uids[0])
-                console.log(f"[dim]B站搜索 -> UID: {keyword} = {uid}[/dim]")
-                self._uid_cache[keyword] = uid
-                return uid
-        except Exception as e:
-            console.log(f"[dim]B站搜UID失败 [{keyword[:15]}]: {e}[/dim]")
-
-        return None
-
-    def _fetch_account_videos(self, uid: int, account_name: str, max_results: int = 5) -> list[dict]:
-        """抓取 B站空间视频列表页"""
+    def _search_google(self, query: str, max_results: int = 8) -> list[dict]:
+        """Google News RSS 搜索"""
         results = []
-        url = BILIBILI_SPACE_VIDEO.format(uid=uid)
-
         try:
-            resp = _session.get(url, timeout=15)
-            # B站空间页会在 <script> 中嵌入 __INITIAL_STATE__ JSON
-            match = re.search(
-                r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});\s*\(function\(\)',
-                resp.text, re.DOTALL
-            )
-            if not match:
-                return results
+            url = f"https://news.google.com/rss/search?q={quote(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+            resp = requests.get(url, timeout=15, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
+            })
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.content)
 
-            data = json.loads(match.group(1))
-            vlist = []
-            # 尝试多个可能的 JSON 路径
-            try:
-                vlist = data["video"]["list"]["vlist"]
-            except (KeyError, TypeError):
-                try:
-                    vlist = data["video"]["vlist"]
-                except (KeyError, TypeError):
-                    try:
-                        vlist = data["vlist"]
-                    except (KeyError, TypeError):
-                        return results
+            for entry in feed.entries[:max_results]:
+                title = getattr(entry, "title", "").strip()
+                title = title.split(" - ")[0]
+                link = getattr(entry, "link", "")
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(link)
+                params = parse_qs(parsed.query)
+                real_url = params.get("url", [link])[0]
 
-            for v in vlist[:max_results]:
-                bvid = v.get("bvid", "")
-                title = v.get("title", "")
-                description = v.get("description", "")[:200]
-                pub_ts = v.get("created", 0)
                 pub_date = None
-                if pub_ts:
+                tp = getattr(entry, "published_parsed", None)
+                if tp:
                     try:
-                        pub_date = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
+                        pub_date = datetime(*tp[:6], tzinfo=timezone.utc)
                     except Exception:
                         pass
+
+                source = getattr(entry, "source", {})
+                source_name = source.get("title", "B站") if isinstance(source, dict) else "B站"
+
                 results.append({
                     "title": title,
-                    "url": f"https://www.bilibili.com/video/{bvid}" if bvid else "",
-                    "summary": description,
-                    "source_name": f"B站@{account_name}",
+                    "url": real_url,
+                    "summary": "",
+                    "source_name": source_name,
                     "published_at": pub_date,
-                    "raw_data": {
-                        "bvid": bvid, "play": v.get("play", 0),
-                        "comment": v.get("comment", 0), "uid": uid,
-                    },
                 })
-
         except Exception as e:
-            console.log(f"[dim]B站空间抓取失败 [{account_name}]: {e}[/dim]")
+            console.log(f"[dim]B站官号Google搜索失败 [{query[:20]}]: {e}[/dim]")
+        return results
+
+    def _search_ddg(self, query: str, max_results: int = 5) -> list[dict]:
+        """DDG 文本搜索"""
+        results = []
+        ddgs = _get_ddgs()
+        if ddgs is None:
+            return results
+
+        try:
+            time.sleep(random.uniform(1.0, 2.5))  # DDG 限流保护
+            entries = list(ddgs.text(query, region="cn-zh", max_results=max_results))
+            for entry in entries:
+                pub_date = None
+                date_str = entry.get("date", "")
+                if date_str:
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub_date = parsedate_to_datetime(date_str)
+                    except Exception:
+                        pass
+
+                results.append({
+                    "title": entry.get("title", ""),
+                    "url": entry.get("href", ""),
+                    "summary": entry.get("body", "")[:300],
+                    "source_name": "B站官号(DDG)",
+                    "published_at": pub_date,
+                })
+        except Exception as e:
+            err = str(e)[:60]
+            console.log(f"[dim]B站官号DDG失败 [{query[:20]}]: {err}[/dim]")
+        return results
+
+    def _search_account(self, account_name: str) -> list[dict]:
+        """通过搜索引擎查找厂商 B站视频"""
+        results = []
+        seen = set()
+
+        # 用厂商名 + site:bilibili.com 查询
+        queries = [
+            f"{account_name} site:bilibili.com",
+            f"{account_name} 发布 site:bilibili.com",
+        ]
+
+        for query in queries:
+            g_results = self._search_google(query)
+            d_results = self._search_ddg(query)
+            for r in g_results + d_results:
+                url = r.get("url", "")
+                if not url or "bilibili.com" not in url:
+                    continue
+                if url in seen:
+                    continue
+                seen.add(url)
+
+                pub = r.get("published_at")
+                if pub and pub < CUTOFF_DATE:
+                    continue
+
+                results.append(r)
 
         return results
 
@@ -163,24 +179,18 @@ class BilibiliAccountCollector(BaseCollector):
         seen_urls = set()
 
         for name in names:
-            uid = self._resolve_uid(name)
-            if not uid:
-                continue
-            results = self._fetch_account_videos(uid, name)
+            results = self._search_account(name)
             for r in results:
-                if r["url"] and r["url"] not in seen_urls:
+                if r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
-                    pub = r.get("published_at")
-                    if pub and pub < CUTOFF_DATE:
-                        continue
                     item = self.normalize_item(
                         title=r["title"],
                         url=r["url"],
-                        source_name=r["source_name"],
+                        source_name=f"B站@{name}",
                         source_type="bilibili_account",
-                        published_at=pub,
-                        summary=r["summary"],
-                        raw_data=r.get("raw_data", {}),
+                        published_at=r.get("published_at"),
+                        summary=r.get("summary", ""),
+                        raw_data={"account": name},
                     )
                     item["category"] = cat_key
                     items.append(item)
