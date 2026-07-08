@@ -110,7 +110,7 @@ class BilibiliAccountCollector(BaseCollector):
         for query in queries:
             for r in self._search_google(query):
                 url = r.get("url", "")
-                if not url or "bilibili.com" not in url:
+                if not url:
                     continue
                 if url in seen:
                     continue

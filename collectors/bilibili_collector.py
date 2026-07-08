@@ -119,13 +119,13 @@ class BilibiliCollector(BaseCollector):
         return results
 
     def _search(self, query: str) -> list[dict]:
-        """Google News RSS 搜索，只保留 bilibili.com 域名结果"""
+        """Google News RSS 搜索"""
         results = []
         seen = set()
 
         for r in self._search_google(query):
             url = r.get("url", "")
-            if not url or "bilibili.com" not in url:
+            if not url:
                 continue
             if url in seen:
                 continue
