@@ -13,6 +13,8 @@
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
+import time
+import random
 import feedparser
 import requests
 from rich.console import Console
@@ -20,6 +22,19 @@ from openai import OpenAI
 
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+
+# DuckDuckGo 搜索（延迟导入避免本地网络不可用时崩溃）
+_DDGS = None
+
+def _get_ddgs():
+    global _DDGS
+    if _DDGS is None:
+        try:
+            from duckduckgo_search import DDGS
+            _DDGS = DDGS()
+        except Exception:
+            _DDGS = False
+    return _DDGS if _DDGS is not False else None
 
 console = Console()
 
@@ -184,11 +199,13 @@ class WebSearchCollector(BaseCollector):
         return results
 
     def _search_ddg_news(self, query: str, max_results: int = 10) -> list[dict]:
-        """通过 DuckDuckGo News API 搜索"""
+        """通过 DuckDuckGo News API 搜索（无延迟，DDG 速率限制时会快速失败）"""
         results = []
+        ddgs = _get_ddgs()
+        if ddgs is None:
+            return results
+
         try:
-            from duckduckgo_search import DDGS
-            ddgs = DDGS()
             entries = list(ddgs.news(
                 query, region="cn-zh", max_results=max_results, timelimit="w"
             ))
@@ -210,7 +227,8 @@ class WebSearchCollector(BaseCollector):
                     "source_name": entry.get("source", "DuckDuckGo"),
                 })
         except Exception as e:
-            console.log(f"[dim]DDG News 搜索失败 [{query[:30]}...]: {e}[/dim]")
+            err = str(e)[:80]
+            console.log(f"[dim]DDG 失败 [{query[:20]}]: {err}[/dim]")
 
         return results
 
