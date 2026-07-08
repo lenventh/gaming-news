@@ -27,21 +27,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Start RSSHub (B站/贴吧/国内源代理)
-        run: |
-          git clone --depth 1 https://github.com/DIYgod/RSSHub.git /tmp/rsshub
-          cd /tmp/rsshub
-          npm install --production 2>&1 | tail -1
-          node lib/index.js --port 1200 &
-          for i in $(seq 1 30); do
-            if curl -s http://localhost:1200/test/cache > /dev/null 2>&1; then
-              echo "RSSHub ready"
-              break
-            fi
-            echo "Waiting for RSSHub... ($i)"
-            sleep 2
-          done
-
       - name: Run news pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -168,55 +168,8 @@ CATEGORIES = {
     },
 }
 
-# ========== RSSHub 本地代理地址（GitHub Actions 运行时可用）==========
-RSSHUB_BASE = "http://localhost:1200"
-
 # ========== RSS 源配置 ==========
 RSS_SOURCES = [
-    # --- RSSHub 源（B站/贴吧/国内平台经由 RSSHub 代理）---
-    # B站厂商官号
-    {
-        "name": "B站 AYANEO官号",
-        "url": f"{RSSHUB_BASE}/bilibili/user/video/366077183",
-        "category_hint": "windows_handheld",
-    },
-    # B站关键词搜索
-    {
-        "name": "B站搜索 Windows掌机",
-        "url": f"{RSSHUB_BASE}/bilibili/search/Windows掌机 新品?order=pubdate",
-        "category_hint": "windows_handheld",
-    },
-    {
-        "name": "B站搜索 开源掌机",
-        "url": f"{RSSHUB_BASE}/bilibili/search/开源掌机 新品?order=pubdate",
-        "category_hint": "linux_handheld",
-    },
-    {
-        "name": "B站搜索 安卓掌机",
-        "url": f"{RSSHUB_BASE}/bilibili/search/安卓掌机?order=pubdate",
-        "category_hint": "android_handheld",
-    },
-    {
-        "name": "B站搜索 SteamDeck",
-        "url": f"{RSSHUB_BASE}/bilibili/search/Steam Deck 掌机?order=pubdate",
-        "category_hint": "steam_deck",
-    },
-    # 贴吧
-    {
-        "name": "贴吧 掌机吧",
-        "url": f"{RSSHUB_BASE}/tieba/forum/掌机?pn=1",
-        "category_hint": "android_handheld",
-    },
-    {
-        "name": "贴吧 SteamDeck吧",
-        "url": f"{RSSHUB_BASE}/tieba/forum/steamdeck?pn=1",
-        "category_hint": "steam_deck",
-    },
-    {
-        "name": "贴吧 开源掌机吧",
-        "url": f"{RSSHUB_BASE}/tieba/forum/开源掌机?pn=1",
-        "category_hint": "linux_handheld",
-    },
     # --- 中文源 ---
     {
         "name": "机核",
