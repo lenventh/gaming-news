@@ -1,7 +1,7 @@
 """贴吧采集器
 
 抓取百度贴吧掌机相关吧的帖子列表。
-目标贴吧：掌机吧、steamdeck吧、switch2吧、开源掌机吧
+覆盖 30+ 贴吧，涵盖厂商、品牌、产品线级别的讨论。
 """
 
 from datetime import datetime, timezone
@@ -16,14 +16,44 @@ from .base import BaseCollector
 
 console = Console()
 
-# 贴吧名 → 分类
+# 贴吧名 → 分类（覆盖厂商、品牌、产品线级别讨论）
 TIEBA_BOARDS = {
+    # 综合
     "掌机": None,
+    # Steam Deck
     "steamdeck": "steam_deck",
-    "switch2": "console",
-    "开源掌机": "linux_handheld",
+    # Windows 掌机 — 厂商吧
     "rogally": "windows_handheld",
+    "ayaneo": "windows_handheld",
+    "gpd掌机": "windows_handheld",
+    "壹号本": "windows_handheld",
+    "win掌机": "windows_handheld",
+    "msiclaw": "windows_handheld",
+    # 安卓掌机 — 品牌吧
+    "retroid": "android_handheld",
+    "沙雕": "android_handheld",
+    "odin掌机": "android_handheld",
+    "安卓掌机": "android_handheld",
+    # 开源掌机
+    "开源掌机": "linux_handheld",
+    "anbernic": "linux_handheld",
+    "miyoo": "linux_handheld",
+    "trimui": "linux_handheld",
+    "powkiddy": "linux_handheld",
+    "霸王小子": "linux_handheld",
+    # 主机
+    "switch2": "console",
+    "ps5": "console",
+    "xboxone": "console",
+    "nintendo": "console",
+    "switch": "console",
+    # 模拟器
     "模拟器": "emulator",
+    "yuzu": "emulator",
+    "ryujinx": "emulator",
+    # 传闻
+    "索尼掌机": "handheld_rumors",
+    "xbox掌机": "handheld_rumors",
 }
 
 TIEBA_URL = "https://tieba.baidu.com/f"
