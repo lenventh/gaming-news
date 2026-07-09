@@ -44,7 +44,6 @@ MANUFACTURER_SEARCH_NAMES = {
         "任天堂Switch官方",
         "Xbox中国官方",
     ],
-    "handheld_rumors": [],
     "emulator": [],
 }
 

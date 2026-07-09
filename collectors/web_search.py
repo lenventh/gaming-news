@@ -47,6 +47,8 @@ CATEGORY_SEARCH_QUERIES = {
         "ACER Nitro 掌机",
         "AYANEO 发布会 新品 发布",
         "GPD 掌机 新品 发布",
+        "掌机 新品 传闻 曝光 2026",
+        "gaming handheld rumor leak 2026",
     ],
     "android_handheld": [
         "安卓掌机 新品 2026",
@@ -73,13 +75,9 @@ CATEGORY_SEARCH_QUERIES = {
         "Xbox 主机 新闻 2026",
         "console gaming hardware news 2026",
         "次世代主机 新闻",
-    ],
-    "handheld_rumors": [
         "Sony 掌机 传闻 爆料",
         "Xbox 掌机 传闻 专利",
         "Switch 2 爆料 规格 价格",
-        "掌机 新品 传闻 曝光 2026",
-        "gaming handheld rumor leak 2026",
         "索尼 新掌机 专利",
         "任天堂 新机 爆料",
     ],

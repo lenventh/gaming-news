@@ -13,9 +13,16 @@ from .base import BaseCollector
 
 console = Console()
 
-# Reddit RSS 随机延迟范围（秒），防限流
-REDDIT_RSS_DELAY_MIN = 5
-REDDIT_RSS_DELAY_MAX = 8
+# 延迟范围（秒），避免被限流
+# Reddit RSS 源之间的延迟
+REDDIT_SOURCE_DELAY_MIN = 8
+REDDIT_SOURCE_DELAY_MAX = 15
+# 单个 Reddit RSS 请求前的延迟
+REDDIT_REQUEST_DELAY_MIN = 2
+REDDIT_REQUEST_DELAY_MAX = 5
+# 所有 RSS 源之间的通用延迟（礼貌爬取）
+GENERAL_DELAY_MIN = 1
+GENERAL_DELAY_MAX = 3
 
 
 class RSSCollector(BaseCollector):
@@ -75,6 +82,11 @@ class RSSCollector(BaseCollector):
 
         for attempt in range(max_retries):
             try:
+                # Reddit RSS 请求前加随机延时，降低 429 概率
+                if is_reddit and attempt == 0:
+                    pre_delay = random.uniform(REDDIT_REQUEST_DELAY_MIN, REDDIT_REQUEST_DELAY_MAX)
+                    time.sleep(pre_delay)
+
                 resp = requests.get(self.feed_url, timeout=30, headers={
                     "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
                 })
@@ -144,7 +156,7 @@ class RSSCollector(BaseCollector):
 
 
 def collect_all_rss(sources: list[dict]) -> list[dict]:
-    """从所有 RSS 源采集新闻。Reddit 源之间自动加延迟"""
+    """从所有 RSS 源采集新闻。每个源之间加延迟避免限流"""
     all_items = []
     for src in sources:
         collector = RSSCollector(
@@ -155,9 +167,12 @@ def collect_all_rss(sources: list[dict]) -> list[dict]:
         )
         all_items.extend(collector.fetch())
 
-        # Reddit RSS 源之间加随机延迟避免 429
-        if "reddit" in src.get("url", "").lower():
-            delay = random.uniform(REDDIT_RSS_DELAY_MIN, REDDIT_RSS_DELAY_MAX)
-            time.sleep(delay)
+        # 源之间加延迟：Reddit 源用较长延迟，其他源用通用礼貌延迟
+        is_reddit = "reddit" in src.get("url", "").lower()
+        if is_reddit:
+            delay = random.uniform(REDDIT_SOURCE_DELAY_MIN, REDDIT_SOURCE_DELAY_MAX)
+        else:
+            delay = random.uniform(GENERAL_DELAY_MIN, GENERAL_DELAY_MAX)
+        time.sleep(delay)
 
     return all_items

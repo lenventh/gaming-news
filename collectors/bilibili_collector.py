@@ -32,6 +32,9 @@ BILIBILI_SEARCH_QUERIES = {
         "Legion Go 掌机 site:bilibili.com",
         "Windows 掌机 发布会 site:bilibili.com",
         "掌机 新品 发布 site:bilibili.com",
+        "掌机 爆料 site:bilibili.com",
+        "掌机 发布会 site:bilibili.com",
+        "掌机 新机 预告 site:bilibili.com",
     ],
     "android_handheld": [
         "安卓掌机 site:bilibili.com",
@@ -52,14 +55,8 @@ BILIBILI_SEARCH_QUERIES = {
         "PS5 Pro site:bilibili.com",
         "任天堂 新机 site:bilibili.com",
         "Switch 2 新消息 site:bilibili.com",
-        "掌机 发布会 直播 site:bilibili.com",
-    ],
-    "handheld_rumors": [
-        "掌机 爆料 site:bilibili.com",
-        "掌机 新品 发布 site:bilibili.com",
         "Switch 2 传闻 site:bilibili.com",
-        "掌机 发布会 site:bilibili.com",
-        "掌机 新机 预告 site:bilibili.com",
+        "掌机 发布会 直播 site:bilibili.com",
         "新掌机 官宣 site:bilibili.com",
     ],
     "emulator": [

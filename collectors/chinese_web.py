@@ -1,35 +1,19 @@
 """中文源补充采集器
 
-Google News RSS + DuckDuckGo 文本搜索双引擎，配合 site: 限定，
+Google News RSS 搜索引擎，配合 site: 限定，
 获取 B站/微博/微信/贴吧/知乎/游戏媒体等中文源内容。
 不直接抓取页面（反爬太强），走搜索引擎中转，稳定可靠。
 """
 
-import time
-import random
 from datetime import datetime, timezone
 from urllib.parse import quote
 
 import feedparser
 import requests
-from bs4 import BeautifulSoup
 from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
-
-# DDG 实例（延迟加载 + 复用，避免每个查询都创建）
-_DDGS_CHINESE = None
-
-def _get_ddgs_chinese():
-    global _DDGS_CHINESE
-    if _DDGS_CHINESE is None:
-        try:
-            from duckduckgo_search import DDGS
-            _DDGS_CHINESE = DDGS()
-        except Exception:
-            _DDGS_CHINESE = False
-    return _DDGS_CHINESE if _DDGS_CHINESE is not False else None
 
 console = Console()
 
@@ -62,20 +46,29 @@ SITE_QUERIES = {
         "Legion Go 掌机 site:bilibili.com",
         "Windows 掌机 新品 site:bilibili.com",
         "掌机 发布会 直播 site:bilibili.com",
+        "掌机 新品 爆料 site:bilibili.com",
+        "掌机 传闻 site:bilibili.com",
+        "掌机 曝光 site:bilibili.com",
         # 微博 — 厂商官号
         "AYANEO site:weibo.com",
         "ROG 掌机 site:weibo.com",
         "GPD 掌机 site:weibo.com",
         "Windows 掌机 site:weibo.com",
+        "掌机 爆料 site:weibo.com",
+        "新掌机 传闻 site:weibo.com",
+        "掌机 曝光 专利 site:weibo.com",
         # 微信 — 厂商发布
         "AYANEO 掌机 site:mp.weixin.qq.com",
         "ROG Ally 掌机 site:mp.weixin.qq.com",
         "Windows 掌机 新品 site:mp.weixin.qq.com",
+        "掌机 爆料 site:mp.weixin.qq.com",
         # 贴吧
         "ROG Ally 吧 site:tieba.baidu.com",
         "AYANEO 吧 site:tieba.baidu.com",
         "GPD 掌机 site:tieba.baidu.com",
         "Windows 掌机 site:tieba.baidu.com",
+        "掌机 爆料 site:tieba.baidu.com",
+        "掌机 曝光 吧 site:tieba.baidu.com",
         # 媒体/社区
         "Windows 掌机 推荐 site:zhihu.com",
         "ROG Ally 评测 site:gamersky.com",
@@ -83,6 +76,10 @@ SITE_QUERIES = {
         "GPD Win 掌机 site:smzdm.com",
         "Windows 掌机 site:3dmgame.com",
         "掌机 新品 发布 site:yystv.cn",
+        "掌机 专利 曝光 site:zhihu.com",
+        "掌机 爆料 site:gamersky.com",
+        "掌机 传闻 site:3dmgame.com",
+        "掌机 新品 2026 site:yystv.cn",
     ],
     "android_handheld": [
         # B站
@@ -141,51 +138,31 @@ SITE_QUERIES = {
         "Xbox Series site:bilibili.com",
         "任天堂 新机 site:bilibili.com",
         "主机 新闻 发布会 site:bilibili.com",
+        "Switch 2 爆料 site:bilibili.com",
+        "索尼 掌机 传闻 site:bilibili.com",
         # 微博
         "Switch 2 site:weibo.com",
         "PlayStation 中国 site:weibo.com",
         "任天堂 site:weibo.com",
         "Xbox 中国 site:weibo.com",
+        "Switch 2 传闻 site:weibo.com",
         # 微信
         "Switch 2 site:mp.weixin.qq.com",
         "PS5 Pro site:mp.weixin.qq.com",
         "任天堂 主机 site:mp.weixin.qq.com",
+        "Switch 2 传闻 site:mp.weixin.qq.com",
+        "索尼 掌机 site:mp.weixin.qq.com",
         # 贴吧
         "Switch 2 吧 site:tieba.baidu.com",
         "PS5 吧 site:tieba.baidu.com",
         "Xbox 吧 site:tieba.baidu.com",
+        "Switch 2 传闻 site:tieba.baidu.com",
+        "索尼 掌机 site:tieba.baidu.com",
         # 媒体/社区
         "Switch 2 评测 site:zhihu.com",
         "PS5 Pro 新闻 site:gamersky.com",
         "主机 新闻 site:yystv.cn",
         "次世代主机 site:3dmgame.com",
-    ],
-    "handheld_rumors": [
-        # B站 — 爆料向
-        "掌机 新品 爆料 site:bilibili.com",
-        "掌机 传闻 site:bilibili.com",
-        "掌机 曝光 site:bilibili.com",
-        "Switch 2 爆料 site:bilibili.com",
-        "索尼 掌机 传闻 site:bilibili.com",
-        # 微博 — 爆料大V
-        "掌机 爆料 site:weibo.com",
-        "新掌机 传闻 site:weibo.com",
-        "Switch 2 传闻 site:weibo.com",
-        "掌机 曝光 专利 site:weibo.com",
-        # 微信
-        "掌机 爆料 site:mp.weixin.qq.com",
-        "Switch 2 传闻 site:mp.weixin.qq.com",
-        "索尼 掌机 site:mp.weixin.qq.com",
-        # 贴吧
-        "掌机 爆料 site:tieba.baidu.com",
-        "Switch 2 传闻 site:tieba.baidu.com",
-        "索尼 掌机 site:tieba.baidu.com",
-        "掌机 曝光 吧 site:tieba.baidu.com",
-        # 媒体
-        "掌机 专利 曝光 site:zhihu.com",
-        "掌机 爆料 site:gamersky.com",
-        "掌机 传闻 site:3dmgame.com",
-        "掌机 新品 2026 site:yystv.cn",
     ],
     "emulator": [
         # B站
@@ -262,50 +239,14 @@ class ChineseWebCollector(BaseCollector):
 
         return results
 
-    def _search_ddg_text(self, query: str, max_results: int = 5) -> list[dict]:
-        """DuckDuckGo 文本搜索，覆盖微博/微信等 Google News 索引弱的平台"""
-        results = []
-        ddgs = _get_ddgs_chinese()
-        if ddgs is None:
-            return results
-
-        try:
-            entries = list(ddgs.text(
-                query, region="cn-zh", max_results=max_results
-            ))
-            for entry in entries:
-                pub_date = None
-                date_str = entry.get("date", "")
-                if date_str:
-                    try:
-                        from email.utils import parsedate_to_datetime
-                        pub_date = parsedate_to_datetime(date_str)
-                    except Exception:
-                        pass
-
-                results.append({
-                    "title": entry.get("title", ""),
-                    "url": entry.get("href", ""),
-                    "summary": entry.get("body", "")[:300],
-                    "source_name": "DDG",
-                    "published_at": pub_date,
-                })
-        except Exception as e:
-            err = str(e)[:60]
-            console.log(f"[dim]DDG失败 [{query[:20]}]: {err}[/dim]")
-
-        return results
-
     def fetch_by_category(self, cat_key: str) -> list[dict]:
         queries = SITE_QUERIES.get(cat_key, [])
         items = []
         seen_urls = set()
 
         for query in queries:
-            # Google News + DDG 文本双引擎
             g_results = self._search_google(query)
-            d_results = self._search_ddg_text(query)
-            for r in g_results + d_results:
+            for r in g_results:
                 if r["url"] not in seen_urls:
                     seen_urls.add(r["url"])
                     pub = r.get("published_at")

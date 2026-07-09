@@ -21,8 +21,7 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 - windows_handheld: ROG Ally、AYANEO、GPD、微星Claw、Legion Go 等 Windows 掌机
 - android_handheld: Odin、Retroid Pocket、安卓掌机
 - linux_handheld: Anbernic、Miyoo、TrimUI、PowKiddy、开源/Linux 掌机
-- console: PS5、Xbox、Switch/Switch 2 等传统游戏主机
-- handheld_rumors: 厂商掌机传闻、爆料、专利
+- console: PS5、Xbox、Switch/Switch 2 等传统游戏主机（含主机掌机传闻）
 - emulator: 模拟器（Yuzu、Ryujinx、Cemu、RPCS3、Dolphin 等）
 - irrelevant: 汽车、股票、耳机、家电等完全无关的新闻
 

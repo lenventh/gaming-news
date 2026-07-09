@@ -125,24 +125,6 @@ CATEGORIES = {
             "主机游戏", "家用机",
         ],
     },
-    "handheld_rumors": {
-        "name": "厂商掌机传闻",
-        "keywords": [
-            "sony 掌机", "xbox 掌机", "微软掌机", "索尼掌机",
-            "playstation handheld", "xbox handheld",
-            "掌机传闻", "掌机曝光", "掌机爆料", "掌机专利",
-            "switch 2 传闻", "switch2 爆料", "new handheld rumor",
-            "next-gen handheld", "rumor", "rumour", "leak", "leaked",
-            "传闻", "爆料", "曝光", "专利", "即将发布", "即将推出",
-            "任天堂新机", "索尼新掌机", "微软新主机",
-            "switch2 规格", "switch2 价格", "switch2 发售",
-            "ps6", "xbox 新主机", "下一代 switch",
-            "ps vita 2", "psp 2", "psp 3", "playstation 掌机 新",
-            "switch2 发售日", "switch2 定价", "switch2 上市",
-            "次世代掌机", "新机预热", "新机谍照", "新机官宣",
-            "任天堂 patent", "nintendo patent",
-        ],
-    },
     "emulator": {
         "name": "模拟器资讯",
         "keywords": [
@@ -268,7 +250,7 @@ RSS_SOURCES = [
     {
         "name": "Reddit r/GamingLeaksAndRumours",
         "url": "https://old.reddit.com/r/GamingLeaksAndRumours/.rss",
-        "category_hint": "handheld_rumors",
+        "category_hint": None,
     },
     {
         "name": "Reddit r/retroid",
