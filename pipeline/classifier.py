@@ -1,4 +1,4 @@
-"""LLM 分类器：将新闻分类到七大板块"""
+"""LLM 分类器：将新闻分类到六大板块"""
 
 import json
 from rich.console import Console

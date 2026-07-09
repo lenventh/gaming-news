@@ -26,7 +26,7 @@ REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
 REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
 REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "gaming-news-bot/1.0")
 
-# ========== 七大内容板块 ==========
+# ========== 六大内容板块 ==========
 CATEGORIES = {
     "steam_deck": {
         "name": "Steam Deck",
@@ -220,7 +220,7 @@ RSS_SOURCES = [
         "url": "https://www.retrohandhelds.gg/feed/",
         "category_hint": "android_handheld",
     },
-    # --- Reddit RSS (old.reddit.com, 每个请求间隔 1.5s 防限流) ---
+    # --- Reddit RSS (old.reddit.com) ---
     # 核心 6 个板块，按重要性排序
     {
         "name": "Reddit r/SteamDeck",
