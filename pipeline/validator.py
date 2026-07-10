@@ -158,7 +158,7 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
 
     validation_input = []
     for i, (_, it) in enumerate(all_items):
-        date_info = it.get("published_at", "未知")
+        date_info = it.get("published_at") or "未知"
         extras = []
         if it.get("raw_data", {}).get("page_date"):
             extras.append(f"页面日期: {it['raw_data']['page_date']}")

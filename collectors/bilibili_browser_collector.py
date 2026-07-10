@@ -27,40 +27,96 @@ from .base import BaseCollector
 console = Console()
 
 # ========== 搜索关键词（按分类组织） ==========
+# 原则：用 B站 用户实际搜索的词，中文口语化，覆盖品牌名+通用词+场景词
 BILIBILI_SEARCH_KEYWORDS = {
     "steam_deck": [
         "Steam Deck 掌机",
         "Steam Deck 评测",
+        "Steam Deck OLED",
         "SteamOS 更新",
+        "Steam Deck 游戏",
+        "Steam Deck 性能",
+        "Steam Deck 二代",
     ],
     "windows_handheld": [
-        "ROG Ally 掌机",
-        "AYANEO 掌机",
-        "GPD Win 掌机",
-        "Windows 掌机 新品",
+        # 一线品牌
+        "ROG Ally 掌机", "ROG Ally 评测", "ROG Ally 二代",
+        "AYANEO 掌机", "AYANEO 新品", "AYANEO 评测",
+        "GPD 掌机", "GPD Win 新品", "GPD 评测",
+        "OneXPlayer 掌机", "壹号本 掌机",
+        "联想 Legion Go 掌机", "联想 拯救者 掌机",
+        "微星 Claw 掌机", "MSI Claw 掌机",
+        "索泰 ZONE 掌机", "ZOTAC 掌机",
+        # 其他品牌
+        "AOKZOE 掌机",
+        "飞行家 掌机", "ONEXFLY 掌机",
+        "攻氪 KONKR 掌机",
+        # 通用
+        "Windows 掌机 新品", "Windows 掌机 推荐",
+        "掌机 新品 发布", "掌机 发布会",
+        "Win 掌机 2024", "Win 掌机 2025", "Win 掌机 2026",
+        "PC 掌机 评测",
+        "掌机 性能 对比",
     ],
     "android_handheld": [
-        "安卓掌机",
-        "Retroid Pocket",
-        "Odin 掌机",
-        "安卓掌机 新品",
+        # 品牌
+        "安卓掌机", "安卓掌机 新品", "安卓掌机 推荐",
+        "Retroid Pocket", "Retroid 掌机", "沙雕 掌机",
+        "AYN Odin 掌机", "奥丁 掌机", "奥丁 安卓",
+        "盖世小鸡 手柄", "盖世小鸡 掌机",
+        "拉伸手柄 安卓",
+        # 通用
+        "安卓 掌上游戏机",
+        "高通 掌机", "骁龙 掌机",
+        "安卓 模拟器 掌机",
     ],
     "linux_handheld": [
-        "开源掌机",
-        "Anbernic 掌机",
-        "TrimUI 掌机",
-        "复古掌机 新品",
+        # 品牌
+        "开源掌机", "开源掌机 新品", "开源掌机 推荐",
+        "Anbernic 掌机", "安伯尼克", "周哥 掌机", "RG 掌机",
+        "Miyoo 掌机", "Miyoo Mini",
+        "TrimUI 掌机", "吹米 掌机",
+        "PowKiddy 掌机",
+        "霸王小子 掌机",
+        "泡机堂 掌机",
+        # 通用
+        "复古掌机 新品", "复古掌机 推荐",
+        "Linux 掌机",
+        "怀旧 掌机 游戏",
+        "寨机 推荐", "寨机 评测",
     ],
     "console": [
-        "Switch 2 评测",
-        "PS5 Pro",
-        "Xbox 掌机",
-        "任天堂 新机",
+        # Switch 系列
+        "Switch 2", "Switch 2 评测", "Switch 2 游戏",
+        "Switch 2 爆料", "Switch 2 新品",
+        "NS2 掌机", "NS2 评测",
+        # PS 系列
+        "PS5 Pro", "PS5 新品",
+        "索尼 掌机", "PSP 新机",
+        "PlayStation 掌机",
+        # Xbox 系列
+        "Xbox 掌机", "Xbox 新品",
+        # 任天堂
+        "任天堂 新机", "任天堂 发布会",
+        "任天堂 掌机 2026",
+        # 通用
+        "主机 新闻", "次世代 主机",
     ],
     "emulator": [
-        "模拟器 更新",
-        "Winlator 安卓",
-        "Switch 模拟器 安卓",
+        # Switch 模拟器
+        "Switch 模拟器 安卓", "Switch 模拟器 PC",
+        "Yuzu 模拟器", "Suyu 模拟器", "Sudachi 模拟器",
+        "Ryujinx 模拟器",
+        # 其他模拟器
+        "PS4 模拟器", "PS3 模拟器",
+        "Winlator 安卓", "Winlator 模拟器",
+        "Mobox 模拟器",
+        "Citra 模拟器", "3DS 模拟器",
+        "Cemu 模拟器", "Wii U 模拟器",
+        "Vita3K 模拟器", "PSV 模拟器",
+        # 通用
+        "模拟器 更新", "模拟器 推荐",
+        "安卓 模拟器 掌机 游戏",
     ],
 }
 
@@ -68,49 +124,66 @@ BILIBILI_SEARCH_KEYWORDS = {
 # 搜索品牌名时，B站搜索结果会自动包含官号内容
 # 这里列出已知的官号 mids，用于识别和优先排序
 MANUFACTURER_ACCOUNTS = {
-    # windows_handheld — 验证通过 (2026-07-10 via B站搜索 API + 空间页验证)
+    # === Windows 掌机 ===
     "AYANEO官方": {"mid": 17560816, "category": "windows_handheld"},
     "GPD掌机官方": {"mid": 437511465, "category": "windows_handheld"},
-    "壹号本科技": {"mid": 394918220, "category": "windows_handheld"},
+    "壹号本科技": {"mid": 394918220, "category": "windows_handheld"},  # OneXPlayer
     "AOKZOE掌机": {"mid": 1760429024, "category": "windows_handheld"},
-    "ROG玩家国度": {"mid": 383768376, "category": "windows_handheld"},  # 华硕电脑官方账号，机构认证
-    # android_handheld
-    "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},  # API 搜索确认，官方认证
-    # AYN 未找到独立的 B站 官号，通过搜索关键词覆盖
-    # linux_handheld
-    "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},  # ANBERNIC安伯尼克，搜索确认
-    "PowKiddy掌机": {"mid": 1479010746, "category": "linux_handheld"},  # API 搜索确认
-    # TrimUI 在 B站 未找到独立官号
+    "ROG玩家国度": {"mid": 383768376, "category": "windows_handheld"},  # 华硕官方，机构认证
+    # 以下为未验证 UID 但大概率正确的官号（通过搜索关键词覆盖，is_official 标记可能不生效）
+    # "联想拯救者": unknown,  # Legion Go 国内版
+    # "微星游戏笔记本": unknown,  # MSI Claw
+    # "ZOTAC索泰": unknown,  # 索泰 ZONE
+    # "飞行家ONEXFLY": unknown,
+    # === 安卓掌机 ===
+    "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},
+    # AYN 未找到独立 B站 官号（可能没有）
+    # "盖世小鸡": unknown,  # 游戏手柄/拉伸手柄大厂
+    # === Linux / 开源掌机 ===
+    "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},
+    "PowKiddy掌机": {"mid": 1479010746, "category": "linux_handheld"},
+    # Miyoo / TrimUI / 霸王小子 / 吹米 / 泡机堂 未找到独立官号
+    # === 主机 ===
+    # "PlayStation中国": unknown,  # UID 可能为 223615809，但粉丝数太少(162)，疑似非主号
+    # "腾讯NintendoSwitch": unknown,
+    # "Xbox中国": unknown,
 }
 
 # 按分类组织的官号搜索关键词
 MANUFACTURER_SEARCHES = [
-    # windows_handheld
-    ("AYANEO 掌机 官方", "windows_handheld"),
-    ("GPD掌机官方", "windows_handheld"),
-    ("壹号本科技 OneXPlayer", "windows_handheld"),
-    ("AOKZOE掌机", "windows_handheld"),
-    ("ROG Ally 掌机 官方", "windows_handheld"),
+    # === Windows 掌机 ===
+    ("AYANEO 掌机", "windows_handheld"),
+    ("GPD 掌机 官方", "windows_handheld"),
+    ("壹号本 OneXPlayer 掌机", "windows_handheld"),
+    ("AOKZOE 掌机", "windows_handheld"),
+    ("ROG Ally 掌机", "windows_handheld"),
     ("联想 拯救者 Legion Go 掌机", "windows_handheld"),
     ("微星 MSI Claw 掌机", "windows_handheld"),
-    # android_handheld
-    ("AYN Odin 掌机", "android_handheld"),
-    ("Retroid Pocket 掌机 官方", "android_handheld"),
-    # linux_handheld
-    ("Anbernic 安伯尼克 官方", "linux_handheld"),
-    ("Miyoo Mini 掌机 官方", "linux_handheld"),
-    ("TrimUI 掌机 官方", "linux_handheld"),
+    ("索泰 ZOTAC ZONE 掌机", "windows_handheld"),
+    ("ONEXFLY 飞行家 掌机", "windows_handheld"),
+    ("攻氪 KONKR 掌机", "windows_handheld"),
+    # === 安卓掌机 ===
+    ("AYN Odin 奥丁 掌机", "android_handheld"),
+    ("Retroid Pocket 沙雕 掌机", "android_handheld"),
+    ("盖世小鸡 掌机 手柄", "android_handheld"),
+    # === Linux / 开源掌机 ===
+    ("Anbernic 安伯尼克 掌机", "linux_handheld"),
+    ("Miyoo Mini 掌机", "linux_handheld"),
+    ("TrimUI 吹米 掌机", "linux_handheld"),
     ("PowKiddy 掌机", "linux_handheld"),
-    ("霸王小子 掌机 官方", "linux_handheld"),
-    # console
+    ("霸王小子 掌机", "linux_handheld"),
+    ("泡机堂 掌机", "linux_handheld"),
+    ("周哥 开源掌机", "linux_handheld"),
+    # === 主机 ===
     ("PlayStation 中国", "console"),
     ("任天堂 Switch 官方", "console"),
     ("Xbox 中国 官方", "console"),
+    ("腾讯 NintendoSwitch", "console"),
 ]
 
 # 每次采集的上限
 MAX_SEARCH_PER_KEYWORD = 8
-MAX_MANUFACTURER_PER_ACCOUNT = 5
+MAX_MANUFACTURER_PER_ACCOUNT = 8
 SEARCH_DELAY_MIN = 2
 SEARCH_DELAY_MAX = 4
 
