@@ -24,10 +24,16 @@ from config import (
     CATEGORIES,
     OPENAI_API_KEY,
 )
+from pipeline.checkpoint import (
+    save_raw_checkpoint, load_raw_checkpoint,
+    save_selected_checkpoint, load_selected_checkpoint,
+    clear_checkpoints,
+)
 from storage.db import init_db, insert_news_item, save_weekly_output, get_stats
 from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
+from collectors.chinese_browser_collector import ChineseBrowserCollector
 from collectors.tieba_collector import TiebaCollector
 from collectors.tieba_browser_collector import TiebaBrowserCollector
 from collectors.bilibili_collector import BilibiliCollector
@@ -79,6 +85,11 @@ def collect_all() -> list[dict]:
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
     all_items.extend(cn.fetch())
+
+    # 知乎/什么值得买（浏览器直接搜索，覆盖面更全）
+    console.print("\n[yellow]知乎/什么值得买 (浏览器):[/yellow]")
+    cn_browser = ChineseBrowserCollector()
+    all_items.extend(cn_browser.fetch())
 
     # B站搜索采集
     console.print("\n[yellow]B站搜索采集:[/yellow]")
@@ -233,6 +244,10 @@ def run():
         console.print("[red]未采集到任何新闻，退出[/red]")
         return
 
+    # 保存原始采集 checkpoint（防中途崩溃）
+    save_raw_checkpoint(all_items)
+    console.print(f"[dim]已保存采集 checkpoint: {len(all_items)} 条[/dim]")
+
     # 保存到数据库
     saved = 0
     for item in all_items:
@@ -242,6 +257,10 @@ def run():
 
     # 阶段 2：处理
     selected = process(all_items)
+
+    # 保存精选 checkpoint
+    save_selected_checkpoint(selected)
+    console.print(f"[dim]已保存精选 checkpoint: {sum(len(v) for v in selected.values())} 条[/dim]")
 
     # 阶段 2.5：时效性验证（页面日期提取 + LLM 交叉校验）
     selected = validate(selected)
@@ -268,6 +287,9 @@ def run():
         conn.close()
 
     console.print(f"\n[bold cyan]🎮 完成！共精选 {sum(len(v) for v in selected.values())} 条资讯[/bold cyan]")
+
+    # 清理 checkpoint（管道完整运行成功）
+    clear_checkpoints()
 
 
 if __name__ == "__main__":

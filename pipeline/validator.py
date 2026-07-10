@@ -17,7 +17,7 @@ from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, NEWS_WINDOW_DA
 
 console = Console()
 
-FETCH_TIMEOUT = 5
+FETCH_TIMEOUT = 10
 
 LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {current_date}，时间窗口: 近 {window_days} 天（从 {cutoff_date} 至今）。
 

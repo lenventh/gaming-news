@@ -68,36 +68,44 @@ BILIBILI_SEARCH_KEYWORDS = {
 # 搜索品牌名时，B站搜索结果会自动包含官号内容
 # 这里列出已知的官号 mids，用于识别和优先排序
 MANUFACTURER_ACCOUNTS = {
+    # windows_handheld — 验证通过 (2026-07-10 via B站搜索 API + 空间页验证)
     "AYANEO官方": {"mid": 17560816, "category": "windows_handheld"},
-    "AYANEO掌机": {"mid": 366077183, "category": "windows_handheld"},
     "GPD掌机官方": {"mid": 437511465, "category": "windows_handheld"},
     "壹号本科技": {"mid": 394918220, "category": "windows_handheld"},
     "AOKZOE掌机": {"mid": 1760429024, "category": "windows_handheld"},
-    "AYN掌机": {"mid": 479152595, "category": "android_handheld"},
-    "Anbernic官方": {"mid": 3546587284712685, "category": "linux_handheld"},
-    "TrimUI掌机": {"mid": 3546638793361253, "category": "linux_handheld"},
-    "PowKiddy掌机": {"mid": 3493288993647151, "category": "linux_handheld"},
-    "ROG玩家国度": {"mid": 259780464, "category": "windows_handheld"},
+    "ROG玩家国度": {"mid": 383768376, "category": "windows_handheld"},  # 华硕电脑官方账号，机构认证
+    # android_handheld
+    "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},  # API 搜索确认，官方认证
+    # AYN 未找到独立的 B站 官号，通过搜索关键词覆盖
+    # linux_handheld
+    "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},  # ANBERNIC安伯尼克，搜索确认
+    "PowKiddy掌机": {"mid": 1479010746, "category": "linux_handheld"},  # API 搜索确认
+    # TrimUI 在 B站 未找到独立官号
 }
 
 # 按分类组织的官号搜索关键词
 MANUFACTURER_SEARCHES = [
-    ("AYANEO", "windows_handheld"),
-    ("AYANEO掌机", "windows_handheld"),
+    # windows_handheld
+    ("AYANEO 掌机 官方", "windows_handheld"),
     ("GPD掌机官方", "windows_handheld"),
     ("壹号本科技 OneXPlayer", "windows_handheld"),
     ("AOKZOE掌机", "windows_handheld"),
-    ("ROG Ally掌机 官方", "windows_handheld"),
-    ("AYN Odin掌机", "android_handheld"),
-    ("Retroid掌机 官方", "android_handheld"),
-    ("Anbernic安伯尼克官方", "linux_handheld"),
-    ("Miyoo掌机 官方", "linux_handheld"),
-    ("TrimUI掌机 官方", "linux_handheld"),
-    ("PowKiddy掌机", "linux_handheld"),
-    ("霸王小子掌机", "linux_handheld"),
-    ("PlayStation中国", "console"),
-    ("任天堂Switch", "console"),
-    ("Xbox中国", "console"),
+    ("ROG Ally 掌机 官方", "windows_handheld"),
+    ("联想 拯救者 Legion Go 掌机", "windows_handheld"),
+    ("微星 MSI Claw 掌机", "windows_handheld"),
+    # android_handheld
+    ("AYN Odin 掌机", "android_handheld"),
+    ("Retroid Pocket 掌机 官方", "android_handheld"),
+    # linux_handheld
+    ("Anbernic 安伯尼克 官方", "linux_handheld"),
+    ("Miyoo Mini 掌机 官方", "linux_handheld"),
+    ("TrimUI 掌机 官方", "linux_handheld"),
+    ("PowKiddy 掌机", "linux_handheld"),
+    ("霸王小子 掌机 官方", "linux_handheld"),
+    # console
+    ("PlayStation 中国", "console"),
+    ("任天堂 Switch 官方", "console"),
+    ("Xbox 中国 官方", "console"),
 ]
 
 # 每次采集的上限

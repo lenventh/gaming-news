@@ -20,7 +20,7 @@ from typing import Optional
 from rich.console import Console
 
 from config import CATEGORIES
-from .base import BaseCollector
+from .browser_base import BrowserBaseCollector
 
 console = Console()
 
@@ -79,11 +79,25 @@ TIEBA_BOARDS = {
     "switch": "console",
     "ps5": "console",
     "ps5pro": "console",
+    # === 索尼掌机 ===
     "psv": "console",
     "psvita": "console",
-    "3ds": "console",
-    "nds": "console",
+    "psv2000": "console",
     "psp": "console",
+    "psp3000": "console",
+    "pspgo": "console",
+    # === 任天堂掌机 ===
+    "3ds": "console",
+    "3dsll": "console",
+    "new3ds": "console",
+    "nds": "console",
+    "ndsl": "console",
+    "ndsi": "console",
+    "gba": "console",
+    "gba掌机": "console",
+    "gbc": "console",
+    "gb掌机": "console",
+    # === 主机 ===
     "nintendo": "console",
     "playstation": "console",
     "xboxone": "console",
@@ -91,6 +105,11 @@ TIEBA_BOARDS = {
     "索尼掌机": "console",
     "xbox掌机": "console",
     "任天堂新机": "console",
+    # === 怀旧游戏 ===
+    "怀旧游戏": "console",
+    "口袋妖怪": "console",
+    "精灵宝可梦": "console",
+    "怪物猎人": "console",
     # === 模拟器 ===
     "模拟器": "emulator",
     "yuzu": "emulator",
@@ -102,7 +121,7 @@ TIEBA_BOARDS = {
 }
 
 # 每次采集的贴吧数量上限
-MAX_BOARDS_PER_RUN = 30
+MAX_BOARDS_PER_RUN = 40
 # 每个吧滚动加载次数
 SCROLL_TIMES = 4
 # 贴吧间延迟（秒）
@@ -193,33 +212,29 @@ def _parse_tieba_date(date_str: str) -> Optional[datetime]:
     return None
 
 
-class TiebaBrowserCollector(BaseCollector):
+class TiebaBrowserCollector(BrowserBaseCollector):
     """用 Playwright 浏览器抓取贴吧帖子（适配新版贴吧 React 页面）"""
+
+    env_var = "TIEDA_BROWSER"
+    warmup_url = "https://tieba.baidu.com"
 
     def __init__(self, boards: Optional[dict[str, Optional[str]]] = None):
         super().__init__("TiebaBrowser")
         self._boards = boards or TIEBA_BOARDS
         self._seen_tids: set[str] = set()
 
-    def _warmup_browser(self, page) -> bool:
-        """预热浏览器环境，建立百度贴吧的 cookie 会话，降低触发验证的概率"""
+    def _warmup(self, page):
+        """三级预热：百度首页 → 贴吧首页 → 建立 cookie 会话"""
         try:
-            # 先访问百度首页
             page.goto("https://www.baidu.com", wait_until="domcontentloaded", timeout=15000)
             page.wait_for_timeout(1500)
-
-            # 再访问贴吧首页
             page.goto("https://tieba.baidu.com", wait_until="domcontentloaded", timeout=15000)
             page.wait_for_timeout(2000)
-
-            return True
         except Exception as e:
-            console.log(f"[dim]浏览器预热失败: {e}[/dim]")
-            return False
+            console.log(f"[dim]贴吧预热失败: {e}[/dim]")
 
     def _extract_board_posts(self, page, board_name: str) -> list[dict]:
-        """从已打开的贴吧页面提取帖子列表（新版 React 页面 + 虚拟滚动）"""
-        # 等待帖子卡片出现
+        """从已打开的贴吧页面提取帖子列表"""
         try:
             page.wait_for_selector(".thread-card", timeout=10000)
         except Exception:
@@ -230,16 +245,13 @@ class TiebaBrowserCollector(BaseCollector):
                 console.log(f"[dim]贴吧 [{board_name}]: 无帖子卡片[/dim]")
             return []
 
-        # 滚动加载更多帖子（虚拟列表渲染有限数量）
         for i in range(SCROLL_TIMES):
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             page.wait_for_timeout(random.randint(800, 1500))
 
-        # 回到顶部，确保所有卡片都在 DOM 中
         page.evaluate("window.scrollTo(0, 0)")
         page.wait_for_timeout(500)
 
-        # JS 提取帖子数据（新版 DOM 结构）
         posts_data = page.evaluate(r"""
             () => {
                 const threads = [];
@@ -248,21 +260,17 @@ class TiebaBrowserCollector(BaseCollector):
                     try {
                         const titleLink = card.querySelector('a[href*="/p/"]');
                         if (!titleLink) return;
-
                         const href = titleLink.getAttribute('href');
                         const tidMatch = href.match(/\/p\/(\d+)/);
                         if (!tidMatch) return;
                         const tid = tidMatch[1];
                         if (seenTids.has(tid)) return;
                         seenTids.add(tid);
-
                         const titleEl = card.querySelector('[class*="title"]');
                         const title = titleEl
                             ? titleEl.textContent.trim()
                             : (titleLink.getAttribute('title') || titleLink.textContent.trim());
-
                         const fullText = card.textContent.trim();
-
                         threads.push({
                             tid: tid,
                             title: title.substring(0, 150),
@@ -286,16 +294,10 @@ class TiebaBrowserCollector(BaseCollector):
                 continue
 
             full_text = post.get("fullText", "")
-
-            # 从全文提取日期（"回复于XX" 模式）
             date_match = re.search(r"回复于(\S+?)(?:\s|$)", full_text)
             date_raw = date_match.group(1) if date_match else ""
             published_at = _parse_tieba_date(date_raw) if date_raw else None
-
-            # 从全文提取作者名（开头到第一个连续空格之前）
             author = full_text.split("  ")[0].strip() if "  " in full_text else ""
-
-            # 提取回复/分享数（全文末尾的数字对）
             nums = re.findall(r"(\d+)", full_text.split("分享")[-1] if "分享" in full_text else "")
             reply_num = int(nums[1]) if len(nums) >= 2 else (int(nums[0]) if len(nums) == 1 else 0)
 
@@ -314,93 +316,47 @@ class TiebaBrowserCollector(BaseCollector):
 
         return results
 
-    def fetch(self) -> list[dict]:
-        """用浏览器访问贴吧页面，抓取帖子列表"""
-        # 环境变量控制是否启用（CI 默认关闭）
-        if os.getenv("TIEDA_BROWSER", "").lower() not in ("1", "true", "yes"):
-            console.log("[dim]贴吧浏览器采集已跳过 (设置 TIEDA_BROWSER=true 启用)[/dim]")
-            return []
-
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError:
-            console.log("[red]playwright 未安装，跳过浏览器采集[/red]")
-            console.log("[dim]安装: pip install playwright && playwright install chromium[/dim]")
-            return []
-
+    def _scrape(self, page) -> list[dict]:
+        """抓取所有贴吧的帖子"""
         all_items = []
         boards_to_fetch = dict(list(self._boards.items())[:MAX_BOARDS_PER_RUN])
 
-        console.print(f"\n[yellow]贴吧浏览器采集: {len(boards_to_fetch)} 个吧[/yellow]")
+        console.print(f"  {len(boards_to_fetch)} 个贴吧")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                ],
-            )
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/130.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1920, "height": 1080},
-                locale="zh-CN",
-            )
-            page = context.new_page()
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', { get: () => false });
-            """)
+        for board_name, cat_hint in boards_to_fetch.items():
+            try:
+                url = f"https://tieba.baidu.com/f?kw={board_name}"
+                page.goto(url, wait_until="domcontentloaded", timeout=20000)
 
-            # 预热浏览器环境
-            self._warmup_browser(page)
+                posts = self._extract_board_posts(page, board_name)
 
-            for board_name, cat_hint in boards_to_fetch.items():
-                try:
-                    url = f"https://tieba.baidu.com/f?kw={board_name}"
-                    page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                new_count = 0
+                for post in posts:
+                    tid = post.get("raw", {}).get("tid", "")
+                    if tid in self._seen_tids:
+                        continue
+                    self._seen_tids.add(tid)
 
-                    posts = self._extract_board_posts(page, board_name)
+                    item = self.normalize_item(
+                        title=post["title"],
+                        url=post["url"],
+                        source_name=f"贴吧{board_name}吧",
+                        source_type="tieba_browser",
+                        published_at=post.get("published_at"),
+                        summary=post.get("summary", ""),
+                        raw_data=post.get("raw", {}),
+                    )
+                    if cat_hint:
+                        item["category"] = cat_hint
+                    all_items.append(item)
+                    new_count += 1
 
-                    new_count = 0
-                    for post in posts:
-                        tid = post.get("raw", {}).get("tid", "")
-                        if tid in self._seen_tids:
-                            continue
-                        self._seen_tids.add(tid)
+                if new_count > 0:
+                    console.log(f"[green]  贴吧 [{board_name}]: {new_count} 帖[/green]")
 
-                        item = self.normalize_item(
-                            title=post["title"],
-                            url=post["url"],
-                            source_name=f"贴吧{board_name}吧",
-                            source_type="tieba_browser",
-                            published_at=post.get("published_at"),
-                            summary=post.get("summary", ""),
-                            raw_data=post.get("raw", {}),
-                        )
-                        if cat_hint:
-                            item["category"] = cat_hint
-                        all_items.append(item)
-                        new_count += 1
+            except Exception as e:
+                console.log(f"[red]  贴吧 [{board_name}] 失败: {e}[/red]")
 
-                    if new_count > 0:
-                        console.log(f"[green]贴吧 [{board_name}]: {new_count} 帖[/green]")
-                    else:
-                        console.log(f"[dim]贴吧 [{board_name}]: 0 帖[/dim]")
+            time.sleep(random.uniform(BOARD_DELAY_MIN, BOARD_DELAY_MAX))
 
-                except Exception as e:
-                    console.log(f"[red]贴吧 [{board_name}] 失败: {e}[/red]")
-
-                # 贴吧之间随机延迟
-                delay = random.uniform(BOARD_DELAY_MIN, BOARD_DELAY_MAX)
-                time.sleep(delay)
-
-            browser.close()
-
-        console.log(f"[green]贴吧浏览器总计: {len(all_items)} 条[/green]")
         return all_items

@@ -27,6 +27,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
       - name: Run news pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
