@@ -230,6 +230,88 @@ class BilibiliBrowserCollector(BaseCollector):
         except Exception:
             return ""
 
+    def _fetch_from_space_api(self, mid: int, name: str, cat_hint: str) -> list[dict]:
+        """根据 UID 直接从 B站 用户空间 API 拉取最近视频"""
+        try:
+            raw = self._page.evaluate(f"""
+                async () => {{
+                    try {{
+                        const res = await fetch(
+                            'https://api.bilibili.com/x/space/wbi/arc/search?mid={mid}&ps=10&pn=1&order=pubdate',
+                            {{ headers: {{ 'Referer': 'https://space.bilibili.com/{mid}' }} }}
+                        );
+                        const json = await res.json();
+                        if (json.code === 0 && json.data?.list?.vlist) {{
+                            return json.data.list.vlist.map(v => ({{
+                                title: v.title || '',
+                                bvid: v.bvid || '',
+                                author: v.author || '',
+                                description: (v.description || '').substring(0, 200),
+                                play: v.play || 0,
+                                video_review: v.video_review || 0,
+                                pubdate: v.created || 0,
+                                length: v.length || '',
+                                mid: v.mid || {mid},
+                            }}));
+                        }}
+                    }} catch(e) {{}}
+                    return [];
+                }}
+            """)
+            result = raw if isinstance(raw, list) else []
+        except Exception:
+            return []
+
+        results = []
+        for v in result:
+            title = v.get("title", "").strip()
+            bvid = v.get("bvid", "")
+            if not title or not bvid:
+                continue
+            if bvid in self._seen_bvs:
+                continue
+            self._seen_bvs.add(bvid)
+
+            url = f"https://www.bilibili.com/video/{bvid}"
+            author = v.get("author", "")
+            description = v.get("description", "").strip()
+            if description in ("-", "暂无简介"):
+                description = ""
+
+            summary_parts = [f"UP主: {author}"]
+            play_count = v.get("play", 0)
+            if play_count > 0:
+                summary_parts.append(
+                    f"播放: {play_count/10000:.1f}万" if play_count >= 10000
+                    else f"播放: {play_count}"
+                )
+            if description:
+                summary_parts.append(description[:200])
+
+            published_at = None
+            pubdate = v.get("pubdate", 0)
+            if pubdate > 0:
+                try:
+                    published_at = datetime.fromtimestamp(pubdate, tz=timezone.utc)
+                except Exception:
+                    pass
+
+            results.append({
+                "title": title,
+                "url": url,
+                "published_at": published_at,
+                "summary": " | ".join(summary_parts),
+                "raw": {
+                    "bvid": bvid, "author": author, "mid": v.get("mid", mid),
+                    "play_count": play_count, "danmaku": str(v.get("video_review", "")),
+                    "duration": v.get("length", ""), "is_official": True,
+                    "manufacturer": name,
+                },
+                "category_hint": cat_hint,
+            })
+
+        return results
+
     def _search_keyword(self, keyword: str, cat_hint: str) -> list[dict]:
         """搜索一个关键词，提取视频卡片数据"""
         encoded = quote(keyword)
@@ -491,7 +573,7 @@ class BilibiliBrowserCollector(BaseCollector):
 
                     time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
-            # ===== 阶段 2：官号搜索（API + 简介） =====
+            # ===== 阶段 2a：官号搜索（关键词 API + 简介） =====
             console.log("\n[yellow]  搜索厂商官号 (含视频简介):[/yellow]")
             for query, cat_hint in MANUFACTURER_SEARCHES:
                 try:
@@ -516,6 +598,31 @@ class BilibiliBrowserCollector(BaseCollector):
                     console.log(f"[red]B站官号 '{query}' 失败: {e}[/red]")
 
                 time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+
+            # ===== 阶段 2b：已知 UID 的官号直接用 space API 拉视频 =====
+            console.log("\n[yellow]  直接拉取官号空间 (space API):[/yellow]")
+            for name, info in MANUFACTURER_ACCOUNTS.items():
+                mid = info["mid"]
+                cat_hint = info["category"]
+                try:
+                    videos = self._fetch_from_space_api(mid, name, cat_hint)
+                    for v in videos:
+                        item = self.normalize_item(
+                            title=v["title"],
+                            url=v["url"],
+                            source_name=f"B站官号@{v['raw']['author']}",
+                            source_type="bilibili_space",
+                            published_at=v.get("published_at"),
+                            summary=v.get("summary", ""),
+                            raw_data=v.get("raw", {}),
+                        )
+                        item["category"] = v["category_hint"]
+                        all_items.append(item)
+                    if videos:
+                        console.log(f"[dim]  B站官号 '{name}' (UID:{mid}): {len(videos)} 条[/dim]")
+                except Exception as e:
+                    console.log(f"[red]  B站官号 '{name}' 失败: {e}[/red]")
+                time.sleep(random.uniform(1.0, 2.0))
 
             browser.close()
 

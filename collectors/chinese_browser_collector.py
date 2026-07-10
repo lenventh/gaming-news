@@ -183,32 +183,95 @@ class ChineseBrowserCollector(BrowserBaseCollector):
 
     def _search_zhihu(self, page, keyword: str, cat_hint: str) -> list[dict]:
         """搜索知乎，提取问答和文章"""
+
+        # 先预热知乎域名（建立 cookie）
+        if self._seen_urls == set():  # 首次搜知乎时预热
+            pass  # warmup 已经在基类中调用过了
+
         url = f"https://www.zhihu.com/search?type=content&q={quote(keyword)}&time_interval=a_month"
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=20000)
-            page.wait_for_timeout(2000)
+            page.goto(url, wait_until="networkidle", timeout=25000)
+            page.wait_for_timeout(3000)
         except Exception:
-            return []
+            # 超时时也尝试提取（页面可能已部分加载）
+            try:
+                page.wait_for_timeout(2000)
+            except Exception:
+                return []
 
+        # 方案1: 多种选择器尝试匹配搜索结果卡片
+        # 方案2: 降级为提取页面中所有知乎内容链接
         results = page.evaluate("""
             () => {
                 const items = [];
-                document.querySelectorAll('.List-item, .Card, [class*="SearchResultCard"]').forEach(card => {
-                    try {
-                        const titleEl = card.querySelector('h2, .Highlight, [class*="title"]');
-                        const title = titleEl ? titleEl.textContent.trim() : '';
-                        if (!title || title.length < 4) return;
-                        const linkEl = card.querySelector('a[href*="zhihu.com"]');
-                        const url = linkEl ? linkEl.href : '';
-                        const excerptEl = card.querySelector('[class*="excerpt"], .RichText, [class*="content"]');
-                        const excerpt = excerptEl ? excerptEl.textContent.trim().substring(0, 200) : '';
-                        const metaEl = card.querySelector('[class*="meta"], [class*="footer"], [class*="info"]');
-                        const meta = metaEl ? metaEl.textContent.trim() : '';
-                        const authorEl = card.querySelector('[class*="author"]');
-                        const author = authorEl ? authorEl.textContent.trim() : '';
-                        items.push({ title, url, excerpt, meta, author });
-                    } catch(e) {}
-                });
+                const seen = new Set();
+
+                // 尝试多种卡片选择器
+                const selectors = [
+                    '.List-item',
+                    '.SearchResult-Card',
+                    '[class*="SearchResult"]',
+                    '[class*="search-result"]',
+                    '.Card',
+                    '[class*="card"]',
+                    '[data-za-detail-view-element_name="search-result"]',
+                ];
+
+                for (const sel of selectors) {
+                    const cards = document.querySelectorAll(sel);
+                    if (cards.length > 0) {
+                        cards.forEach(card => {
+                            try {
+                                const links = card.querySelectorAll('a[href*="zhihu.com"]');
+                                if (!links.length) return;
+
+                                // 取第一个有意义的链接（跳过用户头像链接）
+                                let bestLink = null;
+                                for (const l of links) {
+                                    const href = l.href;
+                                    if (/\\/(question|answer|p|zanda)\\/\\d+/.test(href) && l.textContent.trim().length > 4) {
+                                        bestLink = l;
+                                        break;
+                                    }
+                                }
+                                if (!bestLink) bestLink = links[0];
+
+                                const title = bestLink.textContent.trim();
+                                const url = bestLink.href;
+                                if (!title || title.length < 4 || seen.has(url)) return;
+                                seen.add(url);
+
+                                const excerpt = card.textContent.trim().substring(title.length, 250).trim();
+                                const text = card.textContent.trim();
+
+                                items.push({ title, url, excerpt, text, source: 'card' });
+                            } catch(e) {}
+                        });
+                        if (items.length > 0) break;  // 找到了就不用换选择器
+                    }
+                }
+
+                // 方案2: 如果卡片选择器没找到，提取所有知乎内容链接
+                if (!items.length) {
+                    document.querySelectorAll('a[href*="zhihu.com"]').forEach(link => {
+                        const href = link.href;
+                        if (seen.has(href)) return;
+
+                        // 只提取内容页链接（问题/回答/文章），过滤导航链接
+                        const isContent = /\\/(question|answer|p|zanda)\\/\\d+/.test(href);
+                        if (!isContent) return;
+
+                        const title = link.textContent.trim();
+                        if (title.length < 6) return;
+                        seen.add(href);
+
+                        const parent = link.closest('div');
+                        const excerpt = parent ? parent.textContent.trim().substring(title.length, 250).trim() : '';
+
+                        items.push({ title, url: href, excerpt, text: '', source: 'link' });
+                    });
+                }
+
                 return items.slice(0, 10);
             }
         """)
@@ -223,11 +286,15 @@ class ChineseBrowserCollector(BrowserBaseCollector):
                 continue
             self._seen_urls.add(article_url)
             article_url = re.sub(r"\?.*$", "", article_url)
-            pub_date = _extract_zhihu_date(r.get("meta", ""))
+
+            # 从页面文本中提取时间线索
+            text = r.get("text", "") or r.get("excerpt", "")
+            pub_date = _extract_zhihu_date(text)
+
             output.append({
                 "title": title, "url": article_url, "published_at": pub_date,
-                "summary": r.get("excerpt", ""),
-                "raw": {"author": r.get("author", ""), "keyword": keyword, "source": "zhihu"},
+                "summary": r.get("excerpt", "")[:200],
+                "raw": {"author": "", "keyword": keyword, "source": "zhihu"},
                 "category_hint": cat_hint,
             })
         return output

@@ -1,4 +1,4 @@
-"""排序精选：按 sub_type 优先级 + 热度排序，每分类取 Top N"""
+"""排序精选：按 sub_type 优先级 + 热度 + 来源多样性排序，每分类取 Top N"""
 
 from rich.console import Console
 
@@ -9,11 +9,25 @@ TOP_PER_CATEGORY = 5
 # sub_type 优先级：数字越小越靠前
 SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
 
+# 中文浏览器采集来源 — 给予多样性加分，避免被英文 RSS/Reddit 淹没
+CN_SOURCE_TYPES = {
+    "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
+    "tieba_browser",
+    "zhihu_browser", "smzdm_browser",
+}
+
+# 来源多样性加分系数（加到 score 上，使其在同类中排名靠前）
+DIVERSITY_BOOST = 50
+
 
 def _sort_key(item: dict) -> tuple:
     """排序键：爆料 > 发售 > 系统更新 > 其他，同类内按热度+日期排"""
     sub_priority = SUBTYPE_PRIORITY.get(item.get("sub_type", "general"), 3)
     score = item.get("raw_data", {}).get("score", 0)
+    # 中文浏览器来源加分
+    source_type = item.get("source_type", "")
+    if source_type in CN_SOURCE_TYPES:
+        score += DIVERSITY_BOOST
     has_date = 1 if item.get("published_at") else 0
     date_str = item.get("published_at") or ""
     return (sub_priority, -score, -has_date, date_str)
@@ -32,10 +46,13 @@ def select_top_items(items: list[dict], top_n: int = TOP_PER_CATEGORY) -> dict[s
         cat_items.sort(key=_sort_key)
         selected[cat] = cat_items[:top_n]
         sub_counts = {}
+        cn_count = 0
         for it in selected[cat]:
             st = it.get("sub_type", "?")
             sub_counts[st] = sub_counts.get(st, 0) + 1
+            if it.get("source_type", "") in CN_SOURCE_TYPES:
+                cn_count += 1
         breakdown = " ".join(f"{k}:{v}" for k, v in sorted(sub_counts.items()))
-        console.log(f"[blue]  {cat}: {len(cat_items)} 条 → 精选 {len(selected[cat])} 条 ({breakdown})[/blue]")
+        console.log(f"[blue]  {cat}: {len(cat_items)} 条 → 精选 {len(selected[cat])} 条 ({breakdown}) | 中文源: {cn_count}[/blue]")
 
     return selected
