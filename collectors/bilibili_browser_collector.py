@@ -126,27 +126,22 @@ BILIBILI_SEARCH_KEYWORDS = {
 MANUFACTURER_ACCOUNTS = {
     # === Windows 掌机 ===
     "AYANEO官方": {"mid": 17560816, "category": "windows_handheld"},
-    "GPD掌机官方": {"mid": 437511465, "category": "windows_handheld"},
-    "壹号本科技": {"mid": 394918220, "category": "windows_handheld"},  # OneXPlayer
+    "GPD掌机官方": {"mid": 13258977, "category": "windows_handheld"},
+    "壹号本科技": {"mid": 519903075, "category": "windows_handheld"},  # OneXPlayer
     "AOKZOE掌机": {"mid": 1760429024, "category": "windows_handheld"},
     "ROG玩家国度": {"mid": 383768376, "category": "windows_handheld"},  # 华硕官方，机构认证
-    # 以下为未验证 UID 但大概率正确的官号（通过搜索关键词覆盖，is_official 标记可能不生效）
-    # "联想拯救者": unknown,  # Legion Go 国内版
-    # "微星游戏笔记本": unknown,  # MSI Claw
-    # "ZOTAC索泰": unknown,  # 索泰 ZONE
-    # "飞行家ONEXFLY": unknown,
+    # 联想 Legion Go / 微星 Claw / 索泰 ZONE / 飞行家 ONEXFLY / 攻氪 KONKR — 未找到独立官号
     # === 安卓掌机 ===
+    "AYN掌机": {"mid": 2008853645, "category": "android_handheld"},  # AYN Odin
     "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},
-    # AYN 未找到独立 B站 官号（可能没有）
-    # "盖世小鸡": unknown,  # 游戏手柄/拉伸手柄大厂
+    "盖世小鸡": {"mid": 429886010, "category": "android_handheld"},  # 外设/拉伸手柄
     # === Linux / 开源掌机 ===
     "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},
+    "TrimUI掌机": {"mid": 3494368207964283, "category": "linux_handheld"},
     "PowKiddy掌机": {"mid": 1479010746, "category": "linux_handheld"},
-    # Miyoo / TrimUI / 霸王小子 / 吹米 / 泡机堂 未找到独立官号
+    # Miyoo / 霸王小子 / 吹米 / 泡机堂 — 未找到独立官号
     # === 主机 ===
-    # "PlayStation中国": unknown,  # UID 可能为 223615809，但粉丝数太少(162)，疑似非主号
-    # "腾讯NintendoSwitch": unknown,
-    # "Xbox中国": unknown,
+    # PlayStation中国 / 腾讯NintendoSwitch / Xbox中国 — 未确认
 }
 
 # 按分类组织的官号搜索关键词
