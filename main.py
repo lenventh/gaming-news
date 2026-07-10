@@ -32,6 +32,7 @@ from collectors.tieba_collector import TiebaCollector
 from collectors.tieba_browser_collector import TiebaBrowserCollector
 from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_account_collector import BilibiliAccountCollector
+from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
@@ -88,6 +89,11 @@ def collect_all() -> list[dict]:
     console.print("\n[yellow]B站厂商官号:[/yellow]")
     bilibili_acct = BilibiliAccountCollector()
     all_items.extend(bilibili_acct.fetch())
+
+    # B站（浏览器直接搜索，覆盖面更全）
+    console.print("\n[yellow]B站 (浏览器):[/yellow]")
+    bilibili_browser = BilibiliBrowserCollector()
+    all_items.extend(bilibili_browser.fetch())
 
     # 贴吧（Google News RSS 中转）
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
