@@ -29,11 +29,13 @@ from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
 from collectors.tieba_collector import TiebaCollector
+from collectors.tieba_browser_collector import TiebaBrowserCollector
 from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_account_collector import BilibiliAccountCollector
 from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
+from pipeline.validator import validate
 from generator.script_writer import ScriptWriter
 
 console = Console()
@@ -87,10 +89,15 @@ def collect_all() -> list[dict]:
     bilibili_acct = BilibiliAccountCollector()
     all_items.extend(bilibili_acct.fetch())
 
-    # 贴吧
-    console.print("\n[yellow]贴吧:[/yellow]")
+    # 贴吧（Google News RSS 中转）
+    console.print("\n[yellow]贴吧 (Google News):[/yellow]")
     tieba = TiebaCollector()
     all_items.extend(tieba.fetch())
+
+    # 贴吧（浏览器直接抓取，覆盖面更全）
+    console.print("\n[yellow]贴吧 (浏览器):[/yellow]")
+    tieba_browser = TiebaBrowserCollector()
+    all_items.extend(tieba_browser.fetch())
 
     console.print(f"\n[bold]共采集 {len(all_items)} 条原始新闻[/bold]")
     return all_items
@@ -229,6 +236,9 @@ def run():
 
     # 阶段 2：处理
     selected = process(all_items)
+
+    # 阶段 2.5：时效性验证（页面日期提取 + LLM 交叉校验）
+    selected = validate(selected)
 
     # 阶段 3：生成
     markdown = generate(selected, week_label, week_range)
