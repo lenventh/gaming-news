@@ -2,3 +2,4 @@
 __pycache__/
 *.pyc
 storage/gaming_news.db
+output/.checkpoints/
