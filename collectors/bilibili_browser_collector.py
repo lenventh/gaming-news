@@ -221,6 +221,12 @@ class BilibiliBrowserCollector(BaseCollector):
         self._browser = None
         self._context = None
         self._page = None
+        self._external_page = False
+
+    def set_page(self, page):
+        """注入外部 Playwright page（共享浏览器实例）"""
+        self._page = page
+        self._external_page = True
 
     def _warmup(self):
         """预热浏览器环境"""
@@ -593,7 +599,7 @@ class BilibiliBrowserCollector(BaseCollector):
         return results
 
     def fetch(self) -> list[dict]:
-        """采集 B站内容：关键词搜索 + 官号搜索"""
+        """采集 B站内容：关键词搜索 + 官号搜索 + 字幕提取"""
         if os.getenv("BILIBILI_BROWSER", "").lower() not in ("1", "true", "yes"):
             console.log("[dim]B站浏览器采集已跳过 (设置 BILIBILI_BROWSER=true 启用)[/dim]")
             return []
@@ -607,8 +613,11 @@ class BilibiliBrowserCollector(BaseCollector):
         total_kw = sum(len(kws) for kws in BILIBILI_SEARCH_KEYWORDS.values())
         console.print(f"\n[yellow]B站浏览器采集: {total_kw} 关键词 + {len(MANUFACTURER_SEARCHES)} 官号[/yellow]")
 
-        all_items = []
+        # 如果有外部注入的 page，直接使用
+        if self._page is not None:
+            return self._do_fetch()
 
+        # 否则创建独立浏览器
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -635,45 +644,29 @@ class BilibiliBrowserCollector(BaseCollector):
             self._page = page
             self._warmup()
 
-            # ===== 阶段 1：关键词搜索 =====
-            for cat_key, keywords in BILIBILI_SEARCH_KEYWORDS.items():
-                for kw in keywords:
-                    try:
-                        videos = self._search_keyword(kw, cat_key)
-                        for v in videos:
-                            item = self.normalize_item(
-                                title=v["title"],
-                                url=v["url"],
-                                source_name=v.get("raw", {}).get("is_official")
-                                    and f"B站官号@{v['raw']['author']}"
-                                    or f"B站(via {kw})",
-                                source_type="bilibili_browser",
-                                published_at=v.get("published_at"),
-                                summary=v.get("summary", ""),
-                                raw_data=v.get("raw", {}),
-                            )
-                            item["category"] = v["category_hint"]
-                            all_items.append(item)
-                        if videos:
-                            console.log(f"[dim]B站搜索 '{kw}': {len(videos)} 条[/dim]")
-                    except Exception as e:
-                        console.log(f"[red]B站搜索 '{kw}' 失败: {e}[/red]")
+            result = self._do_fetch()
+            browser.close()
+            if not self._external_page:
+                self._page = None
+            return result
 
-                    time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+    def _do_fetch(self) -> list[dict]:
+        """执行采集逻辑（需要 self._page 已设置）"""
+        all_items = []
 
-            # ===== 阶段 2a：官号搜索（关键词 API + 简介） =====
-            console.log("\n[yellow]  搜索厂商官号 (含视频简介):[/yellow]")
-            for query, cat_hint in MANUFACTURER_SEARCHES:
+        # ===== 阶段 1：关键词搜索 =====
+        for cat_key, keywords in BILIBILI_SEARCH_KEYWORDS.items():
+            for kw in keywords:
                 try:
-                    videos = self._search_manufacturer(query, cat_hint)
+                    videos = self._search_keyword(kw, cat_key)
                     for v in videos:
-                        is_official = v.get("raw", {}).get("is_official", False)
-                        source = f"B站官号@{v['raw']['author']}" if is_official else f"B站(via {query})"
                         item = self.normalize_item(
                             title=v["title"],
                             url=v["url"],
-                            source_name=source,
-                            source_type="bilibili_manufacturer",
+                            source_name=v.get("raw", {}).get("is_official")
+                                and f"B站官号@{v['raw']['author']}"
+                                or f"B站(via {kw})",
+                            source_type="bilibili_browser",
                             published_at=v.get("published_at"),
                             summary=v.get("summary", ""),
                             raw_data=v.get("raw", {}),
@@ -681,71 +674,89 @@ class BilibiliBrowserCollector(BaseCollector):
                         item["category"] = v["category_hint"]
                         all_items.append(item)
                     if videos:
-                        console.log(f"[dim]B站官号 '{query}': {len(videos)} 条[/dim]")
+                        console.log(f"[dim]B站搜索 '{kw}': {len(videos)} 条[/dim]")
                 except Exception as e:
-                    console.log(f"[red]B站官号 '{query}' 失败: {e}[/red]")
+                    console.log(f"[red]B站搜索 '{kw}' 失败: {e}[/red]")
 
                 time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
-            # 注意：B站空间页面和 API 均需登录（space API 返回 -352/-799）
-            # 官号内容已通过阶段 1 的关键词搜索 + 阶段 2a 的官号搜索覆盖
-            # 不再单独尝试 space API
+        # ===== 阶段 2：官号搜索（关键词 API + 简介） =====
+        console.log("\n[yellow]  搜索厂商官号 (含视频简介):[/yellow]")
+        for query, cat_hint in MANUFACTURER_SEARCHES:
+            try:
+                videos = self._search_manufacturer(query, cat_hint)
+                for v in videos:
+                    is_official = v.get("raw", {}).get("is_official", False)
+                    source = f"B站官号@{v['raw']['author']}" if is_official else f"B站(via {query})"
+                    item = self.normalize_item(
+                        title=v["title"],
+                        url=v["url"],
+                        source_name=source,
+                        source_type="bilibili_manufacturer",
+                        published_at=v.get("published_at"),
+                        summary=v.get("summary", ""),
+                        raw_data=v.get("raw", {}),
+                    )
+                    item["category"] = v["category_hint"]
+                    all_items.append(item)
+                if videos:
+                    console.log(f"[dim]B站官号 '{query}': {len(videos)} 条[/dim]")
+            except Exception as e:
+                console.log(f"[red]B站官号 '{query}' 失败: {e}[/red]")
 
-            # ===== 阶段 3：视频内容提取（字幕 + 转录，高热度优先）=====
-            from utils.video_content import extract_video_content, is_transcription_available
+            time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
-            subtitle_candidates = sorted(
-                all_items,
-                key=lambda it: it.get("raw_data", {}).get("play_count", 0),
-                reverse=True,
-            )[:30]
-            has_transcription = is_transcription_available()
-            console.log(
-                f"\n[yellow]  视频内容提取: 前 {len(subtitle_candidates)} 条"
-                f"{' (含转录)' if has_transcription else ' (仅字幕)'}[/yellow]"
-            )
-            enriched = 0
-            transcribed = 0
-            for item in subtitle_candidates:
-                bvid = item.get("raw_data", {}).get("bvid", "")
-                if not bvid:
-                    continue
-                try:
-                    # 先用 L1 字幕
-                    subtitle_text = self._fetch_video_subtitles(bvid)
-                    content_text = subtitle_text
+        # ===== 阶段 3：视频内容提取（字幕 + 转录，高热度优先）=====
+        from utils.video_content import extract_video_content, is_transcription_available
 
-                    if not content_text or len(content_text) < 50:
-                        # L2: 若有转录能力且无字幕，尝试下载+转录
-                        if has_transcription:
-                            content_text = extract_video_content(
-                                bvid, self._page, item.get("title", "")
-                            )
-                            if content_text and len(content_text) > 30:
-                                transcribed += 1
+        subtitle_candidates = sorted(
+            all_items,
+            key=lambda it: it.get("raw_data", {}).get("play_count", 0),
+            reverse=True,
+        )[:30]
+        has_transcription = is_transcription_available()
+        console.log(
+            f"\n[yellow]  视频内容提取: 前 {len(subtitle_candidates)} 条"
+            f"{' (含转录)' if has_transcription else ' (仅字幕)'}[/yellow]"
+        )
+        enriched = 0
+        transcribed = 0
+        for item in subtitle_candidates:
+            bvid = item.get("raw_data", {}).get("bvid", "")
+            if not bvid:
+                continue
+            try:
+                subtitle_text = self._fetch_video_subtitles(bvid)
+                content_text = subtitle_text
 
-                    if content_text and len(content_text) > 30:
-                        item["raw_data"]["video_content"] = content_text
-                        item["raw_data"]["content_source"] = (
-                            "transcription" if (not subtitle_text or len(subtitle_text) < 50)
-                            else "subtitle"
+                if not content_text or len(content_text) < 50:
+                    if has_transcription:
+                        content_text = extract_video_content(
+                            bvid, self._page, item.get("title", "")
                         )
-                        current_summary = item.get("summary", "")
-                        item["summary"] = f"{current_summary} | 内容: {content_text[:300]}"
-                        enriched += 1
-                        console.log(
-                            f"[dim]    {item['raw_data']['content_source']} "
-                            f"{len(content_text)} 字: {item['title'][:40]}[/dim]"
-                        )
-                except Exception:
-                    pass
-                time.sleep(random.uniform(0.5, 1.0))
-            console.log(
-                f"[green]  内容提取完成: {enriched}/{len(subtitle_candidates)} 条"
-                f" (字幕: {enriched - transcribed}, 转录: {transcribed})[/green]"
-            )
+                        if content_text and len(content_text) > 30:
+                            transcribed += 1
 
-            browser.close()
+                if content_text and len(content_text) > 30:
+                    item["raw_data"]["video_content"] = content_text
+                    item["raw_data"]["content_source"] = (
+                        "transcription" if (not subtitle_text or len(subtitle_text) < 50)
+                        else "subtitle"
+                    )
+                    current_summary = item.get("summary", "")
+                    item["summary"] = f"{current_summary} | 内容: {content_text[:300]}"
+                    enriched += 1
+                    console.log(
+                        f"[dim]    {item['raw_data']['content_source']} "
+                        f"{len(content_text)} 字: {item['title'][:40]}[/dim]"
+                    )
+            except Exception:
+                pass
+            time.sleep(random.uniform(0.5, 1.0))
+        console.log(
+            f"[green]  内容提取完成: {enriched}/{len(subtitle_candidates)} 条"
+            f" (字幕: {enriched - transcribed}, 转录: {transcribed})[/green]"
+        )
 
         console.log(f"[green]B站浏览器总计: {len(all_items)} 条[/green]")
         return all_items

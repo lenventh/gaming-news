@@ -77,12 +77,22 @@ def _parse_article_date(timestamp: int) -> datetime | None:
 
 
 class BilibiliArticleCollector(BaseCollector):
-    """通过 B站 API 搜索专栏文章，抓取全文"""
+    """通过 B站 API 搜索专栏文章，抓取全文
+
+    支持共享浏览器实例：先调用 set_page() 传入外部 Playwright page，
+    则 fetch() 不会创建新浏览器。
+    """
 
     def __init__(self):
         super().__init__("BilibiliArticle")
         self._seen_cvids: set[int] = set()
         self._page = None
+        self._external_page = False  # 是否为外部传入的 page
+
+    def set_page(self, page):
+        """注入外部 Playwright page（共享浏览器实例）"""
+        self._page = page
+        self._external_page = True
 
     def _search_articles(self, keyword: str, cat_hint: str) -> list[dict]:
         """通过 B站搜索 API 搜索专栏文章"""
@@ -204,9 +214,11 @@ class BilibiliArticleCollector(BaseCollector):
         total_kw = sum(len(kws) for kws in BILIBILI_SEARCH_KEYWORDS.values())
         console.print(f"\n[yellow]B站文章采集: {total_kw} 关键词[/yellow]")
 
-        # 阶段 1：搜索文章
-        all_articles = []
+        # 如果有外部注入的 page，直接使用
+        if self._page is not None:
+            return self._fetch_articles()
 
+        # 否则创建独立浏览器
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -238,33 +250,40 @@ class BilibiliArticleCollector(BaseCollector):
             except Exception:
                 pass
 
-            for cat_key, keywords in BILIBILI_SEARCH_KEYWORDS.items():
-                for kw in keywords:
-                    try:
-                        articles = self._search_articles(kw, cat_key)
-                        all_articles.extend(articles)
-                        if articles:
-                            console.log(f"[dim]B站文章 '{kw}': {len(articles)} 篇[/dim]")
-                    except Exception as e:
-                        console.log(f"[red]B站文章 '{kw}' 失败: {e}[/red]")
-                    time.sleep(random.uniform(ARTICLE_SEARCH_DELAY_MIN, ARTICLE_SEARCH_DELAY_MAX))
-
-            # 阶段 2：抓取全文（去重后只抓前 50 篇）
-            articles_to_fetch = all_articles[:50]
-            console.log(f"\n[yellow]  抓取全文: {len(articles_to_fetch)} 篇[/yellow]")
-
-            for article in articles_to_fetch:
-                try:
-                    content = self._fetch_article_content(article["cv_id"])
-                    article["content"] = content
-                    if content:
-                        console.log(f"[dim]    全文 {len(content)} 字: {article['title'][:40]}[/dim]")
-                except Exception as e:
-                    article["content"] = ""
-                    console.log(f"[red]    抓取失败 cv{article['cv_id']}: {e}[/red]")
-                time.sleep(random.uniform(1, 2))
-
+            result = self._fetch_articles()
             browser.close()
+            self._page = None
+            return result
+
+    def _fetch_articles(self) -> list[dict]:
+        """执行文章采集逻辑（需要 self._page 已设置）"""
+        all_articles = []
+
+        for cat_key, keywords in BILIBILI_SEARCH_KEYWORDS.items():
+            for kw in keywords:
+                try:
+                    articles = self._search_articles(kw, cat_key)
+                    all_articles.extend(articles)
+                    if articles:
+                        console.log(f"[dim]B站文章 '{kw}': {len(articles)} 篇[/dim]")
+                except Exception as e:
+                    console.log(f"[red]B站文章 '{kw}' 失败: {e}[/red]")
+                time.sleep(random.uniform(ARTICLE_SEARCH_DELAY_MIN, ARTICLE_SEARCH_DELAY_MAX))
+
+        # 阶段 2：抓取全文（去重后只抓前 50 篇）
+        articles_to_fetch = all_articles[:50]
+        console.log(f"\n[yellow]  抓取全文: {len(articles_to_fetch)} 篇[/yellow]")
+
+        for article in articles_to_fetch:
+            try:
+                content = self._fetch_article_content(article["cv_id"])
+                article["content"] = content
+                if content:
+                    console.log(f"[dim]    全文 {len(content)} 字: {article['title'][:40]}[/dim]")
+            except Exception as e:
+                article["content"] = ""
+                console.log(f"[red]    抓取失败 cv{article['cv_id']}: {e}[/red]")
+            time.sleep(random.uniform(1, 2))
 
         # 标准化输出
         items = []
@@ -274,7 +293,6 @@ class BilibiliArticleCollector(BaseCollector):
             if article.get("view_count"):
                 summary_parts.append(f"阅读: {article['view_count']}")
             if content:
-                # 摘要 = API summary + 正文前 300 字
                 body_preview = f"正文({len(content)}字): {content[:300]}"
                 summary_parts.append(body_preview)
             elif article.get("summary"):

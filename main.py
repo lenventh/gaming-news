@@ -102,15 +102,66 @@ def collect_all() -> list[dict]:
     bilibili_acct = BilibiliAccountCollector()
     all_items.extend(bilibili_acct.fetch())
 
-    # B站（浏览器直接搜索，覆盖面更全）
-    console.print("\n[yellow]B站 (浏览器):[/yellow]")
-    bilibili_browser = BilibiliBrowserCollector()
-    all_items.extend(bilibili_browser.fetch())
+    # B站（浏览器视频+文章，共享浏览器实例）
+    if os.getenv("BILIBILI_BROWSER", "").lower() in ("1", "true", "yes"):
+        try:
+            from playwright.sync_api import sync_playwright
+            console.print("\n[yellow]B站 (浏览器 — 视频+文章):[/yellow]")
+            bilibili_browser = BilibiliBrowserCollector()
+            bilibili_article = BilibiliArticleCollector()
 
-    # B站专栏文章（浏览器，文字内容深度大）
-    console.print("\n[yellow]B站专栏文章:[/yellow]")
-    bilibili_article = BilibiliArticleCollector()
-    all_items.extend(bilibili_article.fetch())
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-dev-shm-usage",
+                        "--no-sandbox",
+                    ],
+                )
+                context = browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/130.0.0.0 Safari/537.36"
+                    ),
+                    viewport={"width": 1920, "height": 1080},
+                    locale="zh-CN",
+                )
+                page = context.new_page()
+                page.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                """)
+
+                # 预热
+                try:
+                    page.goto("https://www.bilibili.com", wait_until="domcontentloaded", timeout=15000)
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    pass
+
+                # 视频采集
+                console.print("[dim]  — 视频搜索 + 字幕提取 —[/dim]")
+                bilibili_browser.set_page(page)
+                all_items.extend(bilibili_browser.fetch())
+
+                # 文章采集
+                console.print("[dim]  — 专栏文章采集 —[/dim]")
+                bilibili_article.set_page(page)
+                all_items.extend(bilibili_article.fetch())
+
+                browser.close()
+                console.print("[green]B站浏览器采集完成 (视频+文章共享实例)[/green]")
+        except ImportError:
+            console.log("[red]playwright 未安装，跳过 B站浏览器采集[/red]")
+    else:
+        # 无浏览器时仍然走 Google News RSS 中转
+        console.print("\n[yellow]B站搜索采集:[/yellow]")
+        bilibili = BilibiliCollector()
+        all_items.extend(bilibili.fetch())
+        console.print("\n[yellow]B站厂商官号:[/yellow]")
+        bilibili_acct = BilibiliAccountCollector()
+        all_items.extend(bilibili_acct.fetch())
 
     # 贴吧（Google News RSS 中转）
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
