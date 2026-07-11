@@ -21,16 +21,18 @@ DIVERSITY_BOOST = 50
 
 
 def _sort_key(item: dict) -> tuple:
-    """排序键：爆料 > 发售 > 系统更新 > 其他，同类内按热度+日期排"""
+    """排序键：爆料 > 发售 > 系统更新 > 其他，同类内按时效置信度+热度+日期排"""
     sub_priority = SUBTYPE_PRIORITY.get(item.get("sub_type", "general"), 3)
     score = item.get("raw_data", {}).get("score", 0)
     # 中文浏览器来源加分
     source_type = item.get("source_type", "")
     if source_type in CN_SOURCE_TYPES:
         score += DIVERSITY_BOOST
+    # date_confidence=low 条目严重降权，排在所有有日期条目之后
+    date_low = item.get("raw_data", {}).get("date_confidence") == "low"
     has_date = 1 if item.get("published_at") else 0
     date_str = item.get("published_at") or ""
-    return (sub_priority, -score, -has_date, date_str)
+    return (sub_priority, date_low, -score, -has_date, date_str)
 
 
 def select_top_items(items: list[dict], top_n: int = TOP_PER_CATEGORY) -> dict[str, list[dict]]:

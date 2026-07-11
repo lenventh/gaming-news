@@ -16,7 +16,7 @@ import os
 import random
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 from rich.console import Console
@@ -181,6 +181,35 @@ MAX_SEARCH_PER_KEYWORD = 8
 MAX_MANUFACTURER_PER_ACCOUNT = 8
 SEARCH_DELAY_MIN = 2
 SEARCH_DELAY_MAX = 4
+
+
+def _parse_bilibili_date(date_str: str) -> datetime | None:
+    """解析 B站 时间文字为 datetime: '6小时前', '昨天', '7-10', '2025-6-15'"""
+    if not date_str or not date_str.strip():
+        return None
+    date_str = date_str.strip()
+    now = datetime.now(timezone.utc)
+    try:
+        if "小时前" in date_str:
+            m = re.search(r"(\d+)", date_str)
+            if m:
+                return now - timedelta(hours=int(m.group(1)))
+        elif "分钟前" in date_str:
+            m = re.search(r"(\d+)", date_str)
+            if m:
+                return now - timedelta(minutes=int(m.group(1)))
+        elif "昨天" in date_str:
+            return now - timedelta(days=1)
+        elif "前天" in date_str:
+            return now - timedelta(days=2)
+        elif re.match(r"^\d{1,2}-\d{1,2}$", date_str):
+            month, day = date_str.split("-")
+            return datetime(now.year, int(month), int(day), tzinfo=timezone.utc)
+        elif re.match(r"^\d{4}-\d{1,2}-\d{1,2}$", date_str):
+            return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except Exception:
+        pass
+    return None
 
 
 def _parse_bilibili_count(count_str: str) -> int:
@@ -349,6 +378,11 @@ class BilibiliBrowserCollector(BaseCollector):
                         const authorEl = card.querySelector('.bili-video-card__info--author');
                         const author = authorEl ? authorEl.textContent.trim() : '';
 
+                        // 提取发布时间（ B站搜索页常见选择器）
+                        let pubdate = '';
+                        const dateEl = card.querySelector('.bili-video-card__info--date');
+                        if (dateEl) pubdate = dateEl.textContent.trim();
+
                         const statsItems = card.querySelectorAll('.bili-video-card__stats--item');
                         let plays = '', danmaku = '';
                         statsItems.forEach(item => {
@@ -357,7 +391,7 @@ class BilibiliBrowserCollector(BaseCollector):
                             else if (!danmaku) danmaku = text;
                         });
 
-                        videos.push({ title, url, author, plays, danmaku });
+                        videos.push({ title, url, author, pubdate, plays, danmaku });
                     } catch(e) {}
                 });
                 return videos;
@@ -385,6 +419,9 @@ class BilibiliBrowserCollector(BaseCollector):
             if v.get("plays"):
                 summary_parts.append(f"播放: {v['plays']}")
 
+            # 解析发布日期
+            published_at = _parse_bilibili_date(v.get("pubdate", ""))
+
             # 识别是否为官号
             is_official = any(
                 author == name or name in author
@@ -395,7 +432,7 @@ class BilibiliBrowserCollector(BaseCollector):
             results.append({
                 "title": title,
                 "url": url,
-                "published_at": None,
+                "published_at": published_at,
                 "summary": " | ".join(summary_parts),
                 "raw": {
                     "bvid": bvid,
@@ -404,6 +441,7 @@ class BilibiliBrowserCollector(BaseCollector):
                     "danmaku": v.get("danmaku", ""),
                     "keyword": keyword,
                     "is_official": is_official,
+                    "pubdate_raw": v.get("pubdate", ""),
                 },
                 "category_hint": cat_hint,
             })

@@ -19,20 +19,22 @@ console = Console()
 
 FETCH_TIMEOUT = 10
 
-LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {current_date}，主窗口: 近 {window_days} 天（从 {cutoff_date} 至今）。
+LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {current_date}，严格窗口: 近 {window_days} 天（从 {cutoff_date} 至今，{cutoff_date} 及之后的才算窗口内）。
 
 请对以下每条新闻，逐条判断时效性和分类。
 
 ## 时效性判断标准 (date_confidence)
 
-- **verified**: 日期在窗口内或边缘（±3天），内容有近期时间标记。对于 sub_type=leak/release 的条目，即使发布日期稍早（2-4周内），只要产品尚未正式发布，仍然算 verified
-- **suspicious**: 内容没有明确时间标记但看起来不旧，或日期在窗口边缘无法确认。**优先判定为 suspicious 而非 rejected**
-- **rejected**: 仅当内容**明确**指向很久以前的事件时才拒绝。例如：提到"去年"、"半年前"、"已停售"、"已下架"、明确指向 1 个月前的已结束活动。**页面日期偏旧但内容涉及未发布产品（leak）不应拒绝**
+- **verified**: 发布日期(published_at/页面日期)明确在窗口内；或内容中明确提到近期事件且日期可验证
+- **suspicious**: 没有发布日期；日期无法解析；内容无任何时间标记无法确认是否在窗口内
+- **rejected**: 发布日期明确早于 {cutoff_date}；内容提到的时间标记超出窗口（如"上月"、"几周前"、"此前"、"早在"）；或页面日期比窗口早 7 天以上
 
 ## 重要原则
-1. 宁可保留（suspicious）也不要误杀 — 不确定就留
-2. 产品爆料（leak）和系统更新（system）的时效窗口应更宽容
-3. 评测/开箱（general）如果页面日期在窗口外 2 周内，仍可保留为 suspicious
+1. **只认发布日期，不认产品状态** — 即使是未发布产品的爆料(leak)，如果发布日期早于 {cutoff_date}，也必须 rejected
+2. 有发布日期且超出窗口 → 直接 rejected，不因内容有趣或"产品未发布"而保留
+3. 无发布日期且无近期时间标记 → suspicious（让后续过滤处理）
+4. 评测/开箱/配件等(general)与爆料采用相同标准，只看发布日期
+5. 宁可标记为 suspicious 也不要在没有证据时标记 verified
 
 ## 分类判断 (sub_type 是否正确)
 
@@ -51,7 +53,7 @@ LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {curr
 ## 输出格式
 
 返回 JSON 对象，key 为条目序号（字符串），不要遗漏任何条目：
-{{"0": {{"date_confidence": "verified", "sub_type_ok": true, "corrected_sub_type": null, "reason": "明确提到7月8日"}}, "1": {{"date_confidence": "rejected", "sub_type_ok": true, "corrected_sub_type": null, "reason": "文中提到3月份"}}, ...}}
+{{"0": {{"date_confidence": "verified", "sub_type_ok": true, "corrected_sub_type": null, "reason": "published_at 为 7月8日，在窗口内"}}, "1": {{"date_confidence": "rejected", "sub_type_ok": true, "corrected_sub_type": null, "reason": "published_at 为 6月25日，早于截止日期 {cutoff_date}"}}, ...}}
 
 只返回 JSON 对象，不要 markdown。"""
 
@@ -233,6 +235,13 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
             selected[cat_key].remove(it)
             rejected_count += 1
             console.log(f"[red]    ✗ 丢弃 [{cat_key}]: {it['title'][:60]} | {reason}[/red]")
+            continue
+
+        # suspicious + 采集阶段就无日期 → 直接拒绝
+        if confidence == "suspicious" and it.get("raw_data", {}).get("date_confidence") == "low":
+            selected[cat_key].remove(it)
+            rejected_count += 1
+            console.log(f"[red]    ✗ 丢弃(无日期) [{cat_key}]: {it['title'][:60]} | {reason}[/red]")
             continue
 
         if not sub_type_ok and corrected_st in ("leak", "release", "system", "general"):

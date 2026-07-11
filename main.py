@@ -209,6 +209,70 @@ def generate(selected: dict[str, list[dict]], week_label: str, week_range: str) 
     return markdown
 
 
+def print_audit_report(selected: dict[str, list[dict]]):
+    """输出时效性审计报告：日期置信度分布、来源质量"""
+    console.print("\n[bold]📊 时效性审计报告[/bold]")
+
+    table = Table(title="按分类 — 日期置信度分布")
+    table.add_column("分类", style="cyan")
+    table.add_column("总数")
+    table.add_column("有日期")
+    table.add_column("无日期(low)")
+    table.add_column("llm verified")
+    table.add_column("llm suspicious")
+
+    for cat_key, items in selected.items():
+        cat_name = CATEGORIES.get(cat_key, {}).get("name", cat_key)
+        total = len(items)
+        has_date = sum(1 for it in items if it.get("published_at"))
+        low_date = sum(1 for it in items
+                       if it.get("raw_data", {}).get("date_confidence") == "low")
+        verified = sum(1 for it in items
+                       if it.get("raw_data", {}).get("llm_date_confidence") == "verified")
+        suspicious = sum(1 for it in items
+                         if it.get("raw_data", {}).get("llm_date_confidence") == "suspicious")
+        table.add_row(cat_name, str(total), str(has_date),
+                      f"[red]{low_date}[/red]" if low_date else "0",
+                      f"[green]{verified}[/green]" if verified else "0",
+                      f"[yellow]{suspicious}[/yellow]" if suspicious else "0")
+
+    console.print(table)
+
+    # 来源质量统计
+    source_stats: dict[str, dict] = {}
+    for items in selected.values():
+        for it in items:
+            src = it.get("source_type", "unknown")
+            if src not in source_stats:
+                source_stats[src] = {"total": 0, "dated": 0, "low": 0}
+            source_stats[src]["total"] += 1
+            if it.get("published_at"):
+                source_stats[src]["dated"] += 1
+            if it.get("raw_data", {}).get("date_confidence") == "low":
+                source_stats[src]["low"] += 1
+
+    if source_stats:
+        console.print()
+        src_table = Table(title="按来源类型 — 日期质量")
+        src_table.add_column("来源类型", style="cyan")
+        src_table.add_column("总数")
+        src_table.add_column("有日期")
+        src_table.add_column("无日期")
+        src_table.add_column("日期覆盖率")
+
+        for src, stats in sorted(source_stats.items(), key=lambda x: -x[1]["dated"] / max(x[1]["total"], 1)):
+            total = stats["total"]
+            dated = stats["dated"]
+            rate = f"{dated / total * 100:.0f}%" if total > 0 else "N/A"
+            low = stats["low"]
+            style = "[green]" if (total > 0 and dated / total >= 0.7) else "[red]"
+            src_table.add_row(src, str(total), str(dated),
+                            f"[red]{low}[/red]" if low else "0",
+                            f"{style}{rate}[/style]")
+
+        console.print(src_table)
+
+
 def save_output(markdown: str, week_label: str, selected: dict[str, list[dict]]):
     """保存文稿到文件"""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -264,6 +328,9 @@ def run():
 
     # 阶段 2.5：时效性验证（页面日期提取 + LLM 交叉校验）
     selected = validate(selected)
+
+    # 时效性审计报告
+    print_audit_report(selected)
 
     # 阶段 3：生成
     markdown = generate(selected, week_label, week_range)

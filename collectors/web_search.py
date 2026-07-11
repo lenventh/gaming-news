@@ -299,19 +299,34 @@ class WebSearchCollector(BaseCollector):
                 "url": r["url"],
             } for r in in_window[:5]]
 
+        # 构建 URL → 真实日期 映射
+        url_date_map: dict[str, str] = {}
+        for r in in_window:
+            if r.get("published_at") and r.get("url"):
+                url_date_map[r["url"]] = r["published_at"]
+
         # 标准化
         items = []
-        now = datetime.now(timezone.utc)
         for ext in extracted:
             if not ext.get("is_recent", False):
                 continue
 
+            # 从 RSS 原始结果中取真实日期，没有则不设（让 filter_by_date 按 low 处理）
+            ext_url = ext.get("url", "")
+            actual_date_str = url_date_map.get(ext_url)
+            published_at = None
+            if actual_date_str:
+                try:
+                    published_at = datetime.fromisoformat(actual_date_str)
+                except Exception:
+                    pass
+
             item = self.normalize_item(
                 title=ext.get("title", ""),
-                url=ext.get("url", ""),
+                url=ext_url,
                 source_name=f"Google News",
                 source_type="web_search",
-                published_at=now - timedelta(hours=12),  # 估算
+                published_at=published_at,
                 summary=ext.get("summary", ""),
             )
             item["category"] = category_key
