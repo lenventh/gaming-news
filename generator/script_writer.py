@@ -106,7 +106,7 @@ class ScriptWriter:
                 "sub_type": it.get("sub_type", "general"),
                 "source": it.get("source_name", "") or ", ".join(it.get("merged_sources", [])),
                 "url": it.get("url", ""),
-                "date": it.get("published_at", "")[:10],
+                "date": (it.get("published_at") or "")[:10],
             })
 
         prompt = SECTION_PROMPT.format(

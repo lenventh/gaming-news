@@ -195,13 +195,16 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
             model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=2000,
+            max_tokens=4000,
         )
         content = response.choices[0].message.content.strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[1]
             if content.endswith("```"):
                 content = content[:-3]
+        # 修复 LLM 返回不完整 JSON
+        if not content.endswith("}"):
+            content += "}" * (content.count("{") - content.count("}"))
         llm_results = json.loads(content)
     except Exception as e:
         console.log(f"[red]  LLM 验证失败: {e}，保留所有条目[/red]")
