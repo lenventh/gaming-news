@@ -19,15 +19,20 @@ console = Console()
 
 FETCH_TIMEOUT = 10
 
-LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {current_date}，时间窗口: 近 {window_days} 天（从 {cutoff_date} 至今）。
+LLM_VALIDATE_PROMPT = """你是资讯时效性校验助手。当前日期: {current_date}，主窗口: 近 {window_days} 天（从 {cutoff_date} 至今）。
 
 请对以下每条新闻，逐条判断时效性和分类。
 
 ## 时效性判断标准 (date_confidence)
 
-- **verified**: Google News日期或页面日期在窗口内，内容有近期时间标记（如具体日期、近日、本周、今天）
-- **suspicious**: 内容没有明确时间标记，但日期在窗口内，无法确认也无法推翻
-- **rejected**: 内容明确指向 {window_days} 天前的事件（如"3月发布"、"去年"、"半年前"），或日期明显在窗口外
+- **verified**: 日期在窗口内或边缘（±3天），内容有近期时间标记。对于 sub_type=leak/release 的条目，即使发布日期稍早（2-4周内），只要产品尚未正式发布，仍然算 verified
+- **suspicious**: 内容没有明确时间标记但看起来不旧，或日期在窗口边缘无法确认。**优先判定为 suspicious 而非 rejected**
+- **rejected**: 仅当内容**明确**指向很久以前的事件时才拒绝。例如：提到"去年"、"半年前"、"已停售"、"已下架"、明确指向 1 个月前的已结束活动。**页面日期偏旧但内容涉及未发布产品（leak）不应拒绝**
+
+## 重要原则
+1. 宁可保留（suspicious）也不要误杀 — 不确定就留
+2. 产品爆料（leak）和系统更新（system）的时效窗口应更宽容
+3. 评测/开箱（general）如果页面日期在窗口外 2 周内，仍可保留为 suspicious
 
 ## 分类判断 (sub_type 是否正确)
 
