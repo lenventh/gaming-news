@@ -599,30 +599,9 @@ class BilibiliBrowserCollector(BaseCollector):
 
                 time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
-            # ===== 阶段 2b：已知 UID 的官号直接用 space API 拉视频 =====
-            console.log("\n[yellow]  直接拉取官号空间 (space API):[/yellow]")
-            for name, info in MANUFACTURER_ACCOUNTS.items():
-                mid = info["mid"]
-                cat_hint = info["category"]
-                try:
-                    videos = self._fetch_from_space_api(mid, name, cat_hint)
-                    for v in videos:
-                        item = self.normalize_item(
-                            title=v["title"],
-                            url=v["url"],
-                            source_name=f"B站官号@{v['raw']['author']}",
-                            source_type="bilibili_space",
-                            published_at=v.get("published_at"),
-                            summary=v.get("summary", ""),
-                            raw_data=v.get("raw", {}),
-                        )
-                        item["category"] = v["category_hint"]
-                        all_items.append(item)
-                    if videos:
-                        console.log(f"[dim]  B站官号 '{name}' (UID:{mid}): {len(videos)} 条[/dim]")
-                except Exception as e:
-                    console.log(f"[red]  B站官号 '{name}' 失败: {e}[/red]")
-                time.sleep(random.uniform(1.0, 2.0))
+            # 注意：B站空间页面和 API 均需登录（space API 返回 -352/-799）
+            # 官号内容已通过阶段 1 的关键词搜索 + 阶段 2a 的官号搜索覆盖
+            # 不再单独尝试 space API
 
             browser.close()
 

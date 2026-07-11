@@ -4,7 +4,7 @@ from rich.console import Console
 
 console = Console()
 
-TOP_PER_CATEGORY = 5
+TOP_PER_CATEGORY = 8
 
 # sub_type 优先级：数字越小越靠前
 SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
