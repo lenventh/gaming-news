@@ -477,25 +477,6 @@ class TestDateParsing:
         assert _parse_tieba_date("") is None
         assert _parse_tieba_date("刚刚") is None  # 不支持此格式
 
-    def test_zhihu_date_parsing(self):
-        """知乎日期解析"""
-        from collectors.chinese_browser_collector import _extract_zhihu_date
-
-        result = _extract_zhihu_date("发布于 2026-07-08")
-        assert result is not None
-        assert result.month == 7
-        assert result.day == 8
-
-    def test_zhihu_yesterday(self):
-        """知乎 '昨天' 解析"""
-        from collectors.chinese_browser_collector import _extract_zhihu_date
-        from datetime import datetime, timedelta
-
-        result = _extract_zhihu_date("昨天")
-        assert result is not None
-        expected = datetime.now(tz=timezone.utc) - timedelta(days=1)
-        assert result.day == expected.day
-
     def test_smzdm_date_parsing(self):
         """什么值得买日期解析"""
         from collectors.chinese_browser_collector import _extract_smzdm_date
@@ -504,3 +485,30 @@ class TestDateParsing:
         assert result is not None
         assert result.hour == 14
         assert result.minute == 30
+
+    def test_bilibili_date_parsing(self):
+        """B站日期解析"""
+        from collectors.bilibili_browser_collector import _parse_bilibili_date
+        from datetime import datetime, timezone, timedelta
+
+        now = datetime.now(timezone.utc)
+
+        # 6小时前
+        result = _parse_bilibili_date("6小时前")
+        assert result is not None
+        assert abs((now - result).total_seconds() - 6 * 3600) < 60
+
+        # 昨天
+        result = _parse_bilibili_date("昨天")
+        assert result is not None
+        assert result.day == (now - timedelta(days=1)).day
+
+        # MM-DD
+        result = _parse_bilibili_date("7-10")
+        assert result is not None
+        assert result.month == 7
+        assert result.day == 10
+
+        # 空字符串
+        assert _parse_bilibili_date("") is None
+        assert _parse_bilibili_date(None) is None

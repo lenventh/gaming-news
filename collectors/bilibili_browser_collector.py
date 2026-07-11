@@ -212,19 +212,6 @@ def _parse_bilibili_date(date_str: str) -> datetime | None:
     return None
 
 
-def _parse_bilibili_count(count_str: str) -> int:
-    """解析 B站播放量/弹幕数文字为整数"""
-    if not count_str:
-        return 0
-    count_str = count_str.strip()
-    try:
-        if "万" in count_str:
-            return int(float(count_str.replace("万", "")) * 10000)
-        return int(count_str.replace(",", ""))
-    except (ValueError, TypeError):
-        return 0
-
-
 class BilibiliBrowserCollector(BaseCollector):
     """用 Playwright 浏览器采集 B站内容：关键词搜索 + 官号主页"""
 
@@ -256,6 +243,89 @@ class BilibiliBrowserCollector(BaseCollector):
                 }}
             """)
             return result or ""
+        except Exception:
+            return ""
+
+    def _fetch_video_subtitles(self, bvid: str) -> str:
+        """通过 B站 API 获取视频字幕/CC文字内容"""
+        try:
+            # 1. 获取视频 cid
+            result = self._page.evaluate(f"""
+                async () => {{
+                    try {{
+                        const res = await fetch('https://api.bilibili.com/x/web-interface/view?bvid={bvid}');
+                        const json = await res.json();
+                        if (json.code !== 0 || !json.data) return null;
+                        return {{ cid: json.data.cid, aid: json.data.aid }};
+                    }} catch(e) {{ return null; }}
+                }}
+            """)
+            if not result:
+                return ""
+
+            cid = result.get("cid", 0)
+            if not cid:
+                return ""
+
+            # 2. 获取字幕列表
+            subtitle_result = self._page.evaluate(f"""
+                async () => {{
+                    try {{
+                        const res = await fetch(
+                            'https://api.bilibili.com/x/player/wbi/v2?bvid={bvid}&cid={cid}',
+                            {{ headers: {{ 'Referer': 'https://www.bilibili.com/video/{bvid}' }} }}
+                        );
+                        const json = await res.json();
+                        if (json.code !== 0 || !json.data?.subtitle?.subtitles) return [];
+                        return json.data.subtitle.subtitles.map(s => ({{
+                            lan: s.lan || '',
+                            lan_doc: s.lan_doc || '',
+                            url: s.subtitle_url || '',
+                        }}));
+                    }} catch(e) {{ return []; }}
+                }}
+            """)
+            if not subtitle_result:
+                return ""
+
+            # 3. 优先选择中文（AI生成 > 人工上传 > 翻译）
+            zh_sub = None
+            for s in subtitle_result:
+                lan = s.get("lan", "")
+                if lan.startswith("ai-zh") or lan == "zh-Hans":
+                    zh_sub = s
+                    break
+            if not zh_sub:
+                for s in subtitle_result:
+                    if s.get("lan", "").startswith("zh"):
+                        zh_sub = s
+                        break
+            if not zh_sub and subtitle_result:
+                zh_sub = subtitle_result[0]  # 兜底：取第一个
+
+            if not zh_sub or not zh_sub.get("url"):
+                return ""
+
+            # 4. 下载字幕 JSON 并提取文字
+            sub_url = zh_sub["url"]
+            if sub_url.startswith("//"):
+                sub_url = "https:" + sub_url
+
+            text = self._page.evaluate(f"""
+                async () => {{
+                    try {{
+                        const res = await fetch({json.dumps(sub_url)});
+                        const json = await res.json();
+                        if (!json.body) return '';
+                        return json.body
+                            .map(b => b.content || '')
+                            .filter(c => c.trim())
+                            .join(' ');
+                    }} catch(e) {{ return ''; }}
+                }}
+            """)
+            return (text or "").strip()[:1500]
+
         except Exception:
             return ""
 
@@ -342,92 +412,70 @@ class BilibiliBrowserCollector(BaseCollector):
         return results
 
     def _search_keyword(self, keyword: str, cat_hint: str) -> list[dict]:
-        """搜索一个关键词，提取视频卡片数据"""
-        encoded = quote(keyword)
-        url = f"https://search.bilibili.com/all?keyword={encoded}&order=pubdate"
+        """通过 B站搜索 API 搜索关键词，获取精确发布日期和简介"""
+        api_url = (
+            "https://api.bilibili.com/x/web-interface/search/type"
+            f"?search_type=video&keyword={quote(keyword)}&page=1&order=pubdate"
+        )
 
         try:
-            self._page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            raw = self._page.evaluate(
+                f"""async () => {{
+                    try {{
+                        const r = await fetch({json.dumps(api_url)});
+                        const j = await r.json();
+                        if (j.code !== 0 || !j.data?.result) return [];
+                        return j.data.result.slice(0, {MAX_SEARCH_PER_KEYWORD});
+                    }} catch(e) {{ return []; }}
+                }}"""
+            )
+            result = raw if isinstance(raw, list) else []
         except Exception:
             return []
 
-        try:
-            self._page.wait_for_selector(".bili-video-card", timeout=8000)
-        except Exception:
+        if not result:
             return []
-
-        self._page.wait_for_timeout(1000)
-
-        # 轻量滚动
-        for _ in range(1):
-            self._page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            self._page.wait_for_timeout(1000)
-
-        videos = self._page.evaluate("""
-            () => {
-                const videos = [];
-                document.querySelectorAll('.bili-video-card').forEach(card => {
-                    try {
-                        const titleEl = card.querySelector('.bili-video-card__info--tit');
-                        const title = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : '';
-                        if (!title) return;
-
-                        const linkEl = card.querySelector('a[href*="/video/"]');
-                        const url = linkEl ? linkEl.href : '';
-
-                        const authorEl = card.querySelector('.bili-video-card__info--author');
-                        const author = authorEl ? authorEl.textContent.trim() : '';
-
-                        // 提取发布时间（ B站搜索页常见选择器）
-                        let pubdate = '';
-                        const dateEl = card.querySelector('.bili-video-card__info--date');
-                        if (dateEl) pubdate = dateEl.textContent.trim();
-
-                        const statsItems = card.querySelectorAll('.bili-video-card__stats--item');
-                        let plays = '', danmaku = '';
-                        statsItems.forEach(item => {
-                            const text = item.textContent.trim();
-                            if (!plays) plays = text;
-                            else if (!danmaku) danmaku = text;
-                        });
-
-                        videos.push({ title, url, author, pubdate, plays, danmaku });
-                    } catch(e) {}
-                });
-                return videos;
-            }
-        """)
 
         results = []
-        for v in videos[:MAX_SEARCH_PER_KEYWORD]:
-            title = v.get("title", "").strip()
-            url = v.get("url", "").strip()
-            if not title or not url:
+        for v in result:
+            raw_title = v.get("title", "")
+            title = re.sub(r"<[^>]+>", "", raw_title).strip()
+            bvid = v.get("bvid", "")
+            if not title or not bvid:
                 continue
-
-            bv_match = re.search(r"/video/(BV[\w]+)", url)
-            bvid = bv_match.group(1) if bv_match else url
 
             if bvid in self._seen_bvs:
                 continue
             self._seen_bvs.add(bvid)
 
+            url = f"https://www.bilibili.com/video/{bvid}"
             author = v.get("author", "")
-            summary_parts = []
-            if author:
-                summary_parts.append(f"UP主: {author}")
-            if v.get("plays"):
-                summary_parts.append(f"播放: {v['plays']}")
 
-            # 解析发布日期
-            published_at = _parse_bilibili_date(v.get("pubdate", ""))
+            summary_parts = [f"UP主: {author}"]
+            play_count = v.get("play", 0)
+            if play_count > 0:
+                summary_parts.append(
+                    f"播放: {play_count/10000:.1f}万" if play_count >= 10000
+                    else f"播放: {play_count}"
+                )
+            description = v.get("description", "").strip()
+            if description and description not in ("-", "暂无简介"):
+                summary_parts.append(description[:200])
 
-            # 识别是否为官号
+            # 精确 Unix 时间戳
+            published_at = None
+            pubdate = v.get("pubdate", 0)
+            if pubdate > 0:
+                try:
+                    published_at = datetime.fromtimestamp(pubdate, tz=timezone.utc)
+                except Exception:
+                    pass
+
             is_official = any(
                 author == name or name in author
                 for name in MANUFACTURER_ACCOUNTS
             )
-            source_name = f"B站@{author}" if is_official else f"B站搜索(via {keyword})"
+            source_name = f"B站@{author}" if is_official else f"B站(via {keyword})"
 
             results.append({
                 "title": title,
@@ -437,11 +485,13 @@ class BilibiliBrowserCollector(BaseCollector):
                 "raw": {
                     "bvid": bvid,
                     "author": author,
-                    "play_count": _parse_bilibili_count(v.get("plays", "")),
-                    "danmaku": v.get("danmaku", ""),
+                    "mid": v.get("mid", 0),
+                    "play_count": play_count,
+                    "danmaku": str(v.get("video_review", "")),
+                    "duration": v.get("length", ""),
+                    "tags": v.get("tag", ""),
                     "keyword": keyword,
                     "is_official": is_official,
-                    "pubdate_raw": v.get("pubdate", ""),
                 },
                 "category_hint": cat_hint,
             })
@@ -640,6 +690,60 @@ class BilibiliBrowserCollector(BaseCollector):
             # 注意：B站空间页面和 API 均需登录（space API 返回 -352/-799）
             # 官号内容已通过阶段 1 的关键词搜索 + 阶段 2a 的官号搜索覆盖
             # 不再单独尝试 space API
+
+            # ===== 阶段 3：视频内容提取（字幕 + 转录，高热度优先）=====
+            from utils.video_content import extract_video_content, is_transcription_available
+
+            subtitle_candidates = sorted(
+                all_items,
+                key=lambda it: it.get("raw_data", {}).get("play_count", 0),
+                reverse=True,
+            )[:30]
+            has_transcription = is_transcription_available()
+            console.log(
+                f"\n[yellow]  视频内容提取: 前 {len(subtitle_candidates)} 条"
+                f"{' (含转录)' if has_transcription else ' (仅字幕)'}[/yellow]"
+            )
+            enriched = 0
+            transcribed = 0
+            for item in subtitle_candidates:
+                bvid = item.get("raw_data", {}).get("bvid", "")
+                if not bvid:
+                    continue
+                try:
+                    # 先用 L1 字幕
+                    subtitle_text = self._fetch_video_subtitles(bvid)
+                    content_text = subtitle_text
+
+                    if not content_text or len(content_text) < 50:
+                        # L2: 若有转录能力且无字幕，尝试下载+转录
+                        if has_transcription:
+                            content_text = extract_video_content(
+                                bvid, self._page, item.get("title", "")
+                            )
+                            if content_text and len(content_text) > 30:
+                                transcribed += 1
+
+                    if content_text and len(content_text) > 30:
+                        item["raw_data"]["video_content"] = content_text
+                        item["raw_data"]["content_source"] = (
+                            "transcription" if (not subtitle_text or len(subtitle_text) < 50)
+                            else "subtitle"
+                        )
+                        current_summary = item.get("summary", "")
+                        item["summary"] = f"{current_summary} | 内容: {content_text[:300]}"
+                        enriched += 1
+                        console.log(
+                            f"[dim]    {item['raw_data']['content_source']} "
+                            f"{len(content_text)} 字: {item['title'][:40]}[/dim]"
+                        )
+                except Exception:
+                    pass
+                time.sleep(random.uniform(0.5, 1.0))
+            console.log(
+                f"[green]  内容提取完成: {enriched}/{len(subtitle_candidates)} 条"
+                f" (字幕: {enriched - transcribed}, 转录: {transcribed})[/green]"
+            )
 
             browser.close()
 
