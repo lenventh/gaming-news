@@ -322,10 +322,12 @@ def print_audit_report(selected: dict[str, list[dict]]):
             dated = stats["dated"]
             rate = f"{dated / total * 100:.0f}%" if total > 0 else "N/A"
             low = stats["low"]
-            style = "[green]" if (total > 0 and dated / total >= 0.7) else "[red]"
-            src_table.add_row(src, str(total), str(dated),
-                            f"[red]{low}[/red]" if low else "0",
-                            f"{style}{rate}[/style]")
+            rate_style = "green" if (total > 0 and dated / total >= 0.7) else "red"
+            low_text = f"[red]{low}[/red]" if low else "0"
+            src_table.add_row(
+                src, str(total), str(dated), low_text,
+                f"[{rate_style}]{rate}[/{rate_style}]",
+            )
 
         console.print(src_table)
 
