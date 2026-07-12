@@ -693,8 +693,36 @@ class BilibiliBrowserCollector(BaseCollector):
 
                 time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
-        # ===== 阶段 2：官号搜索（关键词 API + 简介） =====
-        console.log("\n[yellow]  搜索厂商官号 (含视频简介):[/yellow]")
+        # ===== 阶段 2A：官号空间 API 直抓（按 UID 拉最新视频，最可靠）=====
+        console.log("\n[yellow]  厂商官号空间 API (按UID拉取最新视频):[/yellow]")
+        for acct_name, acct_info in MANUFACTURER_ACCOUNTS.items():
+            mid = acct_info["mid"]
+            cat_hint = acct_info["category"]
+            try:
+                videos = self._fetch_from_space_api(mid, acct_name, cat_hint)
+                for v in videos:
+                    raw_data = v.get("raw", {})
+                    item = self.normalize_item(
+                        title=v["title"],
+                        url=v["url"],
+                        source_name=f"B站官号@{raw_data.get('author', acct_name)}",
+                        source_type="bilibili_manufacturer",
+                        published_at=v.get("published_at"),
+                        summary=v.get("summary", ""),
+                        raw_data=raw_data,
+                    )
+                    item["category"] = v["category_hint"]
+                    all_items.append(item)
+                if videos:
+                    console.log(
+                        f"[dim]  {acct_name} (mid={mid}): {len(videos)} 条[/dim]"
+                    )
+            except Exception as e:
+                console.log(f"[red]  官号空间API '{acct_name}' 失败: {e}[/red]")
+            time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+
+        # ===== 阶段 2B：官号搜索（关键词 API + 简介） =====
+        console.log("\n[yellow]  搜索厂商官号 (关键词补充):[/yellow]")
         for query, cat_hint in MANUFACTURER_SEARCHES:
             try:
                 videos = self._search_manufacturer(query, cat_hint)
