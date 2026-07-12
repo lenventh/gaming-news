@@ -42,22 +42,32 @@ TIEBA_BOARDS = {
     "miyoo": "linux_handheld",
     "trimui": "linux_handheld",
     "吹米": "linux_handheld",
+    "吹砖": "linux_handheld",
     "powkiddy": "linux_handheld",
     "霸王小子": "linux_handheld",
     "泡机堂": "linux_handheld",
+    "gkd掌机": "linux_handheld",
+    "gkd": "linux_handheld",
+    "小金刚": "linux_handheld",
+    "r36s": "linux_handheld",
+    "r35s": "linux_handheld",
     # === 安卓掌机品牌吧 ===
     "retroid": "android_handheld",
     "沙雕": "android_handheld",
     "沙雕3": "android_handheld",
+    "沙雕5": "android_handheld",
     "rp5": "android_handheld",
+    "rpmini": "android_handheld",
     "odin掌机": "android_handheld",
     "奥丁掌机": "android_handheld",
+    "奥丁2": "android_handheld",
     "安卓掌机": "android_handheld",
     "天马前端": "android_handheld",
     "天马g": "android_handheld",
     "爱吾游戏": "android_handheld",
     "盖世小鸡": "android_handheld",
     "拉伸手柄": "android_handheld",
+    "芒米": "android_handheld",
     # === Windows 掌机 ===
     "win掌机": "windows_handheld",
     "rogally": "windows_handheld",
@@ -121,7 +131,7 @@ TIEBA_BOARDS = {
 }
 
 # 每次采集的贴吧数量上限
-MAX_BOARDS_PER_RUN = 40
+MAX_BOARDS_PER_RUN = 50
 # 每个吧滚动加载次数
 SCROLL_TIMES = 4
 # 贴吧间延迟（秒）
