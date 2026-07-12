@@ -110,6 +110,9 @@ SITE_QUERIES = {
         "盖世小鸡 手柄 site:smzdm.com",
         "拉伸手柄 评测 site:gamersky.com",
         "安卓游戏机 site:smzdm.com",
+        "沙雕5 掌机 site:tieba.baidu.com",
+        "奥丁2 掌机 site:tieba.baidu.com",
+        "Retroid Pocket Mini site:tieba.baidu.com",
         # 事件（来自关键词库）
         *get_event_keywords_with_sites("android_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],
@@ -137,6 +140,11 @@ SITE_QUERIES = {
         "Anbernic 掌机 site:smzdm.com",
         "Miyoo 掌机 site:gamersky.com",
         "开源掌机 site:3dmgame.com",
+        # 小众品牌
+        "GKD 小金刚 site:tieba.baidu.com",
+        "吹砖 掌机 site:tieba.baidu.com",
+        "芒米 掌机 site:tieba.baidu.com",
+        "r36s 掌机 site:tieba.baidu.com",
         # 事件（来自关键词库）
         *get_event_keywords_with_sites("linux_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],

@@ -74,6 +74,9 @@ BILIBILI_SEARCH_KEYWORDS = {
         "安卓 掌上游戏机",
         "高通 掌机", "骁龙 掌机",
         "安卓 模拟器 掌机",
+        # 小众品牌/型号
+        "沙雕5 掌机", "RP5 掌机", "Retroid Pocket Mini",
+        "奥丁2 掌机", "Odin 2 掌机",
         # 事件（来自关键词库）
         *get_event_keywords("android_handheld"),
     ],
@@ -91,6 +94,9 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Linux 掌机",
         "怀旧 掌机 游戏",
         "寨机 推荐", "寨机 评测",
+        # 小众品牌/型号
+        "GKD 掌机", "GKD 小金刚", "吹砖 掌机", "芒米 掌机",
+        "r36s 掌机", "r35s 掌机",
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
     ],
