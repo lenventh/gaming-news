@@ -19,6 +19,7 @@ from urllib.parse import quote
 from rich.console import Console
 
 from .browser_base import BrowserBaseCollector
+from .keyword_library import get_event_keywords
 
 console = Console()
 
@@ -26,31 +27,43 @@ SMZDM_SEARCH_KEYWORDS = {
     "steam_deck": [
         "Steam Deck 掌机",
         "Steam Deck 评测",
+        # 事件（来自关键词库）
+        *get_event_keywords("steam_deck"),
     ],
     "windows_handheld": [
         "ROG Ally 掌机",
         "AYANEO 掌机",
         "Windows 掌机",
         "GPD 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("windows_handheld"),
     ],
     "android_handheld": [
         "安卓掌机",
         "Retroid 掌机",
         "Odin 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("android_handheld"),
     ],
     "linux_handheld": [
         "开源掌机",
         "Anbernic 掌机",
         "Miyoo 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("linux_handheld"),
     ],
     "console": [
         "Switch 2",
         "PS5 Pro",
         "Xbox Series",
+        # 事件（来自关键词库）
+        *get_event_keywords("console"),
     ],
     "emulator": [
         "模拟器 掌机",
         "Switch 模拟器",
+        # 事件（来自关键词库）
+        *get_event_keywords("emulator"),
     ],
 }
 

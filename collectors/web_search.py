@@ -21,6 +21,7 @@ from openai import OpenAI
 
 from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .keyword_library import get_event_keywords
 
 console = Console()
 
@@ -33,6 +34,8 @@ CATEGORY_SEARCH_QUERIES = {
         "Steam Deck OLED 新闻",
         "Steam Deck 2 传闻 爆料",
         "Steam Deck 评测 开箱",
+        # 事件（来自关键词库）
+        *get_event_keywords("steam_deck"),
     ],
     "windows_handheld": [
         "ROG Ally 掌机 新闻 2026",
@@ -49,6 +52,8 @@ CATEGORY_SEARCH_QUERIES = {
         "GPD 掌机 新品 发布",
         "掌机 新品 传闻 曝光 2026",
         "gaming handheld rumor leak 2026",
+        # 事件（来自关键词库）
+        *get_event_keywords("windows_handheld"),
     ],
     "android_handheld": [
         "安卓掌机 新品 2026",
@@ -59,6 +64,8 @@ CATEGORY_SEARCH_QUERIES = {
         "GAMEMT MagicX GKD 掌机 新品",
         "盖世小鸡 八位堂 手柄 2026",
         "拉伸手柄 新品 2026",
+        # 事件（来自关键词库）
+        *get_event_keywords("android_handheld"),
     ],
     "linux_handheld": [
         "开源掌机 新品 2026",
@@ -67,6 +74,8 @@ CATEGORY_SEARCH_QUERIES = {
         "retro handheld emulator device new",
         "开源掌机 评测 推荐",
         "周哥 掌机 新品",
+        # 事件（来自关键词库）
+        *get_event_keywords("linux_handheld"),
     ],
     "console": [
         "PS5 Switch 2 Xbox 最新 新闻",
@@ -80,6 +89,8 @@ CATEGORY_SEARCH_QUERIES = {
         "Switch 2 爆料 规格 价格",
         "索尼 新掌机 专利",
         "任天堂 新机 爆料",
+        # 事件（来自关键词库）
+        *get_event_keywords("console"),
     ],
     "emulator": [
         "模拟器 更新 2026",
@@ -89,6 +100,8 @@ CATEGORY_SEARCH_QUERIES = {
         "emulator release update 2026",
         "模拟器 安卓 PC 最新",
         "PPSSPP DuckStation 模拟器 更新",
+        # 事件（来自关键词库）
+        *get_event_keywords("emulator"),
     ],
 }
 

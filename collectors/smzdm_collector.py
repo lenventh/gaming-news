@@ -12,15 +12,42 @@ from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .keyword_library import get_event_keywords
 
 console = Console()
 
 # 搜索关键词 → 分类
 SMZDM_QUERIES = {
-    "steam_deck": ["Steam Deck"],
-    "windows_handheld": ["ROG Ally", "AYANEO 掌机", "Windows 掌机"],
-    "linux_handheld": ["开源掌机", "Anbernic", "Miyoo 掌机"],
-    "console": ["PS5", "Switch 2", "Xbox Series"],
+    "steam_deck": [
+        "Steam Deck",
+        # 事件（来自关键词库）
+        *get_event_keywords("steam_deck"),
+    ],
+    "windows_handheld": [
+        "ROG Ally", "AYANEO 掌机", "Windows 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("windows_handheld"),
+    ],
+    "android_handheld": [
+        "安卓掌机", "Retroid 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("android_handheld"),
+    ],
+    "linux_handheld": [
+        "开源掌机", "Anbernic", "Miyoo 掌机",
+        # 事件（来自关键词库）
+        *get_event_keywords("linux_handheld"),
+    ],
+    "console": [
+        "PS5", "Switch 2", "Xbox Series",
+        # 事件（来自关键词库）
+        *get_event_keywords("console"),
+    ],
+    "emulator": [
+        "模拟器 掌机", "Switch 模拟器",
+        # 事件（来自关键词库）
+        *get_event_keywords("emulator"),
+    ],
 }
 
 SMZDM_SEARCH_URL = "https://search.smzdm.com/"

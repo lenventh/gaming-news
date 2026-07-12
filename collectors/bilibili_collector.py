@@ -14,6 +14,7 @@ from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .keyword_library import get_event_keywords_with_sites
 
 console = Console()
 
@@ -23,6 +24,8 @@ BILIBILI_SEARCH_QUERIES = {
         "Steam Deck site:bilibili.com",
         "Steam Deck 掌机 评测 site:bilibili.com",
         "Steam Deck 新消息 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("steam_deck", ["bilibili.com"]),
     ],
     "windows_handheld": [
         "ROG Ally 掌机 site:bilibili.com",
@@ -35,6 +38,8 @@ BILIBILI_SEARCH_QUERIES = {
         "掌机 爆料 site:bilibili.com",
         "掌机 发布会 site:bilibili.com",
         "掌机 新机 预告 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("windows_handheld", ["bilibili.com"]),
     ],
     "android_handheld": [
         "安卓掌机 site:bilibili.com",
@@ -42,6 +47,8 @@ BILIBILI_SEARCH_QUERIES = {
         "Odin 掌机 site:bilibili.com",
         "沙雕掌机 site:bilibili.com",
         "安卓掌机 新品 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("android_handheld", ["bilibili.com"]),
     ],
     "linux_handheld": [
         "开源掌机 site:bilibili.com",
@@ -49,6 +56,8 @@ BILIBILI_SEARCH_QUERIES = {
         "Miyoo 掌机 site:bilibili.com",
         "周哥 掌机 site:bilibili.com",
         "开源掌机 新品 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("linux_handheld", ["bilibili.com"]),
     ],
     "console": [
         "Switch 2 site:bilibili.com",
@@ -58,11 +67,15 @@ BILIBILI_SEARCH_QUERIES = {
         "Switch 2 传闻 site:bilibili.com",
         "掌机 发布会 直播 site:bilibili.com",
         "新掌机 官宣 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("console", ["bilibili.com"]),
     ],
     "emulator": [
         "模拟器 更新 site:bilibili.com",
         "Switch 模拟器 site:bilibili.com",
         "Yuzu 模拟器 site:bilibili.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("emulator", ["bilibili.com"]),
     ],
 }
 

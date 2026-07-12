@@ -14,6 +14,7 @@ from rich.console import Console
 
 from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .keyword_library import get_event_keywords_with_sites
 
 console = Console()
 
@@ -35,6 +36,8 @@ SITE_QUERIES = {
         "Steam Deck 掌机 site:yystv.cn",
         "Steam Deck site:3dmgame.com",
         "Steam Deck 掌机 site:smzdm.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("steam_deck", ["bilibili.com", "tieba.baidu.com"]),
     ],
     "windows_handheld": [
         # B站 — 厂商 + 通用
@@ -80,6 +83,8 @@ SITE_QUERIES = {
         "掌机 爆料 site:gamersky.com",
         "掌机 传闻 site:3dmgame.com",
         "掌机 新品 2026 site:yystv.cn",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("windows_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],
     "android_handheld": [
         # B站
@@ -105,6 +110,8 @@ SITE_QUERIES = {
         "盖世小鸡 手柄 site:smzdm.com",
         "拉伸手柄 评测 site:gamersky.com",
         "安卓游戏机 site:smzdm.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("android_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],
     "linux_handheld": [
         # B站
@@ -130,6 +137,8 @@ SITE_QUERIES = {
         "Anbernic 掌机 site:smzdm.com",
         "Miyoo 掌机 site:gamersky.com",
         "开源掌机 site:3dmgame.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("linux_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],
     "console": [
         # B站
@@ -163,6 +172,8 @@ SITE_QUERIES = {
         "PS5 Pro 新闻 site:gamersky.com",
         "主机 新闻 site:yystv.cn",
         "次世代主机 site:3dmgame.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("console", ["bilibili.com", "zhihu.com"]),
     ],
     "emulator": [
         # B站
@@ -184,6 +195,8 @@ SITE_QUERIES = {
         "模拟器 安卓 推荐 site:smzdm.com",
         "Yuzu 模拟器 site:zhihu.com",
         "Switch 模拟器 最新 site:gamersky.com",
+        # 事件（来自关键词库）
+        *get_event_keywords_with_sites("emulator", ["bilibili.com", "zhihu.com"]),
     ],
 }
 
