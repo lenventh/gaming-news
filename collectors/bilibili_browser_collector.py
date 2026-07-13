@@ -163,6 +163,14 @@ MANUFACTURER_ACCOUNTS = {
     # PlayStation中国 / 腾讯NintendoSwitch / Xbox中国 — 未确认
 }
 
+# 游戏资讯类 UP主（UID 直抓最新视频）
+NEWS_UP_ACCOUNTS = {
+    "UP_90668673": {"mid": 90668673, "category": "console"},
+    "UP_284571458": {"mid": 284571458, "category": "console"},
+    "UP_441806315": {"mid": 441806315, "category": "console"},
+    "UP_609290340": {"mid": 609290340, "category": "console"},
+}
+
 # 按分类组织的官号搜索关键词
 MANUFACTURER_SEARCHES = [
     # === Windows 掌机 ===
@@ -731,6 +739,39 @@ class BilibiliBrowserCollector(BaseCollector):
             except Exception as e:
                 console.log(f"[red]  官号空间API '{acct_name}' 失败: {e}[/red]")
             time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
+
+        # ===== 阶段 2A+：资讯 UP主空间 API 直抓 =====
+        if NEWS_UP_ACCOUNTS:
+            console.log("\n[yellow]  资讯UP主空间 API (按UID拉取最新视频):[/yellow]")
+            for up_name, up_info in NEWS_UP_ACCOUNTS.items():
+                mid = up_info["mid"]
+                cat_hint = up_info["category"]
+                try:
+                    videos = self._fetch_from_space_api(mid, up_name, cat_hint)
+                    for v in videos:
+                        raw_data = v.get("raw", {})
+                        author = raw_data.get("author", up_name)
+                        # 用 API 返回的真实UP主名替换占位名
+                        display_name = author if author != up_name else up_name
+                        item = self.normalize_item(
+                            title=v["title"],
+                            url=v["url"],
+                            source_name=f"B站资讯UP@{display_name}",
+                            source_type="bilibili_news_up",
+                            published_at=v.get("published_at"),
+                            summary=v.get("summary", ""),
+                            raw_data=raw_data,
+                            image_url=raw_data.get("pic", ""),
+                        )
+                        item["category"] = v["category_hint"]
+                        all_items.append(item)
+                    if videos:
+                        console.log(
+                            f"[dim]  UP主 {display_name} (mid={mid}): {len(videos)} 条[/dim]"
+                        )
+                except Exception as e:
+                    console.log(f"[red]  UP主空间API '{up_name}' 失败: {e}[/red]")
+                time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
         # ===== 阶段 2B：官号搜索（关键词 API + 简介） =====
         console.log("\n[yellow]  搜索厂商官号 (关键词补充):[/yellow]")
