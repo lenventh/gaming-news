@@ -44,6 +44,7 @@ from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
+from pipeline.image_fetcher import fetch_images
 from generator.script_writer import ScriptWriter
 
 console = Console()
@@ -390,6 +391,9 @@ def run():
 
     # 时效性审计报告
     print_audit_report(selected)
+
+    # 阶段 2.6：配图抓取
+    selected = fetch_images(selected)
 
     # 阶段 3：生成
     markdown = generate(selected, week_label, week_range)

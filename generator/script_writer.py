@@ -87,11 +87,13 @@ SECTION_PROMPT = """你是游戏设备资讯周报的编辑。请根据以下 {c
 2. **每条格式**：
    ```
    #### [序号]. 新闻标题
+   ![配图](图片URL)   ← 如果提供的 JSON 中有 image_url 字段，必须插入配图
    - 新闻内容：用约150字讲清楚事件（2-3句话），口播稿风格，包含背景+事件+具体细节（型号、规格、价格、日期等），写完后默念确认能顺畅读出
    - 简要分析：用约80字简要分析（1-2句话），有观点的解读，说明事件对品牌/行业的影响或值得关注的原因，避免套话
    - 来源: [来源名称]
    ```
    **字数要求**：新闻内容不少于150字，简要分析不少于80字。写完后默念一遍，确保口播流畅、内容饱满。
+   **配图要求**：每条有 image_url 的新闻都必须插入 `![配图](URL)`，没有 image_url 的则跳过。
 
 3. **风格**：新闻播报体（不是口播稿），客观准确，简练专业。对爆料类内容可稍加分析其可信度和影响。
 4. **保留全部条目**：每一条输入的新闻都必须出现在输出中，不要省略。
@@ -157,14 +159,17 @@ class ScriptWriter:
         # 准备 LLM 输入
         news_input = []
         for it in items:
-            news_input.append({
+            entry = {
                 "title": it.get("title", ""),
                 "summary": it.get("summary", "")[:300],
                 "sub_type": it.get("sub_type", "general"),
                 "source": it.get("source_name", "") or ", ".join(it.get("merged_sources", [])),
                 "url": it.get("url", ""),
                 "date": (it.get("published_at") or "")[:10],
-            })
+            }
+            if it.get("image_url"):
+                entry["image_url"] = it["image_url"]
+            news_input.append(entry)
 
         prompt = SECTION_PROMPT.format(
             cat_name=cat_name,
@@ -221,6 +226,9 @@ class ScriptWriter:
                 sources = item.get("merged_sources", [item.get("source_name", "")])
                 sources_str = ", ".join(sources) if sources else item.get("source_name", "")
                 lines.append(f"#### {start_num}. {title}")
+                if item.get("image_url"):
+                    lines.append(f"![配图]({item['image_url']})")
+                    lines.append("")
                 if date_str:
                     lines.append(f"日期: {date_str} | 来源: {sources_str}")
                 else:
