@@ -17,11 +17,66 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from rich.console import Console
+from openai import OpenAI
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 console = Console()
+
+# ========== 标题翻译 (via LLM) ==========
+_translate_client = None
+
+
+def _get_translate_client():
+    global _translate_client
+    if _translate_client is None:
+        from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+        if OPENAI_API_KEY and OPENAI_API_KEY != "sk-xxx":
+            _translate_client = OpenAI(
+                api_key=OPENAI_API_KEY,
+                base_url=OPENAI_BASE_URL,
+            )
+    return _translate_client
+
+
+def _translate_english_title(title: str) -> str:
+    """用 LLM 将英文标题翻译为中文（含游戏/产品专有名词保留）"""
+    # 如果中文占多数，跳过
+    chinese_chars = sum(1 for c in title if '一' <= c <= '鿿')
+    if chinese_chars > len(title) * 0.3:
+        return title
+
+    client = _get_translate_client()
+    if not client:
+        return title
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{
+                "role": "user",
+                "content": (
+                    "将以下游戏硬件新闻标题翻译为简体中文。"
+                    "品牌/产品/系统名保留原文不翻译（包括: Steam Deck, Switch, Xbox, "
+                    "PlayStation, ROG Ally, AYANEO, GPD, MSI Claw, Legion Go, Valve, "
+                    "Nintendo, Sony, AMD, Intel, Quest, PSVR, VR, Proton, BIOS, "
+                    "Retroid, Odin, Anbernic, Miyoo, TrimUI, PowKiddy, ONEXPLAYER 等），"
+                    "其余英文翻译为中文。只返回译文：\n\n"
+                    + title
+                ),
+            }],
+            temperature=0.1,
+            max_tokens=200,
+        )
+        translated = response.choices[0].message.content.strip()
+        if translated and len(translated) > 0:
+            console.log(f"  [dim]译: {title[:50]} → {translated[:50]}[/dim]")
+            return translated
+    except Exception as e:
+        console.log(f"[yellow]  翻译失败: {e}[/yellow]")
+
+    return title
 
 # ========== 配置 ==========
 TEMP_DIR = Path(tempfile.gettempdir()) / "gaming_news_video"
@@ -168,10 +223,13 @@ def parse_weekly_markdown(md_text: str) -> list[dict]:
             content = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', content).strip()
             analysis = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', analysis).strip()
 
-            speak_text = f"{title}。{content} {analysis}"
+            # 英文标题翻译为中文（用于口播配音）
+            spoken_title = _translate_english_title(title)
+            speak_text = f"{spoken_title}。{content} {analysis}"
 
             segments.append({
                 "title": title,
+                "display_title": spoken_title,
                 "image_url": image_url,
                 "content": content,
                 "analysis": analysis,
