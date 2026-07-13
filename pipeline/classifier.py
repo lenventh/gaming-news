@@ -19,11 +19,12 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 分类规则：
 - steam_deck: Steam Deck、SteamOS、Proton、Valve 掌机
 - windows_handheld: ROG Ally、AYANEO、GPD、微星Claw、Legion Go 等 Windows 掌机
-- android_handheld: Odin、Retroid Pocket、安卓掌机
+- android_handheld: Odin、Retroid Pocket、安卓掌机（注意：不含手机游戏手柄/拉伸手柄）
 - linux_handheld: Anbernic、Miyoo、TrimUI、PowKiddy、开源/Linux 掌机
-- console: PS5、Xbox、Switch/Switch 2 等传统游戏主机（含主机掌机传闻）
-- emulator: 模拟器（Yuzu、Ryujinx、Cemu、RPCS3、Dolphin 等）
-- irrelevant: 汽车、股票、耳机、家电等完全无关的新闻
+- console: PS5、Xbox、Switch/Switch 2 等传统游戏主机（含主机掌机传闻，但不含手柄等外设）
+- emulator: 模拟器（Yuzu、Ryujinx、Cemu、RPCS3、Dolphin 等，不含模拟驾驶/飞行外设硬件）
+- peripherals: VR/AR头显(Quest、PSVR、PICO等)、手柄/控制器(DualSense、Xbox手柄、八位堂、GameSir等)、模拟驾驶/飞行外设(方向盘、HOTAS、MOZA)、扩展坞/底座、采集卡、电竞显示器、游戏耳机
+- irrelevant: 汽车、股票、政治、健康、纯软件游戏评测（不含硬件）等与游戏设备无关的内容
 
 {items}
 
