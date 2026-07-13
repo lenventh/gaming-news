@@ -55,5 +55,9 @@ jobs:
           git config user.name "gaming-news-bot"
           git config user.email "bot@gaming-news.local"
           git add output/
+          git stash
+          git pull --rebase origin master
+          git stash pop || true
+          git add output/
           git diff --staged --quiet || git commit -m "$(date +%G-W%V) weekly report"
           git push
