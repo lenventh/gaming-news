@@ -213,7 +213,7 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
         return selected
 
     # ===== 应用结果 =====
-    rejected_count = 0
+    tagged_count = 0
     suspicious_count = 0
     corrected_count = 0
 
@@ -232,16 +232,18 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
         it["raw_data"]["llm_reason"] = reason
 
         if confidence == "rejected":
-            selected[cat_key].remove(it)
-            rejected_count += 1
-            console.log(f"[red]    ✗ 丢弃 [{cat_key}]: {it['title'][:60]} | {reason}[/red]")
+            it["title"] = f"[时效存疑] {it['title']}"
+            it["raw_data"]["time_confidence"] = "rejected"
+            tagged_count += 1
+            console.log(f"[yellow]    ⚠ 标记 [时效存疑] [{cat_key}]: {it['title'][:60]} | {reason}[/yellow]")
             continue
 
-        # suspicious + 采集阶段就无日期 → 直接拒绝
+        # suspicious + 采集阶段就无日期 → 也标记而非丢弃
         if confidence == "suspicious" and it.get("raw_data", {}).get("date_confidence") == "low":
-            selected[cat_key].remove(it)
-            rejected_count += 1
-            console.log(f"[red]    ✗ 丢弃(无日期) [{cat_key}]: {it['title'][:60]} | {reason}[/red]")
+            it["title"] = f"[时效存疑] {it['title']}"
+            it["raw_data"]["time_confidence"] = "rejected"
+            tagged_count += 1
+            console.log(f"[yellow]    ⚠ 标记 [时效存疑/无日期] [{cat_key}]: {it['title'][:60]} | {reason}[/yellow]")
             continue
 
         if not sub_type_ok and corrected_st in ("leak", "release", "system", "general"):
@@ -260,12 +262,12 @@ def validate(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
     table.add_column("数值", style="green")
 
     leak_count = sum(1 for _, it in all_items if it.get("sub_type") == "leak")
-    verified_count = total - rejected_count
+    kept_count = total - tagged_count
 
     table.add_row("验证总数", str(total))
-    table.add_row("通过", str(verified_count))
+    table.add_row("通过", str(kept_count))
     table.add_row("存疑 (suspicious)", str(suspicious_count))
-    table.add_row("丢弃 (rejected)", str(rejected_count))
+    table.add_row("标记时效存疑", str(tagged_count))
     table.add_row("sub_type 修正", str(corrected_count))
     table.add_row("页面日期提取", f"{extracted_count}/{eligible}")
     table.add_row("最终爆料数 (leak)", str(leak_count))

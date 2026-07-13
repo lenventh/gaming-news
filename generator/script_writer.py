@@ -1,6 +1,8 @@
 """文稿生成器：按板块分别调用 LLM 生成新闻播报 + 简要分析"""
 
+import re
 from datetime import datetime
+from difflib import SequenceMatcher
 from rich.console import Console
 from openai import OpenAI
 
@@ -8,6 +10,57 @@ from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, CATEGORIES
 from .citation import generate_citations_block
 
 console = Console()
+
+CROSS_DEDUP_SIMILARITY = 0.72
+
+
+def _normalize(title: str) -> str:
+    text = title.lower().strip()
+    text = re.sub(r"[^\w一-鿿]", "", text)
+    return text
+
+
+def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
+    """跨板块去重：同一条 URL 或高相似度标题在不同板块出现时，保留首个，从其余板块移除"""
+    removed = 0
+    cat_keys = list(categorized.keys())
+    seen_urls: set[str] = set()
+    seen_titles: list[tuple[str, str]] = []  # (normalized_title, cat_key)
+
+    for cat_key in cat_keys:
+        items = categorized.get(cat_key, [])
+        keep = []
+        for it in items:
+            url = it.get("url", "").strip()
+            title = it.get("title", "").strip()
+
+            # URL 精确匹配
+            if url and url in seen_urls:
+                removed += 1
+                console.log(f"[yellow]   跨板块去重(URL) [{cat_key}]: {title[:50]}[/yellow]")
+                continue
+
+            # 标题相似度匹配
+            norm_title = _normalize(title)
+            is_dup = False
+            for seen_norm, seen_cat in seen_titles:
+                if SequenceMatcher(None, norm_title, seen_norm).ratio() > CROSS_DEDUP_SIMILARITY:
+                    removed += 1
+                    is_dup = True
+                    console.log(f"[yellow]   跨板块去重(标题) [{cat_key}←{seen_cat}]: {title[:50]}[/yellow]")
+                    break
+            if is_dup:
+                continue
+
+            if url:
+                seen_urls.add(url)
+            seen_titles.append((norm_title, cat_key))
+            keep.append(it)
+        categorized[cat_key] = keep
+
+    if removed > 0:
+        console.log(f"[green]  跨板块去重完成，移除 {removed} 条重复[/green]")
+    return removed
 
 SECTION_PROMPT = """你是游戏设备资讯周报的编辑。请根据以下 {cat_name} 板块的新闻条目，生成该板块的新闻播报文稿。
 
@@ -34,10 +87,11 @@ SECTION_PROMPT = """你是游戏设备资讯周报的编辑。请根据以下 {c
 2. **每条格式**：
    ```
    #### [序号]. 新闻标题
-   - 新闻内容：用1-2句话讲清楚事件，客观播报风格
-   - 简要分析：用1句话简要分析对这个品牌/行业的影响或值得关注的原因
+   - 新闻内容：用约100字讲清楚事件（2-3句话），客观播报风格，包含具体细节如型号、规格、价格、日期等
+   - 简要分析：用约50字简要分析（1-2句话），说明事件对品牌/行业的影响或值得关注的原因
    - 来源: [来源名称]
    ```
+   **字数要求**：新闻内容不少于80字，简要分析不少于30字。不要敷衍，每条都要有信息量。
 
 3. **风格**：新闻播报体（不是口播稿），客观准确，简练专业。对爆料类内容可稍加分析其可信度和影响。
 4. **保留全部条目**：每一条输入的新闻都必须出现在输出中，不要省略。
@@ -66,6 +120,9 @@ class ScriptWriter:
             return ""
 
         lines = [f"# 游戏设备周报 | {week_label} ({week_range})\n"]
+
+        # 跨板块去重
+        _cross_category_dedup(categorized_items)
 
         all_items = []
         total_count = 0
@@ -120,11 +177,11 @@ class ScriptWriter:
             response = self.client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "你是科技新闻编辑。播报风格客观准确，每条新闻附带简短分析。保留全部条目不遗漏。"},
+                    {"role": "system", "content": "你是科技新闻编辑。播报风格客观准确，每条新闻内容约100字、分析约50字，包含具体细节不空洞。保留全部条目不遗漏。"},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.6,
-                max_tokens=2500,
+                max_tokens=3500,
             )
             return response.choices[0].message.content or ""
         except Exception as e:
