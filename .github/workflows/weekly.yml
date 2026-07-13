@@ -38,6 +38,9 @@ jobs:
       - name: Install Playwright browsers
         run: playwright install chromium --with-deps
 
+      - name: Pull latest
+        run: git pull --rebase origin master
+
       - name: Run news pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -51,7 +54,6 @@ jobs:
         run: |
           git config user.name "gaming-news-bot"
           git config user.email "bot@gaming-news.local"
-          git pull --rebase origin master
           git add output/
           git diff --staged --quiet || git commit -m "$(date +%G-W%V) weekly report"
           git push
