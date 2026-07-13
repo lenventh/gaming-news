@@ -165,10 +165,11 @@ MANUFACTURER_ACCOUNTS = {
 
 # 游戏资讯类 UP主（UID 直抓最新视频）
 NEWS_UP_ACCOUNTS = {
-    "UP_90668673": {"mid": 90668673, "category": "console"},
-    "UP_284571458": {"mid": 284571458, "category": "console"},
-    "UP_441806315": {"mid": 441806315, "category": "console"},
-    "UP_609290340": {"mid": 609290340, "category": "console"},
+    "二柄APP": {"mid": 90668673, "category": "console"},
+    "千夏的铲子": {"mid": 284571458, "category": "console"},
+    "董先生的游戏屋": {"mid": 441806315, "category": "console"},
+    "Xigua今天打游戏了吗": {"mid": 609290340, "category": "console"},
+    "游民星空官方": {"mid": 11233223, "category": "console"},
 }
 
 # 按分类组织的官号搜索关键词
