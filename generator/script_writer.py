@@ -13,6 +13,50 @@ console = Console()
 
 CROSS_DEDUP_SIMILARITY = 0.72
 
+_translate_client = None
+
+
+def _get_translate_client():
+    global _translate_client
+    if _translate_client is None and OPENAI_API_KEY and OPENAI_API_KEY != "sk-xxx":
+        _translate_client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+    return _translate_client
+
+
+def _translate_title(title: str) -> str:
+    """英文标题 → 中文，专有名词保留原文"""
+    # 中文占比 > 30% 跳过
+    chinese = sum(1 for c in title if '一' <= c <= '鿿')
+    if chinese > len(title) * 0.3:
+        return title
+
+    client = _get_translate_client()
+    if not client:
+        return title
+
+    try:
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": (
+                "将以下游戏硬件新闻标题翻译为简体中文。"
+                "品牌/产品/系统名保留原文不译 (Steam Deck/Switch/Xbox/PlayStation/"
+                "ROG/Ally/AYANEO/GPD/MSI/Claw/Legion Go/Valve/Nintendo/Sony/"
+                "AMD/Intel/Quest/PSVR/VR/Proton/BIOS/Retroid/Odin/Anbernic/"
+                "Miyoo/TrimUI/PowKiddy/ONEXPLAYER/Steam Machine/"
+                "Nostlan/HackHash/ROM/PS5/PS4/PS3/PS2/PS1/Wii/Game Boy/NDS/GBA 等)，"
+                "其余英文翻译为中文。只返回译文：\n\n" + title
+            )}],
+            temperature=0.1,
+            max_tokens=200,
+        )
+        translated = resp.choices[0].message.content.strip()
+        if translated and len(translated) > 0:
+            console.log(f"[dim]  译标题: {title[:40]} -> {translated[:40]}[/dim]")
+            return translated
+    except Exception as e:
+        console.log(f"[yellow]  标题翻译失败: {e}[/yellow]")
+    return title
+
 
 def _normalize(title: str) -> str:
     text = title.lower().strip()
@@ -157,11 +201,13 @@ class ScriptWriter:
         """调用 LLM 生成一个板块的新闻播报"""
         import json
 
-        # 准备 LLM 输入
+        # 准备 LLM 输入（英文标题先翻译）
         news_input = []
         for it in items:
+            raw_title = it.get("title", "")
+            display_title = _translate_title(raw_title)
             entry = {
-                "title": it.get("title", ""),
+                "title": display_title,
                 "summary": it.get("summary", "")[:300],
                 "sub_type": it.get("sub_type", "general"),
                 "source": it.get("source_name", "") or ", ".join(it.get("merged_sources", [])),
