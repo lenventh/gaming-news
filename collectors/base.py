@@ -23,12 +23,13 @@ class BaseCollector(ABC):
         summary: str = "",
         raw_data: Optional[dict] = None,
         material_links: Optional[list[str]] = None,
+        image_url: str = "",
     ) -> dict:
         """将采集到的条目标准化为统一格式"""
         if published_at and published_at.tzinfo is None:
             published_at = published_at.replace(tzinfo=timezone.utc)
 
-        return {
+        item = {
             "title": title.strip(),
             "url": url.strip(),
             "source_name": source_name,
@@ -39,3 +40,6 @@ class BaseCollector(ABC):
             "material_links": material_links or [],
             "category": None,
         }
+        if image_url:
+            item["image_url"] = image_url
+        return item

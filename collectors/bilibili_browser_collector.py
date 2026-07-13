@@ -376,6 +376,7 @@ class BilibiliBrowserCollector(BaseCollector):
                                 pubdate: v.created || 0,
                                 length: v.length || '',
                                 mid: v.mid || {mid},
+                                pic: v.pic || '',
                             }}));
                         }}
                     }} catch(e) {{}}
@@ -429,7 +430,7 @@ class BilibiliBrowserCollector(BaseCollector):
                     "bvid": bvid, "author": author, "mid": v.get("mid", mid),
                     "play_count": play_count, "danmaku": str(v.get("video_review", "")),
                     "duration": v.get("length", ""), "is_official": True,
-                    "manufacturer": name,
+                    "manufacturer": name, "pic": v.get("pic", ""),
                 },
                 "category_hint": cat_hint,
             })
@@ -517,6 +518,7 @@ class BilibiliBrowserCollector(BaseCollector):
                     "tags": v.get("tag", ""),
                     "keyword": keyword,
                     "is_official": is_official,
+                    "pic": v.get("pic", ""),
                 },
                 "category_hint": cat_hint,
             })
@@ -609,6 +611,7 @@ class BilibiliBrowserCollector(BaseCollector):
                     "tags": v.get("tag", ""),
                     "is_official": is_official,
                     "manufacturer": query,
+                    "pic": v.get("pic", ""),
                 },
                 "category_hint": cat_hint,
             })
@@ -689,6 +692,7 @@ class BilibiliBrowserCollector(BaseCollector):
                             published_at=v.get("published_at"),
                             summary=v.get("summary", ""),
                             raw_data=v.get("raw", {}),
+                            image_url=v.get("raw", {}).get("pic", ""),
                         )
                         item["category"] = v["category_hint"]
                         all_items.append(item)
@@ -716,6 +720,7 @@ class BilibiliBrowserCollector(BaseCollector):
                         published_at=v.get("published_at"),
                         summary=v.get("summary", ""),
                         raw_data=raw_data,
+                        image_url=raw_data.get("pic", ""),
                     )
                     item["category"] = v["category_hint"]
                     all_items.append(item)
@@ -743,6 +748,7 @@ class BilibiliBrowserCollector(BaseCollector):
                         published_at=v.get("published_at"),
                         summary=v.get("summary", ""),
                         raw_data=v.get("raw", {}),
+                        image_url=v.get("raw", {}).get("pic", ""),
                     )
                     item["category"] = v["category_hint"]
                     all_items.append(item)
