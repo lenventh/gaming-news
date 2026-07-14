@@ -59,25 +59,29 @@ class BrowserBaseCollector(BaseCollector):
 
         console.print(f"\n[yellow]{self.name} 浏览器采集:[/yellow]")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=BROWSER_LAUNCH_ARGS)
-            context = browser.new_context(
-                user_agent=USER_AGENT,
-                viewport={"width": 1920, "height": 1080},
-                locale="zh-CN",
-            )
-            page = context.new_page()
-            page.add_init_script(HIDE_WEBDRIVER_SCRIPT)
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True, args=BROWSER_LAUNCH_ARGS)
+                context = browser.new_context(
+                    user_agent=USER_AGENT,
+                    viewport={"width": 1920, "height": 1080},
+                    locale="zh-CN",
+                )
+                page = context.new_page()
+                page.add_init_script(HIDE_WEBDRIVER_SCRIPT)
 
-            self._warmup(page)
+                self._warmup(page)
 
-            # 子类实现具体采集逻辑
-            all_items = self._scrape(page)
+                # 子类实现具体采集逻辑
+                all_items = self._scrape(page)
 
-            browser.close()
+                browser.close()
 
-        console.log(f"[green]{self.name} 总计: {len(all_items)} 条[/green]")
-        return all_items
+            console.log(f"[green]{self.name} 总计: {len(all_items)} 条[/green]")
+            return all_items
+        except Exception as e:
+            console.log(f"[yellow]⚠ {self.name} 采集失败 ({e}), 降级跳过, 管道继续运行[/yellow]")
+            return []
 
     def _should_run(self) -> bool:
         """检查环境变量是否启用"""

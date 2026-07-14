@@ -105,6 +105,7 @@ def collect_all() -> list[dict]:
 
     # B站（浏览器视频+文章，共享浏览器实例）
     if os.getenv("BILIBILI_BROWSER", "").lower() in ("1", "true", "yes"):
+        browser_ok = False
         try:
             from playwright.sync_api import sync_playwright
             console.print("\n[yellow]B站 (浏览器 — 视频+文章):[/yellow]")
@@ -153,26 +154,30 @@ def collect_all() -> list[dict]:
 
                 # 视频采集
                 console.print("[dim]  — 视频搜索 + 字幕提取 —[/dim]")
-                bilibili_browser.set_page(page)
-                all_items.extend(bilibili_browser.fetch())
+                try:
+                    bilibili_browser.set_page(page)
+                    all_items.extend(bilibili_browser.fetch())
+                except Exception as e:
+                    console.log(f"[yellow]⚠ B站浏览器视频采集失败: {e}, 降级跳过[/yellow]")
 
                 # 文章采集
                 console.print("[dim]  — 专栏文章采集 —[/dim]")
-                bilibili_article.set_page(page)
-                all_items.extend(bilibili_article.fetch())
+                try:
+                    bilibili_article.set_page(page)
+                    all_items.extend(bilibili_article.fetch())
+                except Exception as e:
+                    console.log(f"[yellow]⚠ B站浏览器文章采集失败: {e}, 降级跳过[/yellow]")
 
                 browser.close()
+                browser_ok = True
                 console.print("[green]B站浏览器采集完成 (视频+文章共享实例)[/green]")
         except ImportError:
             console.log("[red]playwright 未安装，跳过 B站浏览器采集[/red]")
-    else:
-        # 无浏览器时仍然走 Google News RSS 中转
-        console.print("\n[yellow]B站搜索采集:[/yellow]")
-        bilibili = BilibiliCollector()
-        all_items.extend(bilibili.fetch())
-        console.print("\n[yellow]B站厂商官号:[/yellow]")
-        bilibili_acct = BilibiliAccountCollector()
-        all_items.extend(bilibili_acct.fetch())
+        except Exception as e:
+            console.log(f"[yellow]⚠ B站浏览器采集不可用 ({e}), 自动降级，管道继续运行[/yellow]")
+
+        if not browser_ok:
+            console.print("[dim]  B站浏览器降级: Google News RSS 基线数据已就位, 周刊正常生成[/dim]")
 
     # 贴吧（Google News RSS 中转）
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
