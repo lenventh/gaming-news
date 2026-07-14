@@ -23,7 +23,6 @@ from rich.console import Console
 
 from config import CATEGORIES
 from .base import BaseCollector
-from .keyword_library import get_event_keywords
 
 console = Console()
 
@@ -38,8 +37,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Steam Deck 游戏",
         "Steam Deck 性能",
         "Steam Deck 二代",
-        # 事件（来自关键词库）
-        *get_event_keywords("steam_deck"),
     ],
     "windows_handheld": [
         # 一线品牌
@@ -60,8 +57,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Win 掌机 2024", "Win 掌机 2025", "Win 掌机 2026",
         "PC 掌机 评测",
         "掌机 性能 对比",
-        # 事件（来自关键词库）
-        *get_event_keywords("windows_handheld"),
     ],
     "android_handheld": [
         # 品牌
@@ -77,8 +72,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 小众品牌/型号
         "沙雕5 掌机", "RP5 掌机", "Retroid Pocket Mini",
         "奥丁2 掌机", "Odin 2 掌机",
-        # 事件（来自关键词库）
-        *get_event_keywords("android_handheld"),
     ],
     "linux_handheld": [
         # 品牌
@@ -97,8 +90,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 小众品牌/型号
         "GKD 掌机", "GKD 小金刚", "吹砖 掌机", "芒米 掌机",
         "r36s 掌机", "r35s 掌机",
-        # 事件（来自关键词库）
-        *get_event_keywords("linux_handheld"),
     ],
     "console": [
         # Switch 系列
@@ -116,8 +107,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         "任天堂 掌机 2026",
         # 通用
         "主机 新闻", "次世代 主机",
-        # 事件（来自关键词库）
-        *get_event_keywords("console"),
     ],
     "emulator": [
         # Switch 模拟器
@@ -134,8 +123,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 通用
         "模拟器 更新", "模拟器 推荐",
         "安卓 模拟器 掌机 游戏",
-        # 事件（来自关键词库）
-        *get_event_keywords("emulator"),
     ],
 }
 
