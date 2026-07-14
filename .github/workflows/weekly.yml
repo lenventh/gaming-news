@@ -48,6 +48,7 @@ jobs:
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
           PYTHONIOENCODING: utf-8
           NEWS_WINDOW_DAYS: 7
+          BILIBILI_BROWSER: true
         run: python main.py
 
       - name: Commit and push output
