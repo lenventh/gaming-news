@@ -1,8 +1,10 @@
-"""B站专栏文章采集器
+"""B站专栏文章 + 动态采集器
 
-通过 B站搜索 API 发现游戏设备相关专栏文章，抓取全文内容。
-B站专栏是文字为主的深度内容，比视频简介信息量大，适合提取规格参数、
-产品分析、行业观点等结构化信息。
+通过 UP主空间 API 直接拉取最近的文章和动态（非关键词搜索），
+按发布时间倒序排列，只保留 7 天内的内容。
+
+相比关键词搜索方案：API 调用从 383 次降到 ~32 次，时间从 ~25min 降到 ~2min，
+且 API 返回精确时间戳，解决了旧方案 461 条日期不明的问题。
 
 适用场景：本地开发（中国 IP 无障碍访问 B站）
 CI 环境默认关闭，由 BILIBILI_BROWSER=true 环境变量开启。
@@ -14,22 +16,34 @@ import random
 import re
 import time
 from datetime import datetime, timezone, timedelta
-from urllib.parse import quote
 
 from rich.console import Console
 
-from config import CATEGORIES
+from config import CATEGORIES, CUTOFF_DATE
 from .base import BaseCollector
+from .bilibili_browser_collector import MANUFACTURER_ACCOUNTS, NEWS_UP_ACCOUNTS
 
 console = Console()
 
-# 复用 B站浏览器采集器的关键词配置
-from .bilibili_browser_collector import BILIBILI_SEARCH_KEYWORDS
-
-MAX_ARTICLE_PER_KEYWORD = 5
+MAX_PER_ACCOUNT = 10          # 每个 UP 主最多拉几条
 MAX_ARTICLE_CONTENT_LENGTH = 2000
-ARTICLE_SEARCH_DELAY_MIN = 2
-ARTICLE_SEARCH_DELAY_MAX = 4
+FETCH_DELAY_MIN = 2
+FETCH_DELAY_MAX = 4
+
+# 合并所有目标账号
+ALL_TARGET_ACCOUNTS = {}
+ALL_TARGET_ACCOUNTS.update(MANUFACTURER_ACCOUNTS)
+ALL_TARGET_ACCOUNTS.update(NEWS_UP_ACCOUNTS)
+
+
+def _parse_unix_timestamp(ts: int) -> datetime | None:
+    """Unix 时间戳 → datetime"""
+    if ts > 0:
+        try:
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        except Exception:
+            pass
+    return None
 
 
 def _extract_article_text(page) -> str:
@@ -37,14 +51,9 @@ def _extract_article_text(page) -> str:
     try:
         return page.evaluate("""
             () => {
-                // B站专栏正文容器
                 const selectors = [
-                    '.article-content',
-                    '.cv-content',
-                    '#read-article-holder',
-                    '.article-holder',
-                    '.read-content',
-                    'article',
+                    '.article-content', '.cv-content', '#read-article-holder',
+                    '.article-holder', '.read-content', 'article',
                 ];
                 for (const sel of selectors) {
                     const el = document.querySelector(sel);
@@ -52,7 +61,6 @@ def _extract_article_text(page) -> str:
                         return el.textContent.trim();
                     }
                 }
-                // 兜底：取 body 中文字最多的区域
                 const all = document.querySelectorAll('p, div.article-content p, .cv-content p');
                 const parts = [];
                 all.forEach(p => {
@@ -66,97 +74,176 @@ def _extract_article_text(page) -> str:
         return ""
 
 
-def _parse_article_date(timestamp: int) -> datetime | None:
-    """Unix 时间戳 → datetime"""
-    if timestamp > 0:
-        try:
-            return datetime.fromtimestamp(timestamp, tz=timezone.utc)
-        except Exception:
-            pass
-    return None
-
-
 class BilibiliArticleCollector(BaseCollector):
-    """通过 B站 API 搜索专栏文章，抓取全文
-
-    支持共享浏览器实例：先调用 set_page() 传入外部 Playwright page，
-    则 fetch() 不会创建新浏览器。
-    """
+    """通过 UP主空间 API 采集最近文章 + 动态（7 天内）"""
 
     def __init__(self):
         super().__init__("BilibiliArticle")
-        self._seen_cvids: set[int] = set()
+        self._seen_ids: set[str] = set()
         self._page = None
-        self._external_page = False  # 是否为外部传入的 page
+        self._external_page = False
 
     def set_page(self, page):
         """注入外部 Playwright page（共享浏览器实例）"""
         self._page = page
         self._external_page = True
 
-    def _search_articles(self, keyword: str, cat_hint: str) -> list[dict]:
-        """通过 B站搜索 API 搜索专栏文章"""
+    # ========== 专栏文章 API ==========
+
+    def _fetch_user_articles(self, mid: int, account_name: str, cat_hint: str) -> list[dict]:
+        """通过 B站空间 API 获取用户的专栏文章列表"""
         api_url = (
-            "https://api.bilibili.com/x/web-interface/search/type"
-            f"?search_type=article&keyword={quote(keyword)}&page=1&order=pubdate"
+            f"https://api.bilibili.com/x/space/article"
+            f"?mid={mid}&pn=1&ps={MAX_PER_ACCOUNT}"
         )
 
         try:
-            raw = self._page.evaluate(
-                f"""async () => {{
+            raw = self._page.evaluate(f"""
+                async () => {{
                     try {{
                         const r = await fetch({json.dumps(api_url)});
                         const j = await r.json();
-                        if (j.code !== 0 || !j.data?.result) return [];
-                        return j.data.result.slice(0, {MAX_ARTICLE_PER_KEYWORD});
+                        if (j.code !== 0 || !j.data?.articles) return [];
+                        return j.data.articles.map(a => ({{
+                            id: a.id || 0,
+                            title: a.title || '',
+                            summary: (a.summary || '').substring(0, 300),
+                            publish_time: a.publish_time || 0,
+                            view: a.stats?.view || a.view || 0,
+                            like: a.stats?.like || a.like || 0,
+                            category: a.category?.name || '',
+                        }}));
                     }} catch(e) {{ return []; }}
-                }}"""
-            )
+                }}
+            """)
             result = raw if isinstance(raw, list) else []
         except Exception:
             return []
 
-        if not result:
-            return []
-
         articles = []
         for a in result:
-            raw_title = a.get("title", "")
-            title = re.sub(r"<[^>]+>", "", raw_title).strip()
-            cv_id = a.get("id", 0)
-            if not title or not cv_id:
+            cvid = a.get("id", 0)
+            if not cvid:
                 continue
-
-            if cv_id in self._seen_cvids:
+            dedup_key = f"cv{cvid}"
+            if dedup_key in self._seen_ids:
                 continue
-            self._seen_cvids.add(cv_id)
+            self._seen_ids.add(dedup_key)
 
-            url = f"https://www.bilibili.com/read/cv{cv_id}"
-            author = a.get("author", "")
-            summary = a.get("summary", "").strip()[:300]
-            published_at = _parse_article_date(a.get("publish_time", 0))
+            published_at = _parse_unix_timestamp(a.get("publish_time", 0))
 
-            view_count = a.get("view", 0)
-            like_count = a.get("like", 0)
+            # 7 天窗口过滤
+            if published_at and published_at < CUTOFF_DATE:
+                continue
 
             articles.append({
-                "title": title,
-                "url": url,
-                "cv_id": cv_id,
-                "author": author,
-                "summary": summary,
+                "title": a.get("title", "").strip(),
+                "url": f"https://www.bilibili.com/read/cv{cvid}",
+                "cv_id": cvid,
+                "author": account_name,
+                "summary": a.get("summary", ""),
                 "published_at": published_at,
-                "view_count": view_count,
-                "like_count": like_count,
-                "keyword": keyword,
+                "view_count": a.get("view", 0),
+                "like_count": a.get("like", 0),
                 "category_hint": cat_hint,
+                "source_type": "bilibili_article",
+                "source_label": f"B站专栏@{account_name}",
             })
 
         return articles
 
+    # ========== 动态 API ==========
+
+    def _fetch_user_dynamics(self, mid: int, account_name: str, cat_hint: str) -> list[dict]:
+        """通过 B站动态 API 获取用户最近的文字动态（MAJOR_TYPE_OPUS）"""
+        api_url = (
+            f"https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space"
+            f"?host_mid={mid}"
+        )
+
+        try:
+            raw = self._page.evaluate(f"""
+                async () => {{
+                    try {{
+                        const r = await fetch({json.dumps(api_url)});
+                        const j = await r.json();
+                        if (j.code !== 0 || !j.data?.items) return [];
+                        return j.data.items.slice(0, {MAX_PER_ACCOUNT}).map(item => {{
+                            const mod = item.modules || {{}};
+                            const author = mod.module_author || {{}};
+                            const dyn = mod.module_dynamic || {{}};
+                            const major = dyn.major || {{}};
+                            const mtype = major.type || '';
+
+                            let text = '';
+                            let title = '';
+
+                            if (mtype === 'MAJOR_TYPE_OPUS' && major.opus) {{
+                                title = (major.opus.title || '').substring(0, 100);
+                                text = (major.opus.summary?.text || '').substring(0, 500);
+                            }} else if (mtype === 'MAJOR_TYPE_ARTICLE' && major.article) {{
+                                title = (major.article.title || '').substring(0, 100);
+                                text = (major.article.desc || '').substring(0, 500);
+                            }}
+
+                            if (!text && !title) return null;
+
+                            return {{
+                                id_str: item.id_str || '',
+                                title: title,
+                                text: text,
+                                type: mtype,
+                                pub_ts: author.pub_ts || 0,
+                                name: author.name || '',
+                            }};
+                        }}).filter(Boolean);
+                    }} catch(e) {{ return []; }}
+                }}
+            """)
+            result = raw if isinstance(raw, list) else []
+        except Exception:
+            return []
+
+        dynamics = []
+        for d in result:
+            if not d:
+                continue
+            id_str = d.get("id_str", "")
+            if not id_str:
+                continue
+            if id_str in self._seen_ids:
+                continue
+            self._seen_ids.add(id_str)
+
+            published_at = _parse_unix_timestamp(d.get("pub_ts", 0))
+
+            # 7 天窗口过滤
+            if published_at and published_at < CUTOFF_DATE:
+                continue
+
+            title = d.get("title", "")
+            text = d.get("text", "")
+            display_title = title if title else (text[:80] + "..." if len(text) > 80 else text)
+
+            dynamics.append({
+                "title": display_title,
+                "url": f"https://t.bilibili.com/{id_str}",
+                "author": account_name,
+                "summary": text[:300],
+                "published_at": published_at,
+                "view_count": 0,
+                "like_count": 0,
+                "category_hint": cat_hint,
+                "source_type": "bilibili_dynamic",
+                "source_label": f"B站动态@{account_name}",
+            })
+
+        return dynamics
+
+    # ========== 全文抓取 ==========
+
     def _fetch_article_content(self, cv_id: int) -> str:
-        """抓取专栏全文内容 — 先尝试 API，失败则用页面抓取"""
-        # 方案 1: 尝试移动端文章 API（可能返回内容）
+        """抓取专栏全文 — 先尝试 API，失败则页面抓取"""
         try:
             raw = self._page.evaluate(f"""
                 async () => {{
@@ -167,10 +254,8 @@ class BilibiliArticleCollector(BaseCollector):
                         const json = await res.json();
                         if (json.code === 0 && json.data) {{
                             const d = json.data;
-                            // 返回正文 + 标题
                             let text = '';
                             if (d.content) {{
-                                // content 可能是 HTML，提取纯文本
                                 const div = document.createElement('div');
                                 div.innerHTML = d.content;
                                 text = div.textContent || '';
@@ -187,7 +272,6 @@ class BilibiliArticleCollector(BaseCollector):
         except Exception:
             pass
 
-        # 方案 2: 页面抓取兜底
         try:
             self._page.goto(
                 f"https://www.bilibili.com/read/cv{cv_id}",
@@ -199,8 +283,9 @@ class BilibiliArticleCollector(BaseCollector):
         except Exception:
             return ""
 
+    # ========== 主流程 ==========
+
     def fetch(self) -> list[dict]:
-        """采集 B站专栏文章"""
         if os.getenv("BILIBILI_BROWSER", "").lower() not in ("1", "true", "yes"):
             console.log("[dim]B站文章采集已跳过 (设置 BILIBILI_BROWSER=true 启用)[/dim]")
             return []
@@ -211,14 +296,15 @@ class BilibiliArticleCollector(BaseCollector):
             console.log("[red]playwright 未安装，跳过 B站文章采集[/red]")
             return []
 
-        total_kw = sum(len(kws) for kws in BILIBILI_SEARCH_KEYWORDS.values())
-        console.print(f"\n[yellow]B站文章采集: {total_kw} 关键词[/yellow]")
+        total_accounts = len(ALL_TARGET_ACCOUNTS)
+        console.print(
+            f"\n[yellow]B站文章+动态采集: {total_accounts} 个 UP 主 "
+            f"({len(MANUFACTURER_ACCOUNTS)} 厂商 + {len(NEWS_UP_ACCOUNTS)} 资讯UP)[/yellow]"
+        )
 
-        # 如果有外部注入的 page，直接使用
         if self._page is not None:
-            return self._fetch_articles()
+            return self._do_fetch()
 
-        # 否则创建独立浏览器
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -243,79 +329,116 @@ class BilibiliArticleCollector(BaseCollector):
             """)
             self._page = page
 
-            # 预热
             try:
                 page.goto("https://www.bilibili.com", wait_until="domcontentloaded", timeout=15000)
                 page.wait_for_timeout(2000)
             except Exception:
                 pass
 
-            result = self._fetch_articles()
+            result = self._do_fetch()
             browser.close()
-            self._page = None
+            if not self._external_page:
+                self._page = None
             return result
 
-    def _fetch_articles(self) -> list[dict]:
-        """执行文章采集逻辑（需要 self._page 已设置）"""
-        all_articles = []
+    def _do_fetch(self) -> list[dict]:
+        """对每个 UP 主拉取专栏 + 动态，按时间倒序，7 天内过滤"""
+        all_entries = []
 
-        for cat_key, keywords in BILIBILI_SEARCH_KEYWORDS.items():
-            for kw in keywords:
-                try:
-                    articles = self._search_articles(kw, cat_key)
-                    all_articles.extend(articles)
-                    if articles:
-                        console.log(f"[dim]B站文章 '{kw}': {len(articles)} 篇[/dim]")
-                except Exception as e:
-                    console.log(f"[red]B站文章 '{kw}' 失败: {e}[/red]")
-                time.sleep(random.uniform(ARTICLE_SEARCH_DELAY_MIN, ARTICLE_SEARCH_DELAY_MAX))
+        for acct_name, acct_info in ALL_TARGET_ACCOUNTS.items():
+            mid = acct_info["mid"]
+            cat_hint = acct_info["category"]
 
-        # 阶段 2：抓取全文（去重后只抓前 50 篇）
-        articles_to_fetch = all_articles[:50]
-        console.log(f"\n[yellow]  抓取全文: {len(articles_to_fetch)} 篇[/yellow]")
-
-        for article in articles_to_fetch:
             try:
-                content = self._fetch_article_content(article["cv_id"])
-                article["content"] = content
-                if content:
-                    console.log(f"[dim]    全文 {len(content)} 字: {article['title'][:40]}[/dim]")
+                articles = self._fetch_user_articles(mid, acct_name, cat_hint)
+                all_entries.extend(articles)
+                if articles:
+                    console.log(
+                        f"[dim]  {acct_name} 专栏: {len(articles)} 篇[/dim]"
+                    )
             except Exception as e:
-                article["content"] = ""
-                console.log(f"[red]    抓取失败 cv{article['cv_id']}: {e}[/red]")
-            time.sleep(random.uniform(1, 2))
+                console.log(f"[red]  专栏获取失败 '{acct_name}': {e}[/red]")
 
-        # 标准化输出
+            time.sleep(random.uniform(FETCH_DELAY_MIN, FETCH_DELAY_MAX))
+
+            try:
+                dynamics = self._fetch_user_dynamics(mid, acct_name, cat_hint)
+                all_entries.extend(dynamics)
+                if dynamics:
+                    console.log(
+                        f"[dim]  {acct_name} 动态: {len(dynamics)} 条[/dim]"
+                    )
+            except Exception as e:
+                console.log(f"[red]  动态获取失败 '{acct_name}': {e}[/red]")
+
+            time.sleep(random.uniform(FETCH_DELAY_MIN, FETCH_DELAY_MAX))
+
+        # 按发布时间倒序
+        all_entries.sort(
+            key=lambda x: x.get("published_at") or datetime(2000, 1, 1, tzinfo=timezone.utc),
+            reverse=True,
+        )
+
+        # 统计
+        with_date = sum(1 for e in all_entries if e.get("published_at"))
+        console.log(
+            f"[dim]  共 {len(all_entries)} 条 (专栏+动态)，"
+            f"其中 {with_date} 条有日期[/dim]"
+        )
+
+        # 抓取专栏全文（仅前 50 篇专栏，动态不需要）
+        articles_only = [e for e in all_entries if e.get("source_type") == "bilibili_article"]
+        to_fetch = articles_only[:50]
+        if to_fetch:
+            console.log(f"\n[yellow]  抓取专栏全文: {len(to_fetch)} 篇[/yellow]")
+            for entry in to_fetch:
+                try:
+                    content = self._fetch_article_content(entry["cv_id"])
+                    entry["content"] = content
+                    if content:
+                        console.log(
+                            f"[dim]    全文 {len(content)} 字: {entry['title'][:40]}[/dim]"
+                        )
+                except Exception as e:
+                    entry["content"] = ""
+                    console.log(f"[red]    抓取失败 cv{entry.get('cv_id')}: {e}[/red]")
+                time.sleep(random.uniform(1, 2))
+
+        # 标准化
         items = []
-        for article in all_articles:
-            content = article.get("content", "")
-            summary_parts = [f"UP主: {article['author']}"]
-            if article.get("view_count"):
-                summary_parts.append(f"阅读: {article['view_count']}")
+        for entry in all_entries:
+            content = entry.get("content", "")
+            summary_parts = [f"UP主: {entry['author']}"]
+            if entry.get("view_count"):
+                label = "阅读" if entry.get("source_type") == "bilibili_article" else ""
+                if label:
+                    summary_parts.append(f"{label}: {entry['view_count']}")
             if content:
-                body_preview = f"正文({len(content)}字): {content[:300]}"
-                summary_parts.append(body_preview)
-            elif article.get("summary"):
-                summary_parts.append(article["summary"])
+                summary_parts.append(f"正文({len(content)}字): {content[:300]}")
+            elif entry.get("summary"):
+                summary_parts.append(entry["summary"][:300])
+
+            raw_data = {
+                "author": entry["author"],
+                "view_count": entry.get("view_count", 0),
+                "like_count": entry.get("like_count", 0),
+                "content_length": len(content),
+                "source_type": entry.get("source_type", "bilibili_article"),
+            }
+            if entry.get("cv_id"):
+                raw_data["cv_id"] = entry["cv_id"]
 
             item = self.normalize_item(
-                title=article["title"],
-                url=article["url"],
-                source_name=f"B站专栏(via {article['keyword']})",
-                source_type="bilibili_article",
-                published_at=article.get("published_at"),
+                title=entry["title"],
+                url=entry["url"],
+                source_name=entry.get("source_label", f"B站@{entry['author']}"),
+                source_type=entry.get("source_type", "bilibili_article"),
+                published_at=entry.get("published_at"),
                 summary=" | ".join(summary_parts),
-                raw_data={
-                    "cv_id": article["cv_id"],
-                    "author": article["author"],
-                    "view_count": article.get("view_count", 0),
-                    "like_count": article.get("like_count", 0),
-                    "keyword": article["keyword"],
-                    "content_length": len(content),
-                },
+                raw_data=raw_data,
             )
-            item["category"] = article["category_hint"]
+            item["category"] = entry["category_hint"]
             items.append(item)
 
-        console.log(f"[green]B站文章总计: {len(items)} 篇[/green]")
+        console.log(f"[green]B站文章+动态总计: {len(items)} 条[/green]")
         return items
