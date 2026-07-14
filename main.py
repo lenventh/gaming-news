@@ -134,12 +134,22 @@ def collect_all() -> list[dict]:
                     Object.defineProperty(navigator, 'webdriver', { get: () => false });
                 """)
 
-                # 预热
+                # 预热（先获取游客 Cookie）
                 try:
                     page.goto("https://www.bilibili.com", wait_until="domcontentloaded", timeout=15000)
                     page.wait_for_timeout(2000)
                 except Exception:
                     pass
+
+                # B站 Cookie 注入（动态 API 需要登录态，warmup 后注入避免被覆盖）
+                sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
+                if sessdata:
+                    context.add_cookies([{
+                        "name": "SESSDATA",
+                        "value": sessdata,
+                        "domain": ".bilibili.com",
+                        "path": "/",
+                    }])
 
                 # 视频采集
                 console.print("[dim]  — 视频搜索 + 字幕提取 —[/dim]")

@@ -27,8 +27,30 @@ console = Console()
 
 MAX_PER_ACCOUNT = 10          # 每个 UP 主最多拉几条
 MAX_ARTICLE_CONTENT_LENGTH = 2000
+MAX_RECOGNITION_IMAGES = 3    # 每条 DRAW 动态最多识别的图片数
 FETCH_DELAY_MIN = 2
 FETCH_DELAY_MAX = 4
+
+
+def _set_bilibili_cookies(context) -> None:
+    """把 BILIBILI_SESSDATA 等 Cookie 注入浏览器上下文。
+
+    B站 polymer 动态 API 需要登录态，否则返回登录页 HTML。
+    从环境变量读取 SESSDATA（.env 中配置）。
+    """
+    sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
+    if sessdata:
+        context.add_cookies([
+            {
+                "name": "SESSDATA",
+                "value": sessdata,
+                "domain": ".bilibili.com",
+                "path": "/",
+            },
+        ])
+        console.log("[dim]B站 Cookie 已注入 (SESSDATA)[/dim]")
+    else:
+        console.log("[dim]未检测到 BILIBILI_SESSDATA，动态 API 可能无法访问[/dim]")
 
 # 合并所有目标账号
 ALL_TARGET_ACCOUNTS = {}
@@ -36,11 +58,14 @@ ALL_TARGET_ACCOUNTS.update(MANUFACTURER_ACCOUNTS)
 ALL_TARGET_ACCOUNTS.update(NEWS_UP_ACCOUNTS)
 
 
-def _parse_unix_timestamp(ts: int) -> datetime | None:
-    """Unix 时间戳 → datetime"""
-    if ts > 0:
+def _parse_unix_timestamp(ts) -> datetime | None:
+    """Unix 时间戳 → datetime（兼容 int 和 str 类型）"""
+    if ts:
         try:
-            return datetime.fromtimestamp(ts, tz=timezone.utc)
+            if isinstance(ts, str):
+                ts = int(ts)
+            if ts > 0:
+                return datetime.fromtimestamp(ts, tz=timezone.utc)
         except Exception:
             pass
     return None
@@ -155,74 +180,82 @@ class BilibiliArticleCollector(BaseCollector):
     # ========== 动态 API ==========
 
     def _fetch_user_dynamics(self, mid: int, account_name: str, cat_hint: str) -> list[dict]:
-        """通过 B站动态 API 获取用户最近的文字动态（MAJOR_TYPE_OPUS）"""
+        """通过 B站动态 API 获取用户最近的文字+图片动态（OPUS / ARTICLE / DRAW）
+
+        直接 navigate 到 API URL 读取 JSON（比 page.evaluate(fetch()) 更可靠，
+        fetch 跨域调用时可能因 cookie/origin 检查返回登录页 HTML）。
+        """
         api_url = (
             f"https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space"
             f"?host_mid={mid}"
         )
 
         try:
-            raw = self._page.evaluate(f"""
-                async () => {{
-                    try {{
-                        const r = await fetch({json.dumps(api_url)});
-                        const j = await r.json();
-                        if (j.code !== 0 || !j.data?.items) return [];
-                        return j.data.items.slice(0, {MAX_PER_ACCOUNT}).map(item => {{
-                            const mod = item.modules || {{}};
-                            const author = mod.module_author || {{}};
-                            const dyn = mod.module_dynamic || {{}};
-                            const major = dyn.major || {{}};
-                            const mtype = major.type || '';
-
-                            let text = '';
-                            let title = '';
-
-                            if (mtype === 'MAJOR_TYPE_OPUS' && major.opus) {{
-                                title = (major.opus.title || '').substring(0, 100);
-                                text = (major.opus.summary?.text || '').substring(0, 500);
-                            }} else if (mtype === 'MAJOR_TYPE_ARTICLE' && major.article) {{
-                                title = (major.article.title || '').substring(0, 100);
-                                text = (major.article.desc || '').substring(0, 500);
-                            }}
-
-                            if (!text && !title) return null;
-
-                            return {{
-                                id_str: item.id_str || '',
-                                title: title,
-                                text: text,
-                                type: mtype,
-                                pub_ts: author.pub_ts || 0,
-                                name: author.name || '',
-                            }};
-                        }}).filter(Boolean);
-                    }} catch(e) {{ return []; }}
-                }}
-            """)
-            result = raw if isinstance(raw, list) else []
+            self._page.goto(api_url, wait_until="domcontentloaded", timeout=10000)
+            raw_body = self._page.evaluate("() => document.body.textContent")
+            import json
+            data = json.loads(raw_body)
+            if data.get("code") != 0 or not data.get("data", {}).get("items"):
+                return []
+            items = data["data"]["items"]
         except Exception:
             return []
 
         dynamics = []
-        for d in result:
-            if not d:
+        for item in items[:MAX_PER_ACCOUNT]:
+            mod = item.get("modules") or {}
+            author = mod.get("module_author") or {}
+            dyn = mod.get("module_dynamic") or {}
+            major = dyn.get("major") or {}
+            mtype = major.get("type") or ""
+
+            text = ""
+            title = ""
+            images = []
+
+            if mtype == "MAJOR_TYPE_OPUS" and major.get("opus"):
+                opus = major["opus"]
+                title = (opus.get("title") or "").strip()[:100]
+                text = (opus.get("summary", {}).get("text") or "").strip()[:500]
+                pics = opus.get("pics") or []
+                images = [p.get("url", "") for p in pics[:MAX_RECOGNITION_IMAGES] if p.get("url")]
+            elif mtype == "MAJOR_TYPE_ARTICLE" and major.get("article"):
+                article = major["article"]
+                title = (article.get("title") or "").strip()[:100]
+                text = (article.get("desc") or "").strip()[:500]
+            elif mtype == "MAJOR_TYPE_DRAW" and major.get("draw"):
+                draw = major["draw"]
+                title = (draw.get("title") or "").strip()[:100]
+                text = (draw.get("desc") or "").strip()[:500]
+                draw_items = draw.get("items") or []
+                images = [img.get("src", "") for img in draw_items[:MAX_RECOGNITION_IMAGES] if img.get("src")]
+
+            # DRAW 即使没文字，有图就保留
+            if not text and not title and not images:
                 continue
-            id_str = d.get("id_str", "")
+
+            id_str = item.get("id_str", "")
             if not id_str:
                 continue
             if id_str in self._seen_ids:
                 continue
             self._seen_ids.add(id_str)
 
-            published_at = _parse_unix_timestamp(d.get("pub_ts", 0))
+            published_at = _parse_unix_timestamp(author.get("pub_ts", 0))
 
             # 7 天窗口过滤
             if published_at and published_at < CUTOFF_DATE:
                 continue
 
-            title = d.get("title", "")
-            text = d.get("text", "")
+            # DRAW 无文字时尝试多模态识图
+            if mtype == "MAJOR_TYPE_DRAW" and images and not text and not title:
+                recognized = self._recognize_images(images, account_name)
+                if recognized:
+                    text = recognized
+                    title = recognized[:80] + "..." if len(recognized) > 80 else recognized
+                else:
+                    title = f"[图片动态] {account_name} ({len(images)}张图)"
+
             display_title = title if title else (text[:80] + "..." if len(text) > 80 else text)
 
             dynamics.append({
@@ -236,9 +269,97 @@ class BilibiliArticleCollector(BaseCollector):
                 "category_hint": cat_hint,
                 "source_type": "bilibili_dynamic",
                 "source_label": f"B站动态@{account_name}",
+                "images": images,
             })
 
         return dynamics
+
+    # ========== 多模态识图 ==========
+
+    def _recognize_images(self, image_urls: list[str], account_name: str) -> str:
+        """用多模态 LLM 识别图片内容，返回文字描述。
+
+        需要支持 vision 的模型（如 gpt-4o, claude, qwen-vl 等）。
+        deepseek-chat 不支持图片，需通过 OPENAI_VISION_MODEL 环境变量指定。
+        """
+        if os.getenv("BILIBILI_IMAGE_RECOGNITION", "").lower() not in ("1", "true", "yes"):
+            return ""
+
+        try:
+            from config import OPENAI_API_KEY, OPENAI_BASE_URL
+            from openai import OpenAI
+
+            if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-xxx":
+                return ""
+
+            vision_model = os.getenv("OPENAI_VISION_MODEL", "").strip()
+            if not vision_model:
+                console.log(
+                    "[dim]    未设置 OPENAI_VISION_MODEL，跳过识图 "
+                    "(当前文本模型不支持图片)[/dim]"
+                )
+                return ""
+
+            vision_base_url = os.getenv("OPENAI_VISION_BASE_URL", "").strip() or OPENAI_BASE_URL
+            vision_api_key = os.getenv("OPENAI_VISION_API_KEY", "").strip() or OPENAI_API_KEY
+
+            client = OpenAI(api_key=vision_api_key, base_url=vision_base_url)
+
+            # 最多识别 3 张图
+            image_contents = []
+            for url in image_urls[:MAX_RECOGNITION_IMAGES]:
+                if not url:
+                    continue
+                if url.startswith("//"):
+                    url = "https:" + url
+                image_contents.append({
+                    "type": "image_url",
+                    "image_url": {"url": url},
+                })
+
+            if not image_contents:
+                return ""
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是游戏设备资讯识别助手。识别图片中的内容，提取与游戏掌机、"
+                        "游戏主机、游戏设备相关的信息。重点关注：产品发布/预告、规格参数、"
+                        "发售日期、价格、新功能、限量版/联名款。"
+                        "用中文简洁描述，不超过200字。直接描述内容，不要加'图中显示'等前缀。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"识别以下来自 {account_name} 的图片内容："},
+                        *image_contents,
+                    ],
+                },
+            ]
+
+            resp = client.chat.completions.create(
+                model=vision_model,
+                messages=messages,
+                max_tokens=300,
+                temperature=0.3,
+            )
+            result = resp.choices[0].message.content
+            if result:
+                console.log(
+                    f"[dim]    识图 {account_name} ({len(image_contents)}张): "
+                    f"{result[:60]}...[/dim]"
+                )
+                return result.strip()
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "file size is too large" in err_msg or "too large" in err_msg:
+                console.log(f"[dim]    识图跳过 {account_name}: 图片文件过大[/dim]")
+            else:
+                console.log(f"[dim]    识图失败 {account_name}: {e}[/dim]")
+
+        return ""
 
     # ========== 全文抓取 ==========
 
@@ -303,6 +424,7 @@ class BilibiliArticleCollector(BaseCollector):
         )
 
         if self._page is not None:
+            _set_bilibili_cookies(self._page.context)
             return self._do_fetch()
 
         with sync_playwright() as p:
@@ -329,11 +451,13 @@ class BilibiliArticleCollector(BaseCollector):
             """)
             self._page = page
 
+            # 先 warmup 获取游客 Cookie，再注入 SESSDATA（避免 warmup 覆盖登录态）
             try:
                 page.goto("https://www.bilibili.com", wait_until="domcontentloaded", timeout=15000)
                 page.wait_for_timeout(2000)
             except Exception:
                 pass
+            _set_bilibili_cookies(context)
 
             result = self._do_fetch()
             browser.close()
@@ -427,6 +551,8 @@ class BilibiliArticleCollector(BaseCollector):
             }
             if entry.get("cv_id"):
                 raw_data["cv_id"] = entry["cv_id"]
+            if entry.get("images"):
+                raw_data["images"] = entry["images"]
 
             item = self.normalize_item(
                 title=entry["title"],
@@ -437,6 +563,9 @@ class BilibiliArticleCollector(BaseCollector):
                 summary=" | ".join(summary_parts),
                 raw_data=raw_data,
             )
+            # 动态图片带入 image_url 供视频工作流使用
+            if entry.get("images") and not item.get("image_url"):
+                item["image_url"] = entry["images"][0]
             item["category"] = entry["category_hint"]
             items.append(item)
 
