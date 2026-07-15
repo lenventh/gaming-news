@@ -561,59 +561,49 @@ def _generate_tts(text: str, out_path: Path) -> bool:
         return False
 
 
-def _generate_tts_sentences(text: str, audio_dir: Path, seg_idx: int) -> list[tuple[str, int]]:
-    """逐句生成 TTS 并拼接为一个段音频，返回 [(句子文本, 时长ms), ...]
+def _generate_tts_with_timing(text: str, out_path: Path) -> list[tuple[str, int, int]]:
+    """整段生成 TTS + 用 SentenceBoundary 获取自然断句时间戳
 
-    用于精确 SRT 时间轴：每句话独立生成 TTS → 记录真实时长 → 拼接为完整段音频。
-    这样 _build_srt 可以直接使用每句的真实时长，不再需要按字数估算。
+    edge-tts v7.2+ 默认发送 SentenceBoundary 事件，标记 TTS 引擎
+    识别到的自然断句位置。我们利用这个精确时间戳来驱动 SRT 字幕。
+
+    Returns:
+        [(句子文本, 开始ms, 结束ms), ...] — 基于 TTS 引擎自然韵律的时间戳
     """
-    sentences = _split_subs(text)
-    out_path = audio_dir / f"seg_{seg_idx:03d}.mp3"
+    timing_path = Path(str(out_path).replace(".mp3", "_timing.json"))
+    if out_path.exists() and timing_path.exists():
+        import json as _json
+        with open(timing_path, "r", encoding="utf-8") as f:
+            return [tuple(t) for t in _json.load(f)]
 
-    # 已缓存 → 用 ffprobe 读取每个句子音频的时长
-    if out_path.exists():
-        result = []
-        for i, sent in enumerate(sentences):
-            sp = audio_dir / f"seg_{seg_idx:03d}_s{i:03d}.mp3"
-            if sp.exists():
-                dur_ms = int(_get_audio_dur(sp) * 1000)
-                result.append((sent, dur_ms))
-            else:
-                # 缺失个别句子音频，用字数估算
-                result.append((sent, int(len(sent) * 250)))
-        if result:
-            return result
+    import edge_tts, json as _json
 
-    # 并发生成每个句子的 TTS
-    sent_files: list[Path] = []
-    durations: list[tuple[str, int]] = []
+    async def run():
+        comm = edge_tts.Communicate(text, VOICE, rate=TTS_RATE)
+        sub = edge_tts.SubMaker()
 
-    with ThreadPoolExecutor(max_workers=MAX_TTS_PARALLEL) as ex:
-        futures = {}
-        for i, sent in enumerate(sentences):
-            sp = audio_dir / f"seg_{seg_idx:03d}_s{i:03d}.mp3"
-            futures[ex.submit(_generate_tts, sent, sp)] = i
-            sent_files.append(sp)
+        with open(out_path, "wb") as af:
+            async for chunk in comm.stream():
+                if chunk["type"] == "audio":
+                    af.write(chunk["data"])
+                elif chunk["type"] == "SentenceBoundary":
+                    sub.feed(chunk)
 
-        # 等待所有句子 TTS 完成，记录时长
-        for i, sent in enumerate(sentences):
-            sp = sent_files[i]
-            dur_ms = int(_get_audio_dur(sp) * 1000) if sp.exists() else int(len(sent) * 250)
-            durations.append((sent, max(dur_ms, 300)))  # 最少 300ms，避免闪屏
+        # 把 SentenceBoundary cues 转为 (text, start_ms, end_ms)
+        cues = []
+        for cue in sub.cues:
+            start_ms = int(cue.start.total_seconds() * 1000)
+            end_ms = int(cue.end.total_seconds() * 1000)
+            cues.append((cue.content, start_ms, end_ms))
+        return cues
 
-    # 拼接所有句子音频为一个段音频
-    concat_list = audio_dir / f"seg_{seg_idx:03d}_concat.txt"
-    existing = [sf for sf in sent_files if sf.exists()]
-    if existing:
-        with open(concat_list, "w", encoding="utf-8") as f:
-            for sf in existing:
-                f.write(f"file '{sf.as_posix()}'\n")
-        subprocess.run([
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", str(concat_list), "-c", "copy", str(out_path),
-        ], capture_output=True, check=False)
+    cues = asyncio.run(run())
 
-    return durations
+    # 缓存时间戳，避免重复生成
+    with open(timing_path, "w", encoding="utf-8") as f:
+        _json.dump(cues, f, ensure_ascii=False)
+
+    return cues
 
 
 def _get_audio_dur(path: Path) -> float:
@@ -638,7 +628,7 @@ def _clean_srt_text(text: str) -> str:
 def _build_srt(segments: list[dict]) -> str:
     """生成 SRT 字幕文件内容
 
-    优先使用 seg._sent_durations（逐句 TTS 真实时长，精确同步），
+    优先使用 seg._timing（edge-tts SentenceBoundary 自然断句时间戳），
     回退到按字数比例估算。
     """
     lines = []
@@ -650,9 +640,6 @@ def _build_srt(segments: list[dict]) -> str:
         if dur <= 0:
             dur = 3
 
-        start_ms = int(t * 1000)
-        end_ms = int((t + dur) * 1000)
-
         def fmt(ms):
             h = ms // 3600000
             m = (ms % 3600000) // 60000
@@ -660,23 +647,22 @@ def _build_srt(segments: list[dict]) -> str:
             x = ms % 1000
             return f"{h:02d}:{m:02d}:{s:02d},{x:03d}"
 
-        # 优先用逐句 TTS 精确时长
-        sent_durations = seg.get("_sent_durations")
-        if sent_durations:
-            sent_start = start_ms
-            for i, (sent, sent_dur_ms) in enumerate(sent_durations):
-                sent_end = int(sent_start + sent_dur_ms)
-                if i == len(sent_durations) - 1:
-                    sent_end = end_ms  # 末句对齐段尾
+        # 优先用 edge-tts SentenceBoundary 精确时间戳
+        timing = seg.get("_timing")
+        if timing:
+            for sent_text, sent_start_ms, sent_end_ms in timing:
                 lines.append(str(seq))
-                lines.append(f"{fmt(int(sent_start))} --> {fmt(sent_end)}")
-                lines.append(_clean_srt_text(sent))
+                start = int(t * 1000) + sent_start_ms
+                end = int(t * 1000) + sent_end_ms
+                lines.append(f"{fmt(start)} --> {fmt(end)}")
+                lines.append(_clean_srt_text(sent_text))
                 lines.append("")
                 seq += 1
-                sent_start = sent_end
         else:
             # 回退：按字数比例估算
             sentences = _split_subs(seg["speak_text"])
+            start_ms = int(t * 1000)
+            end_ms = int((t + dur) * 1000)
             seg_dur_ms = end_ms - start_ms
             total_chars = sum(len(s) for s in sentences)
             sent_start = start_ms
@@ -1090,7 +1076,7 @@ def step3_page():
         p["steps"][0]["status"] = "done"
         p["steps"][0]["text"] = f"图片就绪: {imgs}/{len(s)}"
 
-        # 2) TTS — 逐句生成，获取精确时间轴
+        # 2) TTS — 整段生成 + SentenceBoundary 自然断句时间戳
         p["steps"][1]["status"] = "running"
         p["steps"][1]["text"] = f"TTS 配音: {len(s)} 段..."
         audio_dir = WORK_DIR / "audio"
@@ -1099,9 +1085,7 @@ def step3_page():
         for i, seg in enumerate(s):
             ap = audio_dir / f"seg_{i:03d}.mp3"
             seg["audio_path"] = str(ap)
-            # 逐句 TTS → 精确时长
-            sent_durations = _generate_tts_sentences(seg["speak_text"], audio_dir, i)
-            seg["_sent_durations"] = sent_durations  # [(text, duration_ms), ...]
+            seg["_timing"] = _generate_tts_with_timing(seg["speak_text"], ap)
             if ap.exists():
                 done_tts += 1
         p["steps"][1]["status"] = "done"
