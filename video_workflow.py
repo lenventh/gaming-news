@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import json
+import uuid
 import time
 import shutil
 import asyncio
@@ -26,6 +27,31 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 console = Console()
+
+# ========== 剪映草稿集成（可选依赖）==========
+_JY_DRAFT_AVAILABLE = False
+_JY_DRAFT_ROOT = None
+try:
+    import pyJianYingDraft as _draft
+    # 从已有的 root_meta_info.json 检测草稿目录
+    _META_PATH = Path(os.environ.get("LOCALAPPDATA", "")) / \
+                 "JianyingPro/User Data/Projects/com.lveditor.draft/root_meta_info.json"
+    if _META_PATH.exists():
+        _meta = json.loads(_META_PATH.read_text(encoding="utf-8"))
+        for entry in _meta.get("all_draft_store", []):
+            p = entry.get("draft_root_path", "")
+            if p and Path(p).exists():
+                _JY_DRAFT_ROOT = p
+                break
+    if _JY_DRAFT_ROOT:
+        _JY_DRAFT_AVAILABLE = True
+        console.print(f"[green]剪映草稿目录: {_JY_DRAFT_ROOT}[/green]")
+    else:
+        console.print("[yellow]未检测到剪映草稿目录，剪映集成不可用[/yellow]")
+except ImportError:
+    console.print("[yellow]pyJianYingDraft 未安装 (pip install pyJianYingDraft)[/yellow]")
+except Exception as e:
+    console.print(f"[yellow]剪映草稿检测失败: {e}[/yellow]")
 
 # ========== 配置 ==========
 TEMP_DIR = Path(tempfile.gettempdir()) / "gaming_news_workflow"
@@ -142,19 +168,56 @@ h1{color:#e94560;margin-bottom:4px}
 .btn-bar{position:sticky;bottom:0;background:#1a1a2e;padding:16px 0;border-top:2px solid #e94560}
 .btn{background:#e94560;color:#fff;border:none;padding:12px 32px;font-size:18px;border-radius:8px;cursor:pointer}
 .btn:hover{background:#ff6b81}
+.btn-polish{background:#f0c040;color:#1a1a2e;border:none;padding:2px 10px;font-size:12px;border-radius:4px;cursor:pointer;margin-left:8px}
+.btn-polish:hover{background:#ffe066}
+.btn-polish:disabled{opacity:0.5;cursor:wait}
+.polish-status{font-size:12px;color:#5f5;margin-left:6px}
 </style>
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 2/6</h1>
-<p class="sub">编辑每条的口播脚本（TTS会逐字朗读此内容）。修改完点击"生成音频"</p>
+<p class="sub">编辑每条的口播脚本（TTS会逐字朗读此内容）。点击"AI润色"自动改写得更适合口播。修改完点击"生成音频"</p>
 <form method="POST" action="/step3">
+<script>
+async function polish(idx, btn) {
+  const ta = document.getElementById('script_' + idx);
+  const instr = document.getElementById('instr_' + idx);
+  const status = btn.nextElementSibling;
+  btn.disabled = true;
+  status.textContent = '润色中...';
+  try {
+    const r = await fetch('/api/polish', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: ta.value, instruction: instr.value.trim()})
+    });
+    const data = await r.json();
+    if (data.polished) {
+      ta.value = data.polished;
+      status.textContent = '完成!';
+    } else {
+      status.textContent = '失败: ' + (data.error || '未知');
+    }
+  } catch(e) {
+    status.textContent = '网络错误';
+  }
+  btn.disabled = false;
+  setTimeout(() => status.textContent = '', 3000);
+}
+</script>
 {% for seg in selected %}
 <div class="card">
   <h3>#{{ loop.index }} {{ seg.display_title[:60] }}</h3>
   <div class="row">
     <div class="left">
       <label>口播脚本（TTS配音文本）</label>
-      <textarea name="script_{{ seg._idx }}" rows="5">{{ seg.speak_text }}</textarea>
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <input type="text" id="instr_{{ seg._idx }}" placeholder="输入润色指令，如：精简到100字、语气更激动、突出爆料信息..."
+             style="flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:4px;padding:6px 10px;font-size:13px">
+        <button type="button" class="btn-polish" onclick="polish({{ seg._idx }}, this)" style="white-space:nowrap">✨ AI润色</button>
+        <span class="polish-status"></span>
+      </div>
+      <textarea name="script_{{ seg._idx }}" id="script_{{ seg._idx }}" rows="5">{{ seg.speak_text }}</textarea>
       <label>图片URL（可直接替换）</label>
       <input class="img-url" name="img_{{ seg._idx }}" value="{{ seg.image_url }}">
     </div>
@@ -272,7 +335,9 @@ h1{color:#e94560;margin-bottom:10px}
 .success{color:#5f5}
 .btn{background:#e94560;color:#fff;border:none;padding:14px 36px;font-size:20px;border-radius:8px;cursor:pointer;margin:8px}
 .btn:hover{opacity:0.85}
+.btn-jy{background:#f0c040;color:#1a1a2e}
 .info{margin:20px;color:#888;font-size:14px}
+.jy-status{margin-top:12px;font-size:14px;color:#5f5}
 </style>
 </head>
 <body>
@@ -283,10 +348,37 @@ h1{color:#e94560;margin-bottom:10px}
 <div class="info">{{ info_text }}</div>
 {% if success %}
 <button class="btn" onclick="location.href='/api/download-video'">💾 下载最终视频 (MP4)</button>
+<button class="btn btn-jy" onclick="generateJYDraft()">🎞 生成/更新剪映草稿</button>
+<span id="jy_result" class="jy-status"></span>
 <button class="btn" onclick="location.href='/'">🔄 重新开始</button>
 {% else %}
 <button class="btn" onclick="location.href='/step4'">↩ 返回编辑字幕</button>
 {% endif %}
+
+<script>
+async function generateJYDraft() {
+  const btn = event.target;
+  const result = document.getElementById('jy_result');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  result.textContent = '';
+  try {
+    const r = await fetch('/api/jianying-draft');
+    const data = await r.json();
+    if (data.success) {
+      btn.textContent = '✅ 已生成';
+      result.textContent = '草稿路径: ' + data.message + ' — 请在剪映中打开';
+    } else {
+      btn.textContent = '失败';
+      result.textContent = '错误: ' + (data.message || data.error);
+    }
+  } catch(e) {
+    btn.textContent = '网络错误';
+    result.textContent = String(e);
+  }
+  btn.disabled = false;
+}
+</script>
 </body>
 </html>"""
 
@@ -480,8 +572,16 @@ def _get_audio_dur(path: Path) -> float:
         return 0
 
 
+def _clean_srt_text(text: str) -> str:
+    """清理字幕文本：去掉末尾多余标点（句号、分号、逗号），保留问号感叹号"""
+    # 去掉末尾的 。；，,; （但保留中间的）
+    while text and text[-1] in "。；，,;":
+        text = text[:-1]
+    return text.strip()
+
+
 def _build_srt(segments: list[dict]) -> str:
-    """生成 SRT 字幕文件内容"""
+    """生成 SRT 字幕文件内容 — 逐句切分，导入剪映后每条字幕简短可读"""
     lines = []
     seq = 1
     t = 0.0
@@ -501,11 +601,22 @@ def _build_srt(segments: list[dict]) -> str:
             x = ms % 1000
             return f"{h:02d}:{m:02d}:{s:02d},{x:03d}"
 
-        lines.append(str(seq))
-        lines.append(f"{fmt(start_ms)} --> {fmt(end_ms)}")
-        lines.append(seg["speak_text"])
-        lines.append("")
-        seq += 1
+        sentences = _split_subs(seg["speak_text"])
+        seg_dur_ms = end_ms - start_ms
+        sent_dur_ms = seg_dur_ms / max(len(sentences), 1)
+        sent_start = start_ms
+        for sent in sentences:
+            sent_end = int(sent_start + sent_dur_ms)
+            # 最后一句对齐段落结尾
+            if sent is sentences[-1]:
+                sent_end = end_ms
+            lines.append(str(seq))
+            lines.append(f"{fmt(int(sent_start))} --> {fmt(sent_end)}")
+            lines.append(_clean_srt_text(sent))
+            lines.append("")
+            seq += 1
+            sent_start = sent_end
+
         t += dur + 0.3
 
     return "\n".join(lines)
@@ -570,18 +681,37 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return ass_path
 
 
-def _split_subs(text: str, max_chars: int = 32) -> list[str]:
-    """按标点切分为字幕短句"""
+def _is_cjk(ch: str) -> bool:
+    """判断是否为 CJK 字符（中日韩统一表意文字）"""
+    return '一' <= ch <= '鿿' or '㐀' <= ch <= '䶿'
+
+
+def _split_subs(text: str, max_chars: int = 28) -> list[str]:
+    """按标点切分为字幕短句
+
+    切分优先级（从高到低）：
+    1. CJK 强标点（。！？）— 天然句边界
+    2. 普通标点（；，,;!?）— 从句边界
+    3. CJK ↔ ASCII 切换点 — 中英文交界
+    4. CJK 侧的空格 — 中文旁的空白
+    5. 硬上限 max_chars（仅在无更好切点时使用）
+
+    注意：ASCII 序列内部的空格（如英文专名"Deadman All Stars"）不会被切断。
+    """
     result = []
     cur = ""
     for c in text:
         cur += c
-        if c in "。！？；，,;!?" and len(cur) >= 6:
+        if c in "。！？" and len(cur) >= 6:
+            result.append(cur.strip())
+            cur = ""
+        elif c in "；，,;!?" and len(cur) >= 6:
             result.append(cur.strip())
             cur = ""
         elif len(cur) >= max_chars:
-            result.append(cur.strip())
-            cur = ""
+            split_at = _find_best_split(cur)
+            result.append(cur[:split_at].strip())
+            cur = cur[split_at:].lstrip()
     if cur.strip():
         result.append(cur.strip())
     merged = []
@@ -596,6 +726,210 @@ def _split_subs(text: str, max_chars: int = 32) -> list[str]:
     if buf:
         merged.append(buf)
     return merged if merged else [text[:max_chars]]
+
+
+def _find_best_split(cur: str) -> int:
+    """在 cur 中找最佳切分点，全字符串搜索
+
+    关键规则：ASCII 序列内的空格不是合法切分点（保护英文专名）。
+    例如 "Deadman All Stars" 中的所有空格都会被跳过。
+    """
+    n = len(cur)
+
+    # 第一遍：找强标点（。！？）
+    for j in range(n - 1, -1, -1):
+        if cur[j] in "。！？":
+            return j + 1
+
+    # 第二遍：找普通标点
+    for j in range(n - 1, -1, -1):
+        if cur[j] in "；，,;!?":
+            return j + 1
+
+    # 第三遍：找 CJK ↔ ASCII 切换点（中英文交界，最可靠）
+    for j in range(n - 1, 0, -1):
+        if _is_cjk(cur[j - 1]) != _is_cjk(cur[j]):
+            return j
+
+    # 第四遍：找空格，但仅当两侧至少有一侧是 CJK（不切英文短语内部）
+    for j in range(n - 1, -1, -1):
+        if cur[j] == ' ':
+            left_cjk = j > 0 and _is_cjk(cur[j - 1])
+            right_cjk = j < n - 1 and _is_cjk(cur[j + 1])
+            if left_cjk or right_cjk:
+                return j + 1
+
+    # 无可用的自然切点 → 向前找任何空格或边界（包括 ASCII 内部，作为最后手段）
+    for j in range(n - 1, -1, -1):
+        if cur[j] == ' ':
+            return j + 1
+        if j > 0 and _is_cjk(cur[j - 1]) != _is_cjk(cur[j]):
+            return j
+
+    # 硬切
+    return n
+
+
+def _patch_draft_meta(draft_path: str, draft_name: str, duration_us: int) -> None:
+    """修补 pyJianYingDraft 生成的 draft_meta_info.json
+
+    pyJianYingDraft v0.3.0 复制硬编码模板，draft_name/draft_fold_path/draft_root_path
+    均为空，draft_id 硬编码。剪映 10.2 需要这些字段正确才能识别草稿。
+    """
+    meta_path = os.path.join(draft_path, "draft_meta_info.json")
+    if not os.path.exists(meta_path):
+        return
+
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    now_us = int(time.time() * 1_000_000)
+    drive = draft_path[:2]  # e.g. "D:"
+    root = os.path.dirname(draft_path)  # e.g. "D:\\JianYing\\JianyingPro Drafts"
+
+    meta["draft_name"] = draft_name
+    meta["draft_fold_path"] = draft_path
+    meta["draft_root_path"] = root
+    meta["draft_removable_storage_device"] = drive
+    meta["draft_id"] = str(uuid.uuid4()).upper()
+    meta["draft_new_version"] = ""
+    meta["tm_draft_create"] = now_us
+    meta["tm_draft_modified"] = now_us
+    meta["tm_duration"] = duration_us
+
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=4)
+
+    # 补充 draft_settings（pyJianYingDraft 不生成此文件）
+    settings_path = os.path.join(draft_path, "draft_settings")
+    if not os.path.exists(settings_path):
+        now_sec = int(time.time())
+        with open(settings_path, "w", encoding="utf-8") as f:
+            f.write(
+                "[General]\n"
+                f"draft_create_time={now_sec}\n"
+                f"draft_last_edit_time={now_sec}\n"
+                "real_edit_seconds=0\n"
+                "real_edit_keys=1\n"
+            )
+
+
+def _generate_jianying_draft(segments: list[dict], draft_name: str,
+                             srt_path: str = "") -> tuple[bool, str]:
+    """根据已生成的素材创建剪映草稿
+
+    调用时机：Step3 build() 完成后（音频+背景图+字幕已就位）
+    生成轨道：视频(背景图) + 音频(TTS) + 文字(字幕)
+
+    Args:
+        segments: 条目列表，每项含 audio_path/bg_path/speak_text
+        draft_name: 草稿名称
+        srt_path: SRT 字幕文件路径。若提供则用 import_srt() 导入逐句字幕
+                   （文字+时间轴都更精细），否则用 seg.speak_text 整段贴入
+
+    Returns:
+        (success, message) — 成功时 message 为草稿文件夹路径
+    """
+    if not _JY_DRAFT_AVAILABLE:
+        console.print("[yellow]剪映集成不可用，跳过草稿生成[/yellow]")
+        return False, "剪映集成不可用（pyJianYingDraft 未安装或未检测到草稿目录）"
+
+    try:
+        _draft_root = _JY_DRAFT_ROOT
+        folder = _draft.DraftFolder(_draft_root)
+        script = folder.create_draft(draft_name, 1920, 1080, fps=30, allow_replace=True)
+
+        use_srt = bool(srt_path) and Path(srt_path).exists()
+
+        # 轨道定义（用 SRT 时 import_srt 会自动创建字幕轨道）
+        track_specs = [
+            _draft.TrackSpec(_draft.TrackType.video, "main"),
+            _draft.TrackSpec(_draft.TrackType.audio, "voice"),
+        ]
+        if not use_srt:
+            track_specs.append(_draft.TrackSpec(_draft.TrackType.text, "subtitle"))
+        script.append_tracks(track_specs)
+
+        t = 0.0  # 累计时间（秒）
+        added = 0
+
+        for seg in segments:
+            ap = Path(seg.get("audio_path", ""))
+            dur = _get_audio_dur(ap) if ap.exists() else len(seg["speak_text"]) / 5
+            if dur <= 0:
+                dur = 3
+
+            start_s = t
+            end_s = t + dur
+            seg_dur = end_s - start_s
+            start_str = f"{start_s:.1f}s"
+            dur_str = f"{seg_dur:.3f}s"
+
+            # 视频轨道：背景图
+            bg = seg.get("bg_path", "")
+            if bg and Path(bg).exists():
+                try:
+                    vid = _draft.VideoSegment(bg, _draft.trange(start_str, dur_str))
+                    script.add_segment(vid, "main")
+                except Exception:
+                    pass
+
+            # 音频轨道：TTS 语音
+            if ap.exists():
+                try:
+                    aud = _draft.AudioSegment(
+                        str(ap),
+                        _draft.trange(start_str, dur_str),
+                        source_timerange=_draft.trange("0s", dur_str),
+                        volume=1.0,
+                    )
+                    script.add_segment(aud, "voice")
+                except Exception as e:
+                    console.log(f"[yellow]音频添加失败 seg={seg.get('_idx', '?')}: {e}[/yellow]")
+
+            # 字幕：无 SRT 时才用整段 speak_text（回退方案）
+            if not use_srt:
+                speak_text = seg.get("speak_text", "").strip()
+                if speak_text:
+                    try:
+                        txt = _draft.TextSegment(
+                            speak_text[:500],
+                            _draft.trange(start_str, dur_str),
+                            font=_draft.FontType.SourceHanSansCN_Regular,
+                            style=_draft.TextStyle(size=8.0, align=1),
+                        )
+                        script.add_segment(txt, "subtitle")
+                    except Exception:
+                        pass
+
+            t += dur + 0.3
+            added += 1
+
+        # 用 SRT 导入逐句字幕（替代整段贴入的文字）
+        if use_srt:
+            try:
+                script.import_srt(
+                    srt_path, "subtitle",
+                    text_style=_draft.TextStyle(size=8.0, align=1, auto_wrapping=True),
+                )
+                console.print(f"[green]SRT字幕已导入: {srt_path}[/green]")
+            except Exception as e:
+                console.print(f"[yellow]SRT导入失败，已跳过字幕: {e}[/yellow]")
+
+        script.save()
+
+        # 修补 pyJianYingDraft 硬编码模板导致的空字段
+        draft_path = str(Path(_draft_root) / draft_name)
+        total_duration_us = int(t * 1_000_000)  # 秒 → 微秒
+        _patch_draft_meta(draft_path, draft_name, total_duration_us)
+
+        console.print(f"[green]剪映草稿已生成: {draft_path}[/green]")
+        return True, draft_path
+
+    except Exception as e:
+        msg = f"剪映草稿生成失败: {e}"
+        console.print(f"[red]{msg}[/red]")
+        return False, msg
 
 
 # ========== Flask 路由 ==========
@@ -651,6 +985,7 @@ def step3_page():
             {"status": "waiting", "text": "生成 TTS 配音...", "detail": ""},
             {"status": "waiting", "text": "合成视频片段...", "detail": ""},
             {"status": "waiting", "text": "生成字幕文件...", "detail": ""},
+            {"status": "waiting", "text": "生成剪映草稿...", "detail": ""},
         ],
     }
 
@@ -749,6 +1084,22 @@ def step3_page():
 
         p["steps"][3]["status"] = "done"
         p["steps"][3]["text"] = f"视频+字幕已生成，时长约 {int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path','')).exists())//60)} 分钟"
+
+        # 5) 剪映草稿
+        p["steps"][4]["status"] = "running"
+        md_name = Path(state["md_path"]).stem
+        _srt = str(TEMP_DIR / md_name / "subtitles.srt")
+        draft_ok, draft_msg = _generate_jianying_draft(s, f"{md_name}_周刊", srt_path=_srt)
+        if draft_ok:
+            state["_jy_draft_path"] = draft_msg
+            p["steps"][4]["status"] = "done"
+            p["steps"][4]["text"] = f"剪映草稿已生成: {draft_msg}"
+            p["steps"][4]["detail"] = "打开剪映 10.x → 草稿列表中找到该草稿，可直接编辑和导出"
+        else:
+            p["steps"][4]["status"] = "done"
+            p["steps"][4]["text"] = f"剪映草稿: {draft_msg}"
+            p["steps"][4]["detail"] = ""
+
         p["done"] = True
 
     threading.Thread(target=build, daemon=True).start()
@@ -857,6 +1208,62 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         )
 
     Path(ass_path).write_text("\n".join(lines), encoding="utf-8")
+
+
+@app.route("/api/polish", methods=["POST"])
+def api_polish():
+    """AI 润色口播脚本 — 支持用户自定义指令"""
+    data = request.get_json()
+    text = data.get("text", "")
+    instruction = data.get("instruction", "")
+    if not text.strip():
+        return jsonify({"error": "文本为空"})
+
+    try:
+        from config import OPENAI_API_KEY, OPENAI_BASE_URL
+        from openai import OpenAI
+        if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-xxx":
+            return jsonify({"error": "API Key 未配置"})
+
+        client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+
+        system_msg = (
+            "你是口播稿润色助手。将以下文字改写为适合语音朗读的口播稿。"
+            "默认要求：更口语化自然，像在跟朋友聊天，去掉书面化的长句和套话；"
+            "品牌名/产品名/数字/日期保留不变；长度与原文字数相当。"
+            "直接返回润色后文本，不要加任何前缀说明。"
+        )
+        user_msg = text
+        if instruction:
+            user_msg = f"【润色指令】{instruction}\n\n【原文】{text}"
+
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.7,
+            max_tokens=1500,
+        )
+        polished = resp.choices[0].message.content.strip() if resp.choices[0].message.content else ""
+        return jsonify({"polished": polished if polished else text})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+@app.route("/api/jianying-draft")
+def api_jianying_draft():
+    """生成/重新生成剪映草稿"""
+    segs = state.get("selected", [])
+    if not segs:
+        return jsonify({"success": False, "error": "尚未选择条目"})
+    md_name = Path(state["md_path"]).stem
+    _srt = str(TEMP_DIR / md_name / "subtitles.srt")
+    ok, msg = _generate_jianying_draft(segs, f"{md_name}_周刊", srt_path=_srt)
+    if ok:
+        state["_jy_draft_path"] = msg
+    return jsonify({"success": ok, "message": msg})
 
 
 @app.route("/api/download-video")
