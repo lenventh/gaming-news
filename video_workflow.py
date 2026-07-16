@@ -712,21 +712,40 @@ def _build_srt(segments: list[dict]) -> str:
         if timing:
             prev_end = seg_start_ms
             for sent_text, sent_start_ms, sent_end_ms in timing:
-                lines.append(str(seq))
                 start = seg_start_ms + sent_start_ms
                 end = seg_start_ms + sent_end_ms
-                # 防止与上一句重叠（edge-tts 断句可能有微小偏差）
                 if start < prev_end:
                     start = prev_end
                 if end <= start:
-                    end = start + 500  # 最小 0.5s
-                # 限制在段边界内
+                    end = start + 500
                 if end > seg_end_ms:
                     end = seg_end_ms
-                lines.append(f"{fmt(start)} --> {fmt(end)}")
-                lines.append(_clean_srt_text(sent_text))
-                lines.append("")
-                seq += 1
+
+                # 对长句进一步按标点拆分，分布时间
+                subs = _split_subs(sent_text)
+                if len(subs) <= 1:
+                    lines.append(str(seq))
+                    lines.append(f"{fmt(start)} --> {fmt(end)}")
+                    lines.append(_clean_srt_text(sent_text))
+                    lines.append("")
+                    seq += 1
+                else:
+                    total = sum(len(s) for s in subs)
+                    chunk_start = start
+                    chunk_dur = end - start
+                    for j, sub in enumerate(subs):
+                        prop = len(sub) / max(total, 1)
+                        chunk_end = int(chunk_start + chunk_dur * prop)
+                        if j == len(subs) - 1:
+                            chunk_end = end
+                        if chunk_end <= chunk_start:
+                            chunk_end = chunk_start + 500
+                        lines.append(str(seq))
+                        lines.append(f"{fmt(int(chunk_start))} --> {fmt(chunk_end)}")
+                        lines.append(_clean_srt_text(sub))
+                        lines.append("")
+                        seq += 1
+                        chunk_start = chunk_end
                 prev_end = end
         else:
             # 回退：按字数比例估算
