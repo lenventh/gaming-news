@@ -614,10 +614,17 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
                 sub.feed(chunk)
 
         cues = []
+        prev_end = 0
         for cue in sub.cues:
             start_ms = int(cue.start.total_seconds() * 1000)
             end_ms = int(cue.end.total_seconds() * 1000)
+            # edge-tts SentenceBoundary 偶尔产生 50ms 重叠，消除之
+            if start_ms < prev_end:
+                start_ms = prev_end
+            if end_ms <= start_ms:
+                end_ms = start_ms + 500
             cues.append((cue.content, start_ms, end_ms))
+            prev_end = end_ms
         return cues, bytes(audio_data)
 
     last_error = None
