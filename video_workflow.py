@@ -547,21 +547,31 @@ def _default_bg() -> str:
 
 
 def _generate_tts(text: str, out_path: Path) -> bool:
-    if out_path.exists():
+    if out_path.exists() and out_path.stat().st_size > 1024:
         return True
+    # 清理可能损坏的文件
+    if out_path.exists():
+        out_path.unlink()
     try:
         import edge_tts
         async def run():
             comm = edge_tts.Communicate(text, VOICE, rate=TTS_RATE)
-            await comm.save(str(out_path))
+            await asyncio.wait_for(comm.save(str(out_path)), timeout=120)
         asyncio.run(run())
-        return out_path.exists()
+        return out_path.exists() and out_path.stat().st_size > 1024
+    except asyncio.TimeoutError:
+        console.log(f"[red]TTS超时(120s)[/red]")
+        if out_path.exists():
+            out_path.unlink()
+        return False
     except Exception as e:
         console.log(f"[red]TTS失败: {e}[/red]")
+        if out_path.exists():
+            out_path.unlink()
         return False
 
 
-def _generate_tts_with_timing(text: str, out_path: Path) -> list[tuple[str, int, int]]:
+def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -> list[tuple[str, int, int]]:
     """整段生成 TTS + 用 SentenceBoundary 获取自然断句时间戳
 
     edge-tts v7.2+ 默认发送 SentenceBoundary 事件，标记 TTS 引擎
@@ -573,37 +583,84 @@ def _generate_tts_with_timing(text: str, out_path: Path) -> list[tuple[str, int,
     timing_path = Path(str(out_path).replace(".mp3", "_timing.json"))
     if out_path.exists() and timing_path.exists():
         import json as _json
-        with open(timing_path, "r", encoding="utf-8") as f:
-            return [tuple(t) for t in _json.load(f)]
+        if out_path.stat().st_size > 1024:  # 必须大于 1KB，排除损坏文件
+            with open(timing_path, "r", encoding="utf-8") as f:
+                return [tuple(t) for t in _json.load(f)]
+        else:
+            # 文件损坏，清理后重来
+            out_path.unlink()
+            timing_path.unlink()
 
     import edge_tts, json as _json
+    TTS_TIMEOUT = 120  # 单段总超时（秒）
 
-    async def run():
+    async def _stream_to_list(comm) -> list[dict]:
+        """收集所有 chunk 到列表，外层用 wait_for 设总超时"""
+        chunks = []
+        async for chunk in comm.stream():
+            chunks.append(chunk)
+        return chunks
+
+    async def _tts_with_timeout(text: str) -> tuple[list[tuple], bytes]:
         comm = edge_tts.Communicate(text, VOICE, rate=TTS_RATE)
+        chunks = await asyncio.wait_for(_stream_to_list(comm), timeout=TTS_TIMEOUT)
+
         sub = edge_tts.SubMaker()
+        audio_data = bytearray()
+        for chunk in chunks:
+            if chunk["type"] == "audio":
+                audio_data.extend(chunk["data"])
+            elif chunk["type"] == "SentenceBoundary":
+                sub.feed(chunk)
 
-        with open(out_path, "wb") as af:
-            async for chunk in comm.stream():
-                if chunk["type"] == "audio":
-                    af.write(chunk["data"])
-                elif chunk["type"] == "SentenceBoundary":
-                    sub.feed(chunk)
-
-        # 把 SentenceBoundary cues 转为 (text, start_ms, end_ms)
         cues = []
         for cue in sub.cues:
             start_ms = int(cue.start.total_seconds() * 1000)
             end_ms = int(cue.end.total_seconds() * 1000)
             cues.append((cue.content, start_ms, end_ms))
-        return cues
+        return cues, bytes(audio_data)
 
-    cues = asyncio.run(run())
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            cues, audio_data = asyncio.run(_tts_with_timeout(text))
 
-    # 缓存时间戳，避免重复生成
-    with open(timing_path, "w", encoding="utf-8") as f:
-        _json.dump(cues, f, ensure_ascii=False)
+            if len(audio_data) < 1024:
+                raise RuntimeError("TTS 音频数据不足 1KB")
 
-    return cues
+            out_path.write_bytes(audio_data)
+            with open(timing_path, "w", encoding="utf-8") as f:
+                _json.dump(cues, f, ensure_ascii=False)
+            return cues
+
+        except asyncio.TimeoutError:
+            last_error = f"超时({TTS_TIMEOUT}s)"
+        except Exception as e:
+            last_error = str(e)
+
+        # 清理不完整文件
+        for p in (out_path, timing_path):
+            try:
+                if p.exists():
+                    p.unlink()
+            except Exception:
+                pass
+
+        if attempt < max_retries:
+            import time as _time
+            console.log(f"[yellow]TTS 第{attempt}次失败({last_error})，{(max_retries-attempt)}秒后重试...[/yellow]")
+            _time.sleep(2 * attempt)
+
+    # 3 次重试都失败 → 回退到基础 TTS（整段，无精确断句时间戳）
+    # 返回空列表而非 [(全文, 0, dur)]，让 _build_srt() 走 _split_subs() 逐句拆分
+    console.log(f"[red]TTS 3次重试均失败({last_error})，回退到基础模式[/red]")
+    if _generate_tts(text, out_path):
+        # 缓存空时间戳，避免未来重复尝试 TTS
+        with open(timing_path, "w", encoding="utf-8") as f:
+            import json as _json
+            _json.dump([], f)
+        return []
+    return []
 
 
 def _get_audio_dur(path: Path) -> float:
@@ -618,8 +675,8 @@ def _get_audio_dur(path: Path) -> float:
 
 
 def _clean_srt_text(text: str) -> str:
-    """清理字幕文本：去掉末尾多余标点（句号、分号、逗号），保留问号感叹号"""
-    # 去掉末尾的 。；，,; （但保留中间的）
+    """清理字幕文本：去回车、去末尾多余标点"""
+    text = text.replace("\r", "").replace("\n", "")
     while text and text[-1] in "。；，,;":
         text = text[:-1]
     return text.strip()
@@ -647,31 +704,44 @@ def _build_srt(segments: list[dict]) -> str:
             x = ms % 1000
             return f"{h:02d}:{m:02d}:{s:02d},{x:03d}"
 
+        seg_start_ms = int(t * 1000)
+        seg_end_ms = int((t + dur) * 1000)
+
         # 优先用 edge-tts SentenceBoundary 精确时间戳
         timing = seg.get("_timing")
         if timing:
+            prev_end = seg_start_ms
             for sent_text, sent_start_ms, sent_end_ms in timing:
                 lines.append(str(seq))
-                start = int(t * 1000) + sent_start_ms
-                end = int(t * 1000) + sent_end_ms
+                start = seg_start_ms + sent_start_ms
+                end = seg_start_ms + sent_end_ms
+                # 防止与上一句重叠（edge-tts 断句可能有微小偏差）
+                if start < prev_end:
+                    start = prev_end
+                if end <= start:
+                    end = start + 500  # 最小 0.5s
+                # 限制在段边界内
+                if end > seg_end_ms:
+                    end = seg_end_ms
                 lines.append(f"{fmt(start)} --> {fmt(end)}")
                 lines.append(_clean_srt_text(sent_text))
                 lines.append("")
                 seq += 1
+                prev_end = end
         else:
             # 回退：按字数比例估算
             sentences = _split_subs(seg["speak_text"])
-            start_ms = int(t * 1000)
-            end_ms = int((t + dur) * 1000)
-            seg_dur_ms = end_ms - start_ms
+            seg_dur_ms = seg_end_ms - seg_start_ms
             total_chars = sum(len(s) for s in sentences)
-            sent_start = start_ms
+            sent_start = seg_start_ms
             for i, sent in enumerate(sentences):
                 proportion = len(sent) / max(total_chars, 1)
                 sent_dur = seg_dur_ms * proportion
                 sent_end = int(sent_start + sent_dur)
                 if i == len(sentences) - 1:
-                    sent_end = end_ms
+                    sent_end = seg_end_ms
+                if sent_end <= sent_start:
+                    sent_end = sent_start + 500
                 lines.append(str(seq))
                 lines.append(f"{fmt(int(sent_start))} --> {fmt(sent_end)}")
                 lines.append(_clean_srt_text(sent))
@@ -833,21 +903,30 @@ def _find_best_split(cur: str) -> int:
 
 
 def _patch_draft_meta(draft_path: str, draft_name: str, duration_us: int) -> None:
-    """修补 pyJianYingDraft 生成的 draft_meta_info.json
+    """修补/创建 draft_meta_info.json
 
     pyJianYingDraft v0.3.0 复制硬编码模板，draft_name/draft_fold_path/draft_root_path
     均为空，draft_id 硬编码。剪映 10.2 需要这些字段正确才能识别草稿。
+    如果 meta 文件不存在，从 pyJianYingDraft 模板创建。
     """
+    import shutil as _shutil
+
     meta_path = os.path.join(draft_path, "draft_meta_info.json")
+
+    # 如果 meta 不存在，从 pyJianYingDraft 模板创建
     if not os.path.exists(meta_path):
-        return
+        tmpl = _draft.assets.get_asset_path("DRAFT_META_TEMPLATE")
+        if os.path.exists(tmpl):
+            _shutil.copy(tmpl, meta_path)
+        else:
+            return
 
     with open(meta_path, "r", encoding="utf-8") as f:
         meta = json.load(f)
 
     now_us = int(time.time() * 1_000_000)
     drive = draft_path[:2]  # e.g. "D:"
-    root = os.path.dirname(draft_path)  # e.g. "D:\\JianYing\\JianyingPro Drafts"
+    root = os.path.dirname(draft_path)  # e.g. "D:\\\\JianYing\\\\JianyingPro Drafts"
 
     meta["draft_name"] = draft_name
     meta["draft_fold_path"] = draft_path
@@ -899,6 +978,8 @@ def _generate_jianying_draft(segments: list[dict], draft_name: str,
     try:
         _draft_root = _JY_DRAFT_ROOT
         folder = _draft.DraftFolder(_draft_root)
+        draft_path = Path(_draft_root) / draft_name
+
         script = folder.create_draft(draft_name, 1920, 1080, fps=30, allow_replace=True)
 
         use_srt = bool(srt_path) and Path(srt_path).exists()
@@ -981,17 +1062,80 @@ def _generate_jianying_draft(segments: list[dict], draft_name: str,
         script.save()
 
         # 修补 pyJianYingDraft 硬编码模板导致的空字段
-        draft_path = str(Path(_draft_root) / draft_name)
+        draft_path_str = str(draft_path)
         total_duration_us = int(t * 1_000_000)  # 秒 → 微秒
-        _patch_draft_meta(draft_path, draft_name, total_duration_us)
+        _patch_draft_meta(draft_path_str, draft_name, total_duration_us)
 
-        console.print(f"[green]剪映草稿已生成: {draft_path}[/green]")
-        return True, draft_path
+        console.print(f"[green]剪映草稿已生成: {draft_path_str}[/green]")
+        return True, draft_path_str
 
     except Exception as e:
         msg = f"剪映草稿生成失败: {e}"
         console.print(f"[red]{msg}[/red]")
         return False, msg
+
+
+def _copy_draft_framework(folder: "_draft.DraftFolder", draft_name: str) -> None:
+    """为目标草稿创建完整的空框架目录结构
+
+    pyJianYingDraft 的 create_draft() 只创建 3 个文件，剪映需要更多框架文件/目录
+    才能正确渲染多段字幕。此函数从模板复制纯结构文件（不复制任何媒体内容），
+    并写入空的 material 引用文件以避免模板 ID 冲突。
+    """
+    import shutil as _shutil
+
+    _draft_root = _JY_DRAFT_ROOT
+    draft_path = Path(_draft_root) / draft_name
+
+    # 找一个框架完整的正常草稿作模板（优先选最近的）
+    all_drafts = folder.list_drafts()
+    template = None
+    candidates = []
+    for name in all_drafts:
+        if name.startswith("_") or name == draft_name:
+            continue
+        p = Path(_draft_root) / name
+        if (p / "draft_agency_config.json").exists():
+            candidates.append((p.stat().st_mtime, name))
+    if candidates:
+        candidates.sort(reverse=True)
+        template = candidates[0][1]
+
+    # 确保目标目录存在
+    draft_path.mkdir(parents=True, exist_ok=True)
+
+    # === 从模板复制的纯结构文件（不含素材引用）===
+    STRUCT_FILES = [
+        "draft_agency_config.json",
+        "draft_biz_config.json",
+        "performance_opt_info.json",
+        "attachment_pc_common.json",
+    ]
+    if template:
+        template_path = Path(_draft_root) / template
+        console.print(f"[dim]从模板草稿复制结构: {template}[/dim]")
+        for fname in STRUCT_FILES:
+            src = template_path / fname
+            if src.exists():
+                _shutil.copy2(str(src), str(draft_path / fname))
+    else:
+        console.print("[yellow]未找到模板草稿，使用最小结构[/yellow]")
+
+    # === 必须存在的空目录 ===
+    for dname in ["Resources", "Timelines", "adjust_mask", "common_attachment",
+                  "matting", "qr_upload", "smart_crop", "subdraft", ".backup",
+                  "aigc_material", "color_match"]:
+        (draft_path / dname).mkdir(exist_ok=True)
+
+    # === 写入最小空版本（不含任何模板 material ID 引用）===
+    (draft_path / "draft_virtual_store.json").write_text(
+        '{"draft_materials":[],"draft_virtual_store":[]}', encoding="utf-8")
+    (draft_path / "key_value.json").write_text("{}", encoding="utf-8")
+    (draft_path / "template-2.tmp").write_text("{}", encoding="utf-8")
+    (draft_path / "timeline_layout.json").write_text(
+        '{"dockItems":[],"layoutOrientation":1}', encoding="utf-8")
+
+    # draft_meta_info.json 和 draft_settings 由 _patch_draft_meta() 创建
 
 
 # ========== Flask 路由 ==========
@@ -1135,7 +1279,7 @@ def step3_page():
         # SRT
         srt_content = _build_srt(s)
         state["_srt_content"] = srt_content
-        (WORK_DIR / "subtitles.srt").write_text(srt_content, encoding="utf-8")
+        (WORK_DIR / "subtitles.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
 
         # ASS
         _build_ass(s, WORK_DIR / "subtitles.ass")
