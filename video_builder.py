@@ -82,7 +82,7 @@ def _translate_english_title(title: str) -> str:
 TEMP_DIR = Path(tempfile.gettempdir()) / "gaming_news_video"
 VOICE = "zh-CN-XiaoxiaoNeural"  # 微软晓晓，女声新闻风格
 # 备选男声: zh-CN-YunxiNeural
-IMAGE_CACHE_DIR = Path(__file__).parent.parent / "storage" / "video_cache"
+IMAGE_CACHE_DIR = Path(__file__).parent / "storage" / "video_cache"
 FPS = 24
 VIDEO_WIDTH = 1920
 VIDEO_HEIGHT = 1080
@@ -368,8 +368,6 @@ def _generate_ass_subtitles(segments: list[dict], ass_path: Path) -> Path:
             sent_start = sent_end
 
         current_time += duration
-        # 段间短暂停顿
-        current_time += 0.3
 
     ass_path.write_text("\n".join(lines), encoding="utf-8")
     return ass_path

@@ -55,7 +55,7 @@ except Exception as e:
 
 # ========== 配置 ==========
 TEMP_DIR = Path(tempfile.gettempdir()) / "gaming_news_workflow"
-VIDEO_CACHE = Path(__file__).parent.parent / "storage" / "video_cache"
+VIDEO_CACHE = Path(__file__).parent / "storage" / "video_cache"
 WORK_DIR = None
 VOICE = "zh-CN-XiaoxiaoNeural"
 TTS_RATE = "+10%"
@@ -151,6 +151,7 @@ STEP2_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Step 2/6 — 编辑口播脚本</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px}
@@ -158,27 +159,83 @@ h1{color:#e94560;margin-bottom:4px}
 .sub{color:#888;margin-bottom:20px}
 .card{background:#16213e;border-radius:10px;padding:20px;margin-bottom:20px}
 .card h3{color:#f0c040;margin-bottom:10px}
-.card .row{display:flex;gap:16px}
+.card .row{display:flex;gap:16px;align-items:flex-start}
 .card .left{flex:1}
 .card textarea{width:100%;background:#0f3460;color:#eee;border:1px solid #333;border-radius:6px;
   padding:10px;font-size:15px;resize:vertical;min-height:80px;line-height:1.6}
 .card label{display:block;color:#aaa;font-size:13px;margin:8px 0 4px}
-.card .img-preview{max-width:200px;max-height:112px;border-radius:6px;object-fit:cover}
+.card .img-section{width:220px;flex-shrink:0;text-align:center}
+.card .img-preview{width:200px;height:112px;border-radius:6px;object-fit:cover;background:#0f3460;cursor:pointer;border:2px dashed #333}
+.card .img-preview:hover{border-color:#e94560}
+.card .img-preview.placeholder{display:flex;align-items:center;justify-content:center;color:#666;font-size:13px}
 .card .img-url{width:100%;background:#0f3460;color:#ccc;border:1px solid #333;border-radius:4px;padding:6px;font-size:12px}
-.btn-bar{position:sticky;bottom:0;background:#1a1a2e;padding:16px 0;border-top:2px solid #e94560}
+.card .img-btns{display:flex;gap:6px;margin-top:6px}
+.btn-upload{background:#0f3460;color:#ccc;border:1px solid #555;padding:4px 10px;font-size:12px;border-radius:4px;cursor:pointer;flex:1}
+.btn-upload:hover{background:#1a4a7a;color:#fff}
+.btn-bar{position:sticky;bottom:0;background:#1a1a2e;padding:16px 0;border-top:2px solid #e94560;margin-top:20px}
 .btn{background:#e94560;color:#fff;border:none;padding:12px 32px;font-size:18px;border-radius:8px;cursor:pointer}
 .btn:hover{background:#ff6b81}
 .btn-polish{background:#f0c040;color:#1a1a2e;border:none;padding:2px 10px;font-size:12px;border-radius:4px;cursor:pointer;margin-left:8px}
 .btn-polish:hover{background:#ffe066}
 .btn-polish:disabled{opacity:0.5;cursor:wait}
 .polish-status{font-size:12px;color:#5f5;margin-left:6px}
+/* Cropper modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal-box{background:#1a1a2e;border-radius:12px;padding:20px;max-width:90vw;max-height:90vh;display:flex;flex-direction:column}
+.modal-box h3{color:#f0c040;margin-bottom:12px}
+.cropper-container{max-width:80vw;max-height:60vh}
+.crop-controls{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.crop-controls label{color:#aaa;font-size:13px;margin:0}
+.crop-controls input[type=range]{width:120px}
+.crop-controls button{background:#0f3460;color:#eee;border:1px solid #555;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:13px}
+.crop-controls button:hover{background:#1a4a7a}
+.crop-controls .btn-save{background:#e94560;border-color:#e94560}
+.crop-controls .btn-save:hover{background:#ff6b81}
+.ratio-btn{background:#0f3460;color:#ccc;border:1px solid #555;padding:4px 10px;font-size:12px;border-radius:4px;cursor:pointer}
+.ratio-btn:hover{background:#1a4a7a;color:#fff}
+.ratio-btn.active{background:#e94560;color:#fff;border-color:#e94560}
+#cropImage{max-width:80vw;max-height:55vh}
 </style>
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 2/6</h1>
-<p class="sub">编辑每条的口播脚本（TTS会逐字朗读此内容）。点击"AI润色"自动改写得更适合口播。修改完点击"生成音频"</p>
+<p class="sub">编辑口播脚本 + 上传/裁剪配图。点击图片区域上传，支持裁剪/缩放/旋转。修改完点击"生成音频"</p>
+
+<!-- 隐藏的文件选择器 -->
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<!-- Cropper 弹窗 -->
+<div class="modal-overlay" id="cropperModal">
+  <div class="modal-box">
+    <h3>编辑图片 — 段 #<span id="cropSegLabel"></span></h3>
+    <div><img id="cropImage" src="" alt=""></div>
+    <div class="crop-controls" style="align-items:center">
+      <label>缩放</label>
+      <input type="range" id="zoomSlider" min="1" max="300" value="100" style="width:80px">
+      <button onclick="rotateCrop(-90)" title="逆时针旋转90°">↺</button>
+      <button onclick="rotateCrop(90)" title="顺时针旋转90°">↻</button>
+      <button onclick="flipCrop('h')" title="水平翻转">↔</button>
+      <button onclick="flipCrop('v')" title="垂直翻转">↕</button>
+      <span style="color:#666;margin:0 4px">|</span>
+      <label>比例</label>
+      <button class="ratio-btn" data-ratio="16/9" onclick="setRatio('16/9', this)" style="background:#e94560;color:#fff">16:9</button>
+      <button class="ratio-btn" data-ratio="4/3" onclick="setRatio('4/3', this)">4:3</button>
+      <button class="ratio-btn" data-ratio="1/1" onclick="setRatio('1/1', this)">1:1</button>
+      <button class="ratio-btn" data-ratio="3/2" onclick="setRatio('3/2', this)">3:2</button>
+      <button class="ratio-btn" data-ratio="NaN" onclick="setRatio('free', this)">自由</button>
+      <span style="flex:1"></span>
+      <button onclick="resetCrop()">重置</button>
+      <button onclick="closeCropper()">取消</button>
+      <button class="btn-save" onclick="saveCrop()">保存图片</button>
+    </div>
+  </div>
+</div>
+
 <form method="POST" action="/step3">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
 <script>
+// ===== AI 润色 =====
 async function polish(idx, btn) {
   const ta = document.getElementById('script_' + idx);
   const instr = document.getElementById('instr_' + idx);
@@ -192,19 +249,148 @@ async function polish(idx, btn) {
       body: JSON.stringify({text: ta.value, instruction: instr.value.trim()})
     });
     const data = await r.json();
-    if (data.polished) {
-      ta.value = data.polished;
-      status.textContent = '完成!';
-    } else {
-      status.textContent = '失败: ' + (data.error || '未知');
-    }
-  } catch(e) {
-    status.textContent = '网络错误';
-  }
+    if (data.polished) { ta.value = data.polished; status.textContent = '完成!'; }
+    else { status.textContent = '失败: ' + (data.error || '未知'); }
+  } catch(e) { status.textContent = '网络错误'; }
   btn.disabled = false;
   setTimeout(() => status.textContent = '', 3000);
 }
+
+// ===== 图片上传 & 裁剪 =====
+let cropper = null, currentCropIdx = -1;
+
+function triggerUpload(idx) {
+  currentCropIdx = idx;
+  document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  fetch('/api/upload-image', {method:'POST', body:formData})
+    .then(r => r.json())
+    .then(data => {
+      if (data.url) { openCropper(data.url); }
+      else { alert('上传失败: ' + (data.error || '未知错误')); }
+    })
+    .catch(e => alert('上传失败: ' + e));
+  this.value = '';
+});
+
+function openCropper(imgUrl) {
+  document.getElementById('cropSegLabel').textContent = currentCropIdx;
+  const modal = document.getElementById('cropperModal');
+  const img = document.getElementById('cropImage');
+  img.src = imgUrl;
+  modal.classList.add('active');
+  if (cropper) cropper.destroy();
+  img.onload = function() {
+    cropper = new Cropper(img, {
+      aspectRatio: 16/9,
+      viewMode: 2,
+      autoCropArea: 1,
+      responsive: true,
+      zoomable: true,
+      rotatable: true,
+      scalable: true,
+      zoomOnWheel: true,
+    });
+    document.getElementById('zoomSlider').value = 100;
+  };
+}
+
+function rotateCrop(deg) {
+  if (!cropper) return;
+  const current = cropper.getData().rotate || 0;
+  cropper.rotateTo(current + deg);
+}
+
+function flipCrop(direction) {
+  if (!cropper) return;
+  const data = cropper.getData();
+  if (direction === 'h') data.scaleX = -(data.scaleX || 1);
+  else data.scaleY = -(data.scaleY || 1);
+  cropper.setData(data);
+}
+
+function setRatio(ratio, btn) {
+  if (!cropper) return;
+  cropper.setAspectRatio(ratio === 'free' ? NaN : eval(ratio));
+  document.querySelectorAll('.ratio-btn').forEach(b => {
+    b.style.background = ''; b.style.color = '';
+  });
+  btn.style.background = '#e94560'; btn.style.color = '#fff';
+}
+
+function resetCrop() {
+  if (!cropper) return;
+  cropper.reset();
+  document.getElementById('zoomSlider').value = 100;
+}
+
+document.getElementById('zoomSlider').addEventListener('input', function() {
+  if (cropper) cropper.zoomTo(parseInt(this.value) / 100);
+});
+
+function closeCropper() {
+  document.getElementById('cropperModal').classList.remove('active');
+  if (cropper) { cropper.destroy(); cropper = null; }
+}
+
+function saveCrop() {
+  if (!cropper) return;
+  const canvas = cropper.getCroppedCanvas({maxWidth:1920, maxHeight:1080});
+  if (!canvas) { alert('裁剪失败'); return; }
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  fetch('/api/save-image/' + currentCropIdx, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({image: dataUrl})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      let preview = document.getElementById('preview_' + currentCropIdx);
+      if (preview) {
+        const newUrl = data.url + '?t=' + Date.now();
+        if (preview.tagName === 'DIV') {
+          // 替换占位 DIV 为 IMG
+          const img = document.createElement('img');
+          img.className = 'img-preview';
+          img.id = 'preview_' + currentCropIdx;
+          img.src = newUrl;
+          img.onclick = function() { triggerUpload(currentCropIdx); };
+          img.title = '点击上传/更换图片';
+          img.onerror = function() { this.style.display='none'; this.nextElementSibling.style.display='flex'; };
+          // 插入隐藏的占位 DIV 供 onerror 切换
+          const fallback = document.createElement('div');
+          fallback.className = 'img-preview placeholder';
+          fallback.style.display = 'none';
+          fallback.onclick = function() { triggerUpload(currentCropIdx); };
+          fallback.textContent = '点击上传图片';
+          preview.replaceWith(img);
+          img.after(fallback);
+        } else {
+          preview.src = newUrl;
+          preview.style.display = '';
+          const fb = preview.nextElementSibling;
+          if (fb && fb.classList.contains('placeholder')) fb.style.display = 'none';
+        }
+        // 清除 URL 输入框，让后续流程优先使用裁剪后的本地文件
+        const urlInput = document.querySelector('input[name="img_' + currentCropIdx + '"]');
+        if (urlInput) urlInput.value = '';
+      }
+      closeCropper();
+    } else {
+      alert('保存失败: ' + (data.error || '未知'));
+    }
+  })
+  .catch(e => alert('保存失败: ' + e));
+}
 </script>
+
 {% for seg in selected %}
 <div class="card">
   <h3>#{{ loop.index }} {{ seg.display_title[:60] }}</h3>
@@ -221,13 +407,27 @@ async function polish(idx, btn) {
       <label>图片URL（可直接替换）</label>
       <input class="img-url" name="img_{{ seg._idx }}" value="{{ seg.image_url }}">
     </div>
-    {% if seg.image_url %}
-    <img class="img-preview" src="{{ seg.image_url }}" onerror="this.style.display='none'">
-    {% endif %}
+    <div class="img-section">
+      {% set has_img = seg.image_url or seg.get('_display_img', '') %}
+      {% set img_src = seg.image_url or seg.get('_display_img', '') %}
+      {% if has_img %}
+      <img class="img-preview" id="preview_{{ seg._idx }}" src="{{ img_src }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" onclick="triggerUpload({{ seg._idx }})" title="点击上传/更换图片">
+      <div class="img-preview placeholder" style="display:none" onclick="triggerUpload({{ seg._idx }})" title="点击上传图片">点击上传图片</div>
+      {% else %}
+      <div class="img-preview placeholder" id="preview_{{ seg._idx }}" onclick="triggerUpload({{ seg._idx }})" title="点击上传图片">点击上传图片</div>
+      {% endif %}
+      <div class="img-btns">
+        <button type="button" class="btn-upload" onclick="triggerUpload({{ seg._idx }})">📷 上传图片</button>
+        {% if has_img %}
+        <button type="button" class="btn-upload" onclick="var p=document.getElementById('preview_{{ seg._idx }}'); if(p.tagName==='DIV'){p.style.display='none';p.previousElementSibling.style.display='';p.previousElementSibling.src='{{ img_src }}'}else{p.src='{{ img_src }}'}" title="恢复原始图片">↩</button>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 {% endfor %}
 <div class="btn-bar">
+  <button class="btn" type="button" onclick="history.back()" style="background:#0f3460">↩ 返回选择条目</button>
   <button class="btn" type="submit">下一步 → 生成音频</button>
 </div>
 </form>
@@ -305,18 +505,19 @@ h1{color:#e94560;margin-bottom:4px}
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 4/6</h1>
-<p class="sub">编辑 SRT 字幕。可以直接改文字、调时间。修改后点击"生成SRT文件"或直接"烧录字幕"</p>
+<p class="sub">编辑 SRT 字幕。可以直接改文字、调时间。修改后点击下方按钮保存并查看剪映草稿</p>
 <form method="POST" action="/step5">
 <textarea class="srt-edit" name="srt_content">{{ srt_content }}</textarea>
 <div class="btn-bar">
-  <button class="btn btn-green" type="submit" name="action" value="compose">下一步 → 合成最终视频</button>
+  <button class="btn" type="button" onclick="location.href='/step2'" style="background:#0f3460">↩ 返回编辑脚本/图片</button>
+  <button class="btn btn-green" type="submit" name="action" value="compose">下一步 → 查看剪映草稿</button>
   <button class="btn" type="submit" name="action" value="download">仅下载 SRT 字幕文件</button>
 </div>
 </form>
 <p class="help">
   字幕格式说明：<br>
   1) 数字序号  2) 时间范围 (HH:MM:SS,mmm --> HH:MM:SS,mmm)  3) 字幕文字<br>
-  可以直接修改时序和文字，保存后重新合成视频。
+  修改字幕文本和时间后，可以在下一步重新生成剪映草稿。
 </p>
 </body>
 </html>"""
@@ -326,7 +527,7 @@ STEP5_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Step 5/6 — 最终合成</title>
+<title>Step 5/6 — 剪映草稿</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px;text-align:center}
@@ -338,22 +539,23 @@ h1{color:#e94560;margin-bottom:10px}
 .btn-jy{background:#f0c040;color:#1a1a2e}
 .info{margin:20px;color:#888;font-size:14px}
 .jy-status{margin-top:12px;font-size:14px;color:#5f5}
+.path-box{background:#0f3460;padding:16px 24px;border-radius:8px;margin:16px auto;max-width:600px;font-family:Consolas,monospace;font-size:13px;word-break:break-all;text-align:left}
 </style>
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 5/6</h1>
-<div class="status {{ 'success' if success else '' }}">
-  {{ status_text }}
+<div class="status success">
+  剪映草稿已就绪！请在剪映中打开编辑和导出
 </div>
-<div class="info">{{ info_text }}</div>
-{% if success %}
-<button class="btn" onclick="location.href='/api/download-video'">💾 下载最终视频 (MP4)</button>
-<button class="btn btn-jy" onclick="generateJYDraft()">🎞 生成/更新剪映草稿</button>
-<span id="jy_result" class="jy-status"></span>
-<button class="btn" onclick="location.href='/'">🔄 重新开始</button>
-{% else %}
-<button class="btn" onclick="location.href='/step4'">↩ 返回编辑字幕</button>
+{% if draft_path %}
+<div class="info">草稿路径</div>
+<div class="path-box">{{ draft_path }}</div>
 {% endif %}
+<div class="info">工作目录: {{ work_dir }}</div>
+<button class="btn btn-jy" onclick="generateJYDraft()">🎞 重新生成剪映草稿</button>
+<span id="jy_result" class="jy-status"></span>
+<button class="btn" onclick="location.href='/step4'">↩ 返回编辑字幕</button>
+<button class="btn" onclick="location.href='/'">🔄 重新开始</button>
 
 <script>
 async function generateJYDraft() {
@@ -367,7 +569,7 @@ async function generateJYDraft() {
     const data = await r.json();
     if (data.success) {
       btn.textContent = '✅ 已生成';
-      result.textContent = '草稿路径: ' + data.message + ' — 请在剪映中打开';
+      result.textContent = '草稿路径: ' + data.message;
     } else {
       btn.textContent = '失败';
       result.textContent = '错误: ' + (data.message || data.error);
@@ -571,6 +773,44 @@ def _generate_tts(text: str, out_path: Path) -> bool:
         return False
 
 
+def _sentence_tts_fallback(text: str, out_path: Path) -> None:
+    """逐句生成 TTS 后用 ffmpeg 拼接 — 整段 TTS 失败时的最后兜底"""
+    sentences = _split_subs(text)
+    if not sentences:
+        return
+
+    tmp_dir = out_path.parent / f"_sent_{out_path.stem}"
+    tmp_dir.mkdir(exist_ok=True)
+    sent_files = []
+    for j, sent in enumerate(sentences):
+        sp = tmp_dir / f"s{j:03d}.mp3"
+        if _generate_tts(sent, sp):
+            sent_files.append(sp)
+        if j < len(sentences) - 1:
+            time.sleep(3)  # 句间延迟，防限流
+
+    if not sent_files:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return
+
+    if len(sent_files) == 1:
+        shutil.copy(sent_files[0], out_path)
+    else:
+        concat_list = tmp_dir / "concat.txt"
+        with open(concat_list, "w", encoding="utf-8") as f:
+            for sf in sent_files:
+                f.write(f"file '{sf.as_posix()}'\n")
+        try:
+            subprocess.run([
+                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                "-i", str(concat_list), "-c", "copy", str(out_path),
+            ], capture_output=True, check=True, timeout=60)
+        except Exception as e:
+            console.log(f"[red]逐句TTS拼接失败: {e}[/red]")
+
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -> list[tuple[str, int, int]]:
     """整段生成 TTS + 用 SentenceBoundary 获取自然断句时间戳
 
@@ -655,14 +895,22 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
 
         if attempt < max_retries:
             import time as _time
-            console.log(f"[yellow]TTS 第{attempt}次失败({last_error})，{(max_retries-attempt)}秒后重试...[/yellow]")
-            _time.sleep(2 * attempt)
+            wait = 5 * attempt  # 连接错误时用更长的退避
+            console.log(f"[yellow]TTS 第{attempt}次失败({last_error})，{wait}秒后重试...[/yellow]")
+            _time.sleep(wait)
 
     # 3 次重试都失败 → 回退到基础 TTS（整段，无精确断句时间戳）
-    # 返回空列表而非 [(全文, 0, dur)]，让 _build_srt() 走 _split_subs() 逐句拆分
     console.log(f"[red]TTS 3次重试均失败({last_error})，回退到基础模式[/red]")
     if _generate_tts(text, out_path):
-        # 缓存空时间戳，避免未来重复尝试 TTS
+        with open(timing_path, "w", encoding="utf-8") as f:
+            import json as _json
+            _json.dump([], f)
+        return []
+
+    # 基础 TTS 也失败 → 逐句 TTS + ffmpeg 拼接（最后兜底）
+    console.log(f"[yellow]整段TTS失败，回退到逐句模式 (共{len(_split_subs(text))}句)[/yellow]")
+    _sentence_tts_fallback(text, out_path)
+    if out_path.exists() and out_path.stat().st_size > 1024:
         with open(timing_path, "w", encoding="utf-8") as f:
             import json as _json
             _json.dump([], f)
@@ -717,43 +965,32 @@ def _build_srt(segments: list[dict]) -> str:
         # 优先用 edge-tts SentenceBoundary 精确时间戳
         timing = seg.get("_timing")
         if timing:
-            prev_end = seg_start_ms
-            for sent_text, sent_start_ms, sent_end_ms in timing:
-                start = seg_start_ms + sent_start_ms
-                end = seg_start_ms + sent_end_ms
-                if start < prev_end:
-                    start = prev_end
-                if end <= start:
+            # 拼接全部 timing 文本，用 _split_subs 语义分句，再按字符位置映射时间
+            full_text = "".join(t[0] for t in timing)
+            subs = _split_subs(full_text)
+            # 构建字符位置→毫秒映射
+            cp = 0  # 当前字符位置
+            ti = 0  # timing 索引
+            ti_cp = 0  # timing 块内偏移
+            for sub in subs:
+                sub_start_cp = cp
+                sub_end_cp = cp + len(sub)
+                # 查 sub_start_cp 落在哪个 timing 块
+                s_ti, s_ti_cp, _ = _find_timing_pos(timing, sub_start_cp)
+                # 查 sub_end_cp 落在哪个 timing 块
+                e_ti, e_ti_cp, _ = _find_timing_pos(timing, sub_end_cp)
+                start = seg_start_ms + timing[s_ti][1] + int((timing[s_ti][2] - timing[s_ti][1]) * (s_ti_cp / max(len(timing[s_ti][0]), 1)))
+                end = seg_start_ms + timing[e_ti][1] + int((timing[e_ti][2] - timing[e_ti][1]) * (e_ti_cp / max(len(timing[e_ti][0]), 1)))
+                start = max(start, seg_start_ms)
+                end = min(end, seg_end_ms)
+                if start >= end:
                     end = start + 500
-                if end > seg_end_ms:
-                    end = seg_end_ms
-
-                # 对长句进一步按标点拆分，分布时间
-                subs = _split_subs(sent_text)
-                if len(subs) <= 1:
-                    lines.append(str(seq))
-                    lines.append(f"{fmt(start)} --> {fmt(end)}")
-                    lines.append(_clean_srt_text(sent_text))
-                    lines.append("")
-                    seq += 1
-                else:
-                    total = sum(len(s) for s in subs)
-                    chunk_start = start
-                    chunk_dur = end - start
-                    for j, sub in enumerate(subs):
-                        prop = len(sub) / max(total, 1)
-                        chunk_end = int(chunk_start + chunk_dur * prop)
-                        if j == len(subs) - 1:
-                            chunk_end = end
-                        if chunk_end <= chunk_start:
-                            chunk_end = chunk_start + 500
-                        lines.append(str(seq))
-                        lines.append(f"{fmt(int(chunk_start))} --> {fmt(chunk_end)}")
-                        lines.append(_clean_srt_text(sub))
-                        lines.append("")
-                        seq += 1
-                        chunk_start = chunk_end
-                prev_end = end
+                lines.append(str(seq))
+                lines.append(f"{fmt(int(start))} --> {fmt(int(end))}")
+                lines.append(_clean_srt_text(sub))
+                lines.append("")
+                seq += 1
+                cp = sub_end_cp
         else:
             # 回退：按字数比例估算
             sentences = _split_subs(seg["speak_text"])
@@ -775,7 +1012,7 @@ def _build_srt(segments: list[dict]) -> str:
                 seq += 1
                 sent_start = sent_end
 
-        t += dur + 0.3
+        t += dur
 
     return "\n".join(lines)
 
@@ -833,7 +1070,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
             sent_start = sent_end
 
-        t += dur + 0.3
+        t += dur
 
     ass_path.write_text("\n".join(lines), encoding="utf-8")
     return ass_path
@@ -842,6 +1079,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 def _is_cjk(ch: str) -> bool:
     """判断是否为 CJK 字符（中日韩统一表意文字）"""
     return '一' <= ch <= '鿿' or '㐀' <= ch <= '䶿'
+
+
+def _find_timing_pos(timing: list, char_pos: int) -> tuple[int, int, tuple]:
+    """在 timing 块列表中查找字符位置 char_pos 所属的块
+
+    返回 (timing_index, offset_within_chunk, (text, start_ms, end_ms))
+    """
+    cp = 0
+    for i, (text, s_ms, e_ms) in enumerate(timing):
+        if cp + len(text) >= char_pos or i == len(timing) - 1:
+            return i, char_pos - cp, (text, s_ms, e_ms)
+        cp += len(text)
+    # fallback: 最后一个块
+    last = timing[-1]
+    return len(timing) - 1, len(last[0]), last
 
 
 def _split_subs(text: str, max_chars: int = 28) -> list[str]:
@@ -1031,17 +1283,18 @@ def _generate_jianying_draft(segments: list[dict], draft_name: str,
             start_s = t
             end_s = t + dur
             seg_dur = end_s - start_s
-            start_str = f"{start_s:.1f}s"
+            start_str = f"{start_s:.3f}s"
             dur_str = f"{seg_dur:.3f}s"
 
-            # 视频轨道：背景图
+            # 视频轨道：有图用图，没图用默认占位背景（防止剪映磁吸导致错位）
             bg = seg.get("bg_path", "")
-            if bg and Path(bg).exists():
-                try:
-                    vid = _draft.VideoSegment(bg, _draft.trange(start_str, dur_str))
-                    script.add_segment(vid, "main")
-                except Exception:
-                    pass
+            if not bg or not Path(bg).exists():
+                bg = _default_bg()
+            try:
+                vid = _draft.VideoSegment(bg, _draft.trange(start_str, dur_str))
+                script.add_segment(vid, "main")
+            except Exception:
+                pass
 
             # 音频轨道：TTS 语音
             if ap.exists():
@@ -1071,7 +1324,7 @@ def _generate_jianying_draft(segments: list[dict], draft_name: str,
                     except Exception:
                         pass
 
-            t += dur + 0.3
+            t += dur
             added += 1
 
         # 用 SRT 导入逐句字幕（替代整段贴入的文字）
@@ -1169,6 +1422,12 @@ def _copy_draft_framework(folder: "_draft.DraftFolder", draft_name: str) -> None
 @app.route("/")
 def step1():
     """选择条目"""
+    # 清理上次工作流的临时文件（裁剪图等），避免旧数据污染新流程
+    if WORK_DIR and WORK_DIR.exists():
+        for f in WORK_DIR.glob("bg_*.jpg"):
+            f.unlink(missing_ok=True)
+        for f in WORK_DIR.glob("crop_*.png"):
+            f.unlink(missing_ok=True)
     md_path = state["md_path"]
     md_text = Path(md_path).read_text(encoding="utf-8")
     segments = parse_weekly(md_text)
@@ -1185,13 +1444,23 @@ def step1():
     )
 
 
-@app.route("/step2", methods=["POST"])
+@app.route("/step2", methods=["GET", "POST"])
 def step2():
-    """编辑脚本"""
-    idxs = request.form.getlist("idx")
-    selected_idx = set(int(i) for i in idxs)
-    selected = [s for s in state["segments"] if s["_idx"] in selected_idx]
-    state["selected"] = selected
+    """编辑脚本 — POST 选择条目 / GET 返回重新编辑"""
+    if request.method == "POST":
+        idxs = request.form.getlist("idx")
+        selected_idx = set(int(i) for i in idxs)
+        selected = [s for s in state["segments"] if s["_idx"] in selected_idx]
+        state["selected"] = selected
+    else:
+        selected = state.get("selected", [])
+        # 仅返回重编时补上上次裁剪的图片预览（首次 POST 进入不查，避免旧数据污染）
+        if WORK_DIR:
+            for seg in selected:
+                if not seg.get("image_url"):
+                    cropped = WORK_DIR / f"bg_{seg['_idx']:03d}.jpg"
+                    if cropped.exists():
+                        seg["_display_img"] = f"/api/bg/bg_{seg['_idx']:03d}.jpg?t={int(cropped.stat().st_mtime)}"
     return render_template_string(STEP2_TEMPLATE, selected=selected)
 
 
@@ -1215,7 +1484,6 @@ def step3_page():
         "steps": [
             {"status": "waiting", "text": "准备图片...", "detail": ""},
             {"status": "waiting", "text": "生成 TTS 配音...", "detail": ""},
-            {"status": "waiting", "text": "合成视频片段...", "detail": ""},
             {"status": "waiting", "text": "生成字幕文件...", "detail": ""},
             {"status": "waiting", "text": "生成剪映草稿...", "detail": ""},
         ],
@@ -1227,107 +1495,97 @@ def step3_page():
         s = state["selected"]
         WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-        # 1) 图片
+        # 1) 图片 — URL 优先，Step 2 裁剪的 bg_{idx}.jpg 作兜底
         p["steps"][0]["status"] = "running"
-        p["steps"][0]["text"] = f"下载并处理 {len(s)} 张图片..."
+        p["steps"][0]["text"] = f"准备 {len(s)} 张图片..."
         imgs = 0
         for seg in s:
+            idx = seg["_idx"]
             img_url = seg.get("image_url", "")
+            bg = None
+            # 尝试从 URL 下载
             if img_url:
-                local = _download_image(img_url, seg["_idx"])
+                local = _download_image(img_url, idx)
                 if local:
-                    bg = _prepare_bg(local, seg["_idx"])
-                    if bg:
-                        seg["bg_path"] = bg
-                        imgs += 1
+                    bg = _prepare_bg(local, idx)
+            # URL 下载失败 / 无 URL → 兜底用 Step 2 裁剪的文件
+            if not bg:
+                cropped = WORK_DIR / f"bg_{idx:03d}.jpg"
+                if cropped.exists():
+                    bg = str(cropped)
+            if bg:
+                seg["bg_path"] = bg
+                imgs += 1
         for seg in s:
             if not seg.get("bg_path"):
                 seg["bg_path"] = _default_bg()
         p["steps"][0]["status"] = "done"
         p["steps"][0]["text"] = f"图片就绪: {imgs}/{len(s)}"
 
-        # 2) TTS — 整段生成 + SentenceBoundary 自然断句时间戳
+        # 2) TTS — 文本未变则跳过，变化时才重新生成
         p["steps"][1]["status"] = "running"
-        p["steps"][1]["text"] = f"TTS 配音: {len(s)} 段..."
         audio_dir = WORK_DIR / "audio"
         audio_dir.mkdir(exist_ok=True)
         done_tts = 0
+        skipped_tts = 0
         for i, seg in enumerate(s):
             ap = audio_dir / f"seg_{i:03d}.mp3"
             seg["audio_path"] = str(ap)
+            text_hash = hashlib.md5(seg["speak_text"].encode()).hexdigest()
+            if ap.exists() and seg.get("_tts_hash") == text_hash:
+                timing_path = ap.with_suffix(".timing.json")
+                if timing_path.exists():
+                    with open(timing_path, encoding="utf-8") as f:
+                        seg["_timing"] = json.load(f)
+                skipped_tts += 1
+                continue
+            # 文本已变 → 删除旧音频和时间戳缓存，强制重新生成
+            seg["_tts_hash"] = text_hash
+            if ap.exists():
+                ap.unlink()
+            timing_path = ap.with_suffix(".timing.json")
+            if timing_path.exists():
+                timing_path.unlink()
+            console.log(f"[dim]TTS seg_{i:03d}: {seg['char_count']}字...[/dim]")
             seg["_timing"] = _generate_tts_with_timing(seg["speak_text"], ap)
             if ap.exists():
                 done_tts += 1
+            else:
+                console.log(f"[red]TTS seg_{i:03d} 失败: 音频未生成[/red]")
+            if i < len(s) - 1:
+                time.sleep(5)
+        total = done_tts + skipped_tts
         p["steps"][1]["status"] = "done"
-        p["steps"][1]["text"] = f"TTS 完成: {done_tts}/{len(s)}"
+        detail = f" 新生成 {done_tts} 段"
+        if skipped_tts > 0:
+            detail += f"，复用 {skipped_tts} 段（文本未变）"
+        p["steps"][1]["text"] = f"TTS 完成: {total}/{len(s)}{detail}"
 
-        # 3) 视频片段
+        # 3) SRT + ASS 字幕
         p["steps"][2]["status"] = "running"
-        clips = []
-        for i, seg in enumerate(s):
-            cl = WORK_DIR / f"clip_{i:03d}.mp4"
-            ap = Path(seg["audio_path"])
-            bg = seg.get("bg_path", _default_bg())
-            if not ap.exists():
-                continue
-            try:
-                subprocess.run([
-                    "ffmpeg", "-y", "-loop", "1", "-i", bg,
-                    "-i", str(ap),
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-tune", "stillimage", "-c:a", "aac", "-b:a", "128k",
-                    "-pix_fmt", "yuv420p",
-                    "-t", str(_get_audio_dur(ap)), "-shortest",
-                    str(cl),
-                ], capture_output=True, check=True, timeout=60)
-                if cl.exists():
-                    clips.append(cl)
-            except Exception as e:
-                console.log(f"[red]片段{i}失败: {e}[/red]")
-        p["steps"][2]["status"] = "done"
-        p["steps"][2]["text"] = f"视频片段: {len(clips)}/{len(s)}"
-        state["_clips"] = clips
-
-        # 4) 合并 + 字幕
-        p["steps"][3]["status"] = "running"
-        # 合并无字幕版本
-        no_sub = WORK_DIR / "no_subs.mp4"
-        concat = WORK_DIR / "concat.txt"
-        with open(concat, "w") as f:
-            for cl in clips:
-                f.write(f"file '{cl.as_posix()}'\n")
-        subprocess.run([
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", str(concat), "-c", "copy", str(no_sub),
-        ], capture_output=True, check=True)
-        state["_no_sub_video"] = str(no_sub)
-
-        # SRT
         srt_content = _build_srt(s)
         state["_srt_content"] = srt_content
         (WORK_DIR / "subtitles.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
-
-        # ASS
         _build_ass(s, WORK_DIR / "subtitles.ass")
         state["_ass_path"] = str(WORK_DIR / "subtitles.ass")
+        total_dur = int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path', '')).exists()))
+        p["steps"][2]["status"] = "done"
+        p["steps"][2]["text"] = f"字幕已生成，总时长约 {total_dur // 60} 分钟"
 
-        p["steps"][3]["status"] = "done"
-        p["steps"][3]["text"] = f"视频+字幕已生成，时长约 {int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path','')).exists())//60)} 分钟"
-
-        # 5) 剪映草稿
-        p["steps"][4]["status"] = "running"
+        # 4) 剪映草稿
+        p["steps"][3]["status"] = "running"
         md_name = Path(state["md_path"]).stem
         _srt = str(TEMP_DIR / md_name / "subtitles.srt")
         draft_ok, draft_msg = _generate_jianying_draft(s, f"{md_name}_周刊", srt_path=_srt)
         if draft_ok:
             state["_jy_draft_path"] = draft_msg
-            p["steps"][4]["status"] = "done"
-            p["steps"][4]["text"] = f"剪映草稿已生成: {draft_msg}"
-            p["steps"][4]["detail"] = "打开剪映 10.x → 草稿列表中找到该草稿，可直接编辑和导出"
+            p["steps"][3]["status"] = "done"
+            p["steps"][3]["text"] = f"剪映草稿已生成: {draft_msg}"
+            p["steps"][3]["detail"] = "打开剪映 10.x → 草稿列表中找到该草稿，可直接编辑和导出"
         else:
-            p["steps"][4]["status"] = "done"
-            p["steps"][4]["text"] = f"剪映草稿: {draft_msg}"
-            p["steps"][4]["detail"] = ""
+            p["steps"][3]["status"] = "done"
+            p["steps"][3]["text"] = f"剪映草稿: {draft_msg}"
+            p["steps"][3]["detail"] = ""
 
         p["done"] = True
 
@@ -1355,50 +1613,36 @@ def step5():
 
     if action == "download":
         srt_path = WORK_DIR / "subtitles.srt"
-        srt_path.write_text(srt_content, encoding="utf-8")
+        srt_path.write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
         return send_file(srt_path, as_attachment=True, download_name="subtitles.srt")
 
-    # compose final video with subtitles
-    no_sub = state.get("_no_sub_video", "")
-    ass_path = state.get("_ass_path", "")
+    # 保存编辑后的 SRT 到剪映草稿读取的路径（newline="" 避免 Windows 换行符破坏格式）
+    md_name = Path(state["md_path"]).stem
+    edited_srt = TEMP_DIR / md_name / "subtitles.srt"
+    edited_srt.write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
+    (WORK_DIR / "subtitles_edited.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
 
-    # save edited SRT
-    (WORK_DIR / "subtitles_edited.srt").write_text(srt_content, encoding="utf-8")
+    # 自动用编辑后的 SRT 重新生成剪映草稿
+    segs = state.get("selected", [])
+    draft_path = ""
+    if segs:
+        _srt = str(edited_srt)
+        ok, msg = _generate_jianying_draft(segs, f"{md_name}_周刊", srt_path=_srt)
+        if ok:
+            state["_jy_draft_path"] = msg
+            draft_path = msg
 
-    # generate ASS from edited SRT if it changed
-    if ass_path and srt_content != state.get("_srt_original", ""):
-        # 用修改后的 SRT 重新生成 ASS
-        _build_ass_from_srt(srt_content, ass_path)
-
-    final = WORK_DIR / "final.mp4"
-    ass_fixed = str(Path(ass_path).resolve()).replace("\\", "/").replace(":", "\\:")
-    try:
-        subprocess.run([
-            "ffmpeg", "-y",
-            "-i", no_sub or str(WORK_DIR / "no_subs.mp4"),
-            "-vf", f"subtitles='{ass_fixed}'",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-c:a", "copy",
-            str(final),
-        ], capture_output=True, check=True, timeout=300)
-        state["_final_video"] = str(final)
-        size_mb = final.stat().st_size / 1024 / 1024
-        return render_template_string(
-            STEP5_TEMPLATE, success=True,
-            status_text="视频生成成功!",
-            info_text=f"文件: {final.name} | 大小: {size_mb:.1f}MB"
-        )
-    except Exception as e:
-        return render_template_string(
-            STEP5_TEMPLATE, success=False,
-            status_text=f"合成失败: {e}",
-            info_text="请返回编辑字幕重试"
-        )
+    return render_template_string(
+        STEP5_TEMPLATE,
+        draft_path=draft_path,
+        work_dir=str(WORK_DIR),
+    )
 
 
 def _build_ass_from_srt(srt_text: str, ass_path: str):
     """从 SRT 文本生成 ASS（简化转换）"""
-    # 直接用 ASS 格式写回，保持原有样式
+    # 统一换行符（Windows textarea 会提交 \r\n）
+    srt_text = srt_text.replace("\r\n", "\n").replace("\r", "\n")
     blocks = re.split(r'\n\n+', srt_text.strip())
     lines = [f"""[Script Info]
 Title: 游戏设备周报
@@ -1481,6 +1725,80 @@ def api_polish():
         return jsonify({"error": str(e)})
 
 
+# ========== 图片上传 & 裁剪 ==========
+
+@app.route("/api/upload-image", methods=["POST"])
+def api_upload_image():
+    """上传图片到临时目录，返回 URL 供 Cropper 加载"""
+    if "file" not in request.files:
+        return jsonify({"error": "未选择文件"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "文件名为空"}), 400
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".bmp"):
+        return jsonify({"error": f"不支持的格式: {ext}"}), 400
+
+    upload_dir = WORK_DIR / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = upload_dir / filename
+    file.save(str(filepath))
+    return jsonify({"url": f"/api/uploads/{filename}", "filename": filename})
+
+
+@app.route("/api/uploads/<filename>")
+def api_serve_upload(filename):
+    """提供上传的临时图片"""
+    upload_dir = WORK_DIR / "uploads"
+    return send_file(upload_dir / filename)
+
+
+@app.route("/api/save-image/<int:idx>", methods=["POST"])
+def api_save_image(idx):
+    """保存裁剪后的图片为 bg_{idx:03d}.jpg（1920x1080）"""
+    data = request.get_json()
+    img_b64 = data.get("image", "")
+    if not img_b64:
+        return jsonify({"error": "无图片数据"}), 400
+
+    import base64
+    # 去掉 data:image/...;base64, 前缀
+    if "," in img_b64:
+        img_b64 = img_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(img_b64)
+    except Exception:
+        return jsonify({"error": "Base64 解码失败"}), 400
+
+    # 保存原始裁剪图
+    raw_path = WORK_DIR / f"crop_{idx:03d}.png"
+    raw_path.write_bytes(img_bytes)
+
+    # 缩放/裁剪到 1920x1080
+    dest = WORK_DIR / f"bg_{idx:03d}.jpg"
+    try:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(raw_path),
+            "-vf",
+            f"scale={VIDEO_W}:{VIDEO_H}:force_original_aspect_ratio=increase,"
+            f"crop={VIDEO_W}:{VIDEO_H}",
+            "-q:v", "2", str(dest),
+        ], capture_output=True, check=True, timeout=30)
+        raw_path.unlink()  # 清理临时文件
+        return jsonify({"ok": True, "url": f"/api/bg/bg_{idx:03d}.jpg"})
+    except Exception as e:
+        return jsonify({"error": f"图片处理失败: {e}"}), 500
+
+
+@app.route("/api/bg/<path:filename>")
+def api_serve_bg(filename):
+    """提供 WORK_DIR 中的背景图片"""
+    return send_file(WORK_DIR / filename)
+
+
 @app.route("/api/jianying-draft")
 def api_jianying_draft():
     """生成/重新生成剪映草稿"""
@@ -1493,14 +1811,6 @@ def api_jianying_draft():
     if ok:
         state["_jy_draft_path"] = msg
     return jsonify({"success": ok, "message": msg})
-
-
-@app.route("/api/download-video")
-def download_video():
-    fp = state.get("_final_video", "")
-    if fp and Path(fp).exists():
-        return send_file(fp, as_attachment=True, download_name="weekly_video.mp4")
-    return "未找到视频文件", 404
 
 
 def main():
