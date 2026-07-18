@@ -60,9 +60,9 @@ VIDEO_CACHE = Path(__file__).parent / "storage" / "video_cache"
 WORK_DIR = None
 
 # TTS: 火山引擎 seed-tts-2.0（优先）
-VOLC_APP_ID = os.environ.get("VOLC_TTS_APP_ID", "4526111713")
-VOLC_ACCESS_KEY = os.environ.get("VOLC_TTS_ACCESS_KEY",
-    "DJJJscoNvfmZNcRDmTUl--mVmOwfiJso")
+# 密钥配置在 .env 文件中: VOLC_TTS_APP_ID / VOLC_TTS_ACCESS_KEY / VOLC_TTS_SPEAKER
+VOLC_APP_ID = os.environ.get("VOLC_TTS_APP_ID", "")
+VOLC_ACCESS_KEY = os.environ.get("VOLC_TTS_ACCESS_KEY", "")
 VOLC_SPEAKER = os.environ.get("VOLC_TTS_SPEAKER", "saturn_zh_female_cancan_tob")
 VOLC_RESOURCE_ID = "seed-tts-2.0"
 VOLC_TTS_URL = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
@@ -1689,6 +1689,31 @@ def _copy_draft_framework(folder: "_draft.DraftFolder", draft_name: str) -> None
 # ========== Flask 路由 ==========
 
 @app.route("/")
+def _cleanup_temp_cache(keep_stem: str, max_age_days: int = 7):
+    """清理 TEMP_DIR 中过期的旧周音频/图片缓存"""
+    if not TEMP_DIR.exists():
+        return
+    cutoff = time.time() - max_age_days * 86400
+    removed = 0
+    for d in TEMP_DIR.iterdir():
+        if not d.is_dir():
+            continue
+        if d.name == keep_stem:
+            for pattern in ["bg_*.jpg", "crop_*.png", "clip_*.mp4", "*.ass",
+                             "final.mp4", "no_subs.mp4"]:
+                for f in d.glob(pattern):
+                    f.unlink(missing_ok=True)
+            continue
+        try:
+            if d.stat().st_mtime < cutoff:
+                shutil.rmtree(d, ignore_errors=True)
+                removed += 1
+        except OSError:
+            pass
+    if removed:
+        console.log(f"[dim]清理了 {removed} 个过期缓存目录[/dim]")
+
+
 def step1():
     """选择条目"""
     # 清理上次工作流的临时文件（裁剪图等），避免旧数据污染新流程
@@ -2098,6 +2123,9 @@ def main():
     WORK_DIR = TEMP_DIR / Path(md_input).stem
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     VIDEO_CACHE.mkdir(parents=True, exist_ok=True)
+
+    # 清理超过 7 天的旧周缓存
+    _cleanup_temp_cache(Path(md_input).stem)
 
     port = 5050
     console.print(f"\n[bold green]🎬 口播视频工作流已启动[/bold green]")
