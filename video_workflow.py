@@ -2368,6 +2368,14 @@ def api_refresh_weekly():
         return jsonify({"ok": False, "error": "无法获取周刊列表"}), 500
     state["_available_weeklies"] = available
     state["_repo"] = repo
+
+    # 清理 GitHub 上已不存在的过期缓存文件
+    cache_dir = Path(__file__).parent / ".weekly_cache"
+    if cache_dir.exists():
+        for f in cache_dir.glob("*.md"):
+            if f.name not in available:
+                f.unlink(missing_ok=True)
+
     latest = available[0]
     md_path = _fetch_weekly_from_github(repo, latest, force=True)
     if not md_path:
