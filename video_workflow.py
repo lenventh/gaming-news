@@ -21,6 +21,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from flask import Flask, render_template_string, request, jsonify, send_file
 from rich.console import Console
 
@@ -832,7 +834,7 @@ def _download_image(url: str, idx: int) -> str:
     if dest.exists():
         return str(dest)
     try:
-        r = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        r = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"}, verify=False)
         r.raise_for_status()
         dest.write_bytes(r.content)
         return str(dest)
@@ -2397,7 +2399,7 @@ def _list_github_weeklies(repo: str, branch: str = "master") -> list[str] | None
     """列出 GitHub 仓库 output/ 目录下所有周刊 .md 文件名（倒序）"""
     api_url = f"https://api.github.com/repos/{repo}/contents/output?ref={branch}"
     try:
-        r = requests.get(api_url, timeout=15)
+        r = requests.get(api_url, timeout=15, verify=False)
         if r.status_code != 200:
             console.log(f"[red]GitHub API 请求失败: {r.status_code}[/red]")
             return None
@@ -2416,7 +2418,7 @@ def _fetch_weekly_from_github(repo: str, filename: str, branch: str = "master") 
     """从 GitHub 拉取指定周刊 .md 文件，缓存到本地"""
     raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/output/{filename}"
     try:
-        r = requests.get(raw_url, timeout=15)
+        r = requests.get(raw_url, timeout=15, verify=False)
         if r.status_code != 200:
             return None
         cache_dir = Path(__file__).parent / ".weekly_cache"
@@ -2453,7 +2455,7 @@ def main():
     elif md_input.startswith("http://") or md_input.startswith("https://"):
         # 直接传 GitHub raw URL 或任何 URL
         try:
-            r = requests.get(md_input, timeout=15)
+            r = requests.get(md_input, timeout=15, verify=False)
             if r.status_code != 200:
                 console.log(f"[red]URL 请求失败: {r.status_code}[/red]")
                 sys.exit(1)
