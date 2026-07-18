@@ -166,7 +166,14 @@ class ScriptWriter:
             console.log("[red]没有精选条目可生成文稿[/red]")
             return ""
 
-        lines = [f"# 游戏设备周报 | {week_label} ({week_range})\n"]
+        # 从标签中提取半周标识: '2026-W28-上' → base='2026-W28', half='上'
+        if "-" in week_label and week_label.split("-")[-1] in ("上", "下"):
+            parts = week_label.rsplit("-", 1)
+            base_label, half = parts[0], parts[1]
+            title = f"# 游戏设备周报·{half} | {base_label} ({week_range})\n"
+        else:
+            title = f"# 游戏设备周报 | {week_label} ({week_range})\n"
+        lines = [title]
 
         # 跨板块去重
         _cross_category_dedup(categorized_items)

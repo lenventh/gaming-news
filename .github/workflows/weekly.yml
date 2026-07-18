@@ -2,7 +2,8 @@ name: Weekly Gaming News
 
 on:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'   # 周一 → 下（覆盖上周四-日）
+    - cron: '0 0 * * 4'   # 周四 → 上（覆盖本周一-三）
   workflow_dispatch:
 
 permissions:
@@ -47,7 +48,7 @@ jobs:
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
           PYTHONIOENCODING: utf-8
-          NEWS_WINDOW_DAYS: 7
+          NEWS_WINDOW_DAYS: 4
           BILIBILI_BROWSER: true
         run: python main.py
 
@@ -60,5 +61,7 @@ jobs:
           git pull --rebase origin master
           git stash pop || true
           git add output/
-          git diff --staged --quiet || git commit -m "$(date +%G-W%V) weekly report"
+          HALF=$(python3 -c "import datetime; wd=datetime.datetime.now(datetime.timezone.utc).weekday(); print('下' if wd<=2 else '上')")
+          LABEL="$(date +%G-W%V)-${HALF}"
+          git diff --staged --quiet || git commit -m "${LABEL} semi-weekly report"
           git push

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ========== 时间窗口 ==========
-NEWS_WINDOW_DAYS = int(os.getenv("NEWS_WINDOW_DAYS", "7"))
+NEWS_WINDOW_DAYS = int(os.getenv("NEWS_WINDOW_DAYS", "4"))
 NOW = datetime.now(timezone.utc)
 CUTOFF_DATE = NOW - timedelta(days=NEWS_WINDOW_DAYS)
 
