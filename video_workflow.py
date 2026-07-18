@@ -92,7 +92,7 @@ STEP1_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Step 1/6 — 选择新闻条目</title>
+<title>Step 1/5 — 选择新闻条目</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px}
@@ -116,7 +116,7 @@ h1{color:#e94560;margin-bottom:4px}
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 1/6</h1>
+<h1>🎬 口播视频工作流 — Step 1/5</h1>
 <p class="sub">勾选要制作成视频的新闻条目（默认全选）</p>
 <form id="form" method="POST" action="/step2">
 {% for cat, items in by_category.items() %}
@@ -162,7 +162,7 @@ STEP2_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Step 2/6 — 编辑口播脚本</title>
+<title>Step 2/5 — 编辑口播脚本</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -211,7 +211,7 @@ h1{color:#e94560;margin-bottom:4px}
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 2/6</h1>
+<h1>🎬 口播视频工作流 — Step 2/5</h1>
 <p class="sub">编辑口播脚本 + 上传/裁剪配图。点击图片区域上传，支持裁剪/缩放/旋转。修改完点击"生成音频"</p>
 
 <!-- 隐藏的文件选择器 -->
@@ -451,7 +451,7 @@ STEP3_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>Step 3/6 — 生成音频 + 合成视频</title>
+<title>Step 3/5 — 生成音频 + 合成视频</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px}
@@ -469,7 +469,7 @@ pre{background:#0f3460;padding:12px;border-radius:6px;max-height:200px;overflow:
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 3/6</h1>
+<h1>🎬 口播视频工作流 — Step 3/5</h1>
 <p>正在生成 TTS 配音并合成视频...</p>
 <div id="progress"></div>
 <button class="btn" id="next" disabled onclick="location.href='/step4'">下一步 → 字幕编辑</button>
@@ -500,7 +500,7 @@ STEP4_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Step 4/6 — 编辑字幕</title>
+<title>Step 4/5 — 编辑字幕</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px}
@@ -516,7 +516,7 @@ h1{color:#e94560;margin-bottom:4px}
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 4/6</h1>
+<h1>🎬 口播视频工作流 — Step 4/5</h1>
 <p class="sub">编辑 SRT 字幕。可以直接改文字、调时间。修改后点击下方按钮保存并查看剪映草稿</p>
 <form method="POST" action="/step5">
 <textarea class="srt-edit" name="srt_content">{{ srt_content }}</textarea>
@@ -539,7 +539,7 @@ STEP5_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Step 5/6 — 剪映草稿</title>
+<title>Step 5/5 — 剪映草稿</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px;text-align:center}
@@ -555,7 +555,7 @@ h1{color:#e94560;margin-bottom:10px}
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 5/6</h1>
+<h1>🎬 口播视频工作流 — Step 5/5</h1>
 <div class="status success">
   剪映草稿已就绪！请在剪映中打开编辑和导出
 </div>
@@ -1071,21 +1071,40 @@ def _build_srt(segments: list[dict]) -> str:
                 seq += 1
                 cp = sub_end_cp
         else:
-            # 回退：按字数比例估算
+            # 回退：按朗读字数加权估算（标点不计入朗读，加停顿时间）
             sentences = _split_subs(seg["speak_text"])
-            seg_dur_ms = seg_end_ms - seg_start_ms
-            total_chars = sum(len(s) for s in sentences)
+            seg_dur_ms = max(seg_end_ms - seg_start_ms, 500)
+            PAUSE_MAJOR = 300   # 句号/感叹号/问号 停顿 (ms)
+            PAUSE_MINOR = 150   # 逗号/分号/冒号 停顿 (ms)
+            PAUSE_SENTENCE = 200  # 每句话说完的句间停顿 (ms)
+            spoken_counts = []
+            pause_times = []
+            for sent in sentences:
+                spoken = 0
+                pauses = 0
+                for c in sent:
+                    if c in '，、；,;:：':
+                        pauses += PAUSE_MINOR
+                    elif c in '。！？.!?':
+                        pauses += PAUSE_MAJOR
+                    elif not c.isspace():
+                        spoken += 1
+                spoken_counts.append(max(spoken, 1))
+                pause_times.append(pauses + PAUSE_SENTENCE)
+            total_spoken = sum(spoken_counts)
+            total_pauses = sum(pause_times)
+            speech_budget = max(seg_dur_ms - total_pauses, 500 * len(sentences))
             sent_start = seg_start_ms
             for i, sent in enumerate(sentences):
-                proportion = len(sent) / max(total_chars, 1)
-                sent_dur = seg_dur_ms * proportion
+                speech_dur = speech_budget * (spoken_counts[i] / total_spoken)
+                sent_dur = speech_dur + pause_times[i]
                 sent_end = int(sent_start + sent_dur)
                 if i == len(sentences) - 1:
                     sent_end = seg_end_ms
                 if sent_end <= sent_start:
                     sent_end = sent_start + 500
                 lines.append(str(seq))
-                lines.append(f"{fmt(int(sent_start))} --> {fmt(sent_end)}")
+                lines.append(f"{fmt(int(sent_start))} --> {fmt(int(sent_end))}")
                 lines.append(_clean_srt_text(sent))
                 lines.append("")
                 seq += 1
