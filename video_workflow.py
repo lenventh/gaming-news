@@ -2395,36 +2395,44 @@ def api_jianying_draft():
     return jsonify({"success": ok, "message": msg})
 
 
-def _list_github_weeklies(repo: str, branch: str = "master") -> list[str] | None:
-    """列出 GitHub 仓库 output/ 目录下所有周刊 .md 文件名（倒序）"""
-    api_url = f"https://api.github.com/repos/{repo}/contents/output?ref={branch}"
+def _list_github_weeklies(repo: str) -> list[str] | None:
+    """列出 GitHub 仓库 output/ 目录下所有周刊 .md 文件名（倒序，通过 gh CLI）"""
     try:
-        r = requests.get(api_url, timeout=15, verify=False)
-        if r.status_code != 200:
-            console.log(f"[red]GitHub API 请求失败: {r.status_code}[/red]")
+        r = subprocess.run(
+            ["gh", "api", f"repos/{repo}/contents/output",
+             "--jq", ".[].name"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if r.returncode != 0:
+            console.log(f"[red]gh api 失败: {r.stderr.strip()}[/red]")
             return None
         files = sorted(
-            (f["name"] for f in r.json()
-             if f["name"].endswith(".md") and not f["name"].startswith("_")),
+            (n for n in r.stdout.strip().split("\n")
+             if n.endswith(".md") and not n.startswith("_")),
             reverse=True,
         )
-        return files
+        return files if files else None
     except Exception as e:
         console.log(f"[red]获取周刊列表失败: {e}[/red]")
         return None
 
 
-def _fetch_weekly_from_github(repo: str, filename: str, branch: str = "master") -> Path | None:
-    """从 GitHub 拉取指定周刊 .md 文件，缓存到本地"""
-    raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/output/{filename}"
+def _fetch_weekly_from_github(repo: str, filename: str) -> Path | None:
+    """从 GitHub 拉取指定周刊 .md 文件（通过 gh CLI），缓存到本地"""
     try:
-        r = requests.get(raw_url, timeout=15, verify=False)
-        if r.status_code != 200:
+        r = subprocess.run(
+            ["gh", "api", f"repos/{repo}/contents/output/{filename}",
+             "--jq", ".content"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if r.returncode != 0:
             return None
+        import base64 as _b64
+        content = _b64.b64decode(r.stdout.strip()).decode("utf-8")
         cache_dir = Path(__file__).parent / ".weekly_cache"
         cache_dir.mkdir(exist_ok=True)
         dest = cache_dir / filename
-        dest.write_text(r.text, encoding="utf-8")
+        dest.write_text(content, encoding="utf-8")
         return dest
     except Exception as e:
         console.log(f"[red]获取周刊失败 ({filename}): {e}[/red]")
