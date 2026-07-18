@@ -760,8 +760,131 @@ def _default_bg() -> str:
     return str(dest)
 
 
+def _volc_tts_ws(text: str, out_path: Path) -> list[tuple[str, int, int]] | None:
+    """火山引擎 WebSocket 双向流式 TTS，返回字级时间戳
+
+    基于官方 API 文档：enable_subtitle=true → TTSSubtitle 事件返回
+    words[].{word, startTime, endTime}（秒级浮点，精确到字）。
+
+    Returns:
+        [(文本, 开始ms, 结束ms), ...] 或 None（失败时）
+    """
+    import websockets
+    import volc_protocols as proto
+
+    WSS_URL = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
+
+    async def _run():
+        async with websockets.connect(
+            WSS_URL,
+            additional_headers={
+                "X-Api-App-Id": VOLC_APP_ID,
+                "X-Api-Access-Key": VOLC_ACCESS_KEY,
+                "X-Api-Resource-Id": VOLC_RESOURCE_ID,
+                "X-Api-Connect-Id": str(uuid.uuid4()),
+            },
+            max_size=10 * 1024 * 1024,
+            ping_interval=20,
+        ) as ws:
+            # 1) FullClientRequest(StartConnection)
+            await proto.start_connection(ws)
+            msg = await asyncio.wait_for(proto.receive_message(ws), timeout=15)
+            if msg.event == proto.EventType.ConnectionFailed:
+                raise RuntimeError(f"建连失败: {msg.payload.decode()}")
+
+            # 2) FullClientRequest(StartSession)
+            sid = str(uuid.uuid4())
+            session_cfg = json.dumps({
+                "event": proto.EventType.StartSession,
+                "session_id": sid,
+                "req_params": {
+                    "speaker": VOLC_SPEAKER,
+                    "audio_params": {
+                        "format": "mp3",
+                        "sample_rate": 24000,
+                        "speech_rate": 10,
+                        "enable_subtitle": True,
+                    },
+                    "additions": json.dumps({"disable_markdown_filter": True}),
+                },
+            }, ensure_ascii=False)
+            await proto.start_session(ws, session_cfg.encode(), sid)
+            msg = await asyncio.wait_for(proto.receive_message(ws), timeout=15)
+            if msg.event == proto.EventType.SessionFailed:
+                raise RuntimeError(f"Session失败: {msg.payload.decode()}")
+
+            # 3) FullClientRequest(TaskRequest)
+            await proto.task_request(ws, json.dumps({
+                "event": proto.EventType.TaskRequest,
+                "session_id": sid,
+                "req_params": {
+                    "text": text,
+                    "audio_params": {
+                        "format": "mp3",
+                        "sample_rate": 24000,
+                        "speech_rate": 10,
+                        "enable_subtitle": True,
+                    },
+                    "additions": json.dumps({"disable_markdown_filter": True}),
+                },
+            }).encode(), sid)
+
+            # 4) 接收音频 + 字幕
+            audio_data = bytearray()
+            word_timing = []  # [(text, start_ms, end_ms), ...]
+            subtitle_received = False
+
+            while not subtitle_received:
+                msg = await asyncio.wait_for(proto.receive_message(ws), timeout=120)
+
+                if msg.type == proto.MsgType.AudioOnlyServer:
+                    audio_data.extend(msg.payload)
+
+                elif msg.type == proto.MsgType.FullServerResponse:
+                    if msg.event == proto.EventType.TTSSubtitle:
+                        sub = json.loads(msg.payload.decode())
+                        # 官方格式: words[].{word, startTime(s), endTime(s)}
+                        for w in sub.get("words", []):
+                            word_timing.append((
+                                w["word"],
+                                int(w["startTime"] * 1000),  # 秒→毫秒
+                                int(w["endTime"] * 1000),
+                            ))
+                        if word_timing:
+                            subtitle_received = True  # 收到字幕即可结束
+                    elif msg.event == proto.EventType.SessionFailed:
+                        raise RuntimeError(f"Session失败: {msg.payload.decode()}")
+
+            # 5) 结束
+            await proto.finish_session(ws, sid)
+            try:
+                await asyncio.wait_for(proto.receive_message(ws), timeout=10)
+            except Exception:
+                pass
+            await proto.finish_connection(ws)
+
+            return bytes(audio_data), word_timing
+
+    try:
+        audio_bytes, words = asyncio.run(asyncio.wait_for(_run(), timeout=120))
+        if len(audio_bytes) < 1024:
+            console.log("[red]火山WS: 音频不足1KB[/red]")
+            return None
+        out_path.write_bytes(audio_bytes)
+        if not words:
+            console.log("[yellow]火山WS: 音频OK但无字幕时间戳[/yellow]")
+            return None
+        console.log(f"[green]火山WS: {len(audio_bytes)//1024}KB, {len(words)} 字级时间戳[/green]")
+        return words
+    except Exception as e:
+        console.log(f"[red]火山WS失败: {e}[/red]")
+        if out_path.exists():
+            out_path.unlink()
+        return None
+
+
 def _volc_tts(text: str, out_path: Path) -> bool:
-    """火山引擎 seed-tts-2.0 HTTP 流式 TTS"""
+    """火山引擎 seed-tts-2.0 HTTP 单向流式 TTS（无时序）"""
     if out_path.exists() and out_path.stat().st_size > 1024:
         return True
     if out_path.exists():
@@ -892,14 +1015,46 @@ def _sentence_tts_fallback(text: str, out_path: Path) -> None:
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _extract_edge_tts_timing(text: str) -> list[tuple[str, int, int]] | None:
+    """运行 edge-tts，仅提取 SentenceBoundary 时序，丢弃音频
+
+    用于配合火山 TTS：火山管音质，edge-tts 管断句精度。
+    返回 None 表示提取失败（网络/限流等）。
+    """
+    import edge_tts
+    try:
+        async def _capture():
+            comm = edge_tts.Communicate(text, VOICE, rate=TTS_RATE)
+            sub = edge_tts.SubMaker()
+            async for chunk in comm.stream():
+                if chunk["type"] == "SentenceBoundary":
+                    sub.feed(chunk)
+            cues = []
+            prev_end = 0
+            for cue in sub.cues:
+                start_ms = int(cue.start.total_seconds() * 1000)
+                end_ms = int(cue.end.total_seconds() * 1000)
+                if start_ms < prev_end:
+                    start_ms = prev_end
+                if end_ms <= start_ms:
+                    end_ms = start_ms + 500
+                cues.append((cue.content, start_ms, end_ms))
+                prev_end = end_ms
+            return cues
+        return asyncio.run(asyncio.wait_for(_capture(), timeout=45))
+    except Exception as e:
+        console.log(f"[yellow]edge-tts 时序提取失败: {e}[/yellow]")
+        return None
+
+
 def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -> list[tuple[str, int, int]]:
     """生成 TTS 音频 + 字幕时序数据
 
-    优先级：火山 TTS（音质好，无字级时序）→ edge-tts（SentenceBoundary 精确时间戳）
-    火山 TTS 返回空列表 → _build_srt 走 _split_subs + 字数比例路径
+    策略：火山 TTS 生成音频 + edge-tts SentenceBoundary 提取时序。
+    时序按火山音频时长等比缩放，保证字幕与实际音频精确对齐。
 
     Returns:
-        [(句子文本, 开始ms, 结束ms), ...] — SentenceBoundary 精确时间戳，或空列表
+        [(句子文本, 开始ms, 结束ms), ...] — 精确时间戳，或空列表
     """
     import json as _json
     timing_path = Path(str(out_path).replace(".mp3", "_timing.json"))
@@ -910,8 +1065,24 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
         out_path.unlink()
         timing_path.unlink()
 
-    # 优先火山 TTS（音质好，但无字级时序 → 返回 []，_build_srt 用 _split_subs + 字数比例）
+    # 1) 火山 WebSocket 双向流式 TTS（音频 + 字级时间戳，同引擎精确同步）
+    cues = _volc_tts_ws(text, out_path)
+    if cues is not None:
+        timing_path.write_text(_json.dumps(cues, ensure_ascii=False), encoding="utf-8")
+        return cues
+
+    # 2) 火山 HTTP TTS + edge-tts 提取时序（缩放对齐）
     if _volc_tts(text, out_path):
+        cues = _extract_edge_tts_timing(text)
+        if cues:
+            volc_dur = _get_audio_dur(out_path)
+            edge_dur = cues[-1][2] / 1000.0
+            if edge_dur > 0 and volc_dur > 0:
+                scale = volc_dur / edge_dur
+                cues = [(t, int(s * scale), int(e * scale)) for t, s, e in cues]
+            timing_path.write_text(_json.dumps(cues, ensure_ascii=False), encoding="utf-8")
+            return cues
+        # 时序提取失败 → 回退加权模型
         timing_path.write_text("[]", encoding="utf-8")
         return []
 
@@ -1638,11 +1809,12 @@ def step3_page():
                 continue
             # 文本已变 → 删除旧音频和时间戳缓存，强制重新生成
             seg["_tts_hash"] = text_hash
-            if ap.exists():
-                ap.unlink()
-            timing_path = ap.with_suffix(".timing.json")
-            if timing_path.exists():
-                timing_path.unlink()
+            for _p in (ap, ap.with_suffix(".timing.json")):
+                try:
+                    if _p.exists():
+                        _p.unlink()
+                except OSError:
+                    pass  # Windows 文件被占用时忽略
             console.log(f"[dim]TTS seg_{i:03d}: {seg['char_count']}字...[/dim]")
             p["steps"][1]["text"] = f"TTS: {done_tts + skipped_tts}/{len(s)} — 正在生成 seg_{i:03d}..."
             seg["_timing"] = _generate_tts_with_timing(seg["speak_text"], ap)
