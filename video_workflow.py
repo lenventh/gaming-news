@@ -251,9 +251,9 @@ h1{color:#e94560;margin-bottom:4px}
 async function polish(idx, btn) {
   const ta = document.getElementById('script_' + idx);
   const instr = document.getElementById('instr_' + idx);
-  const status = btn.nextElementSibling;
+  const statusEl = btn.nextElementSibling;
   btn.disabled = true;
-  status.textContent = '润色中...';
+  statusEl.textContent = '润色中...';
   try {
     const r = await fetch('/api/polish', {
       method: 'POST',
@@ -261,12 +261,15 @@ async function polish(idx, btn) {
       body: JSON.stringify({text: ta.value, instruction: instr.value.trim()})
     });
     const data = await r.json();
-    if (data.polished) { ta.value = data.polished; status.textContent = '完成!'; }
-    else { status.textContent = '失败: ' + (data.error || '未知'); }
-  } catch(e) { status.textContent = '网络错误'; }
+    if (data.polished) { ta.value = data.polished; statusEl.textContent = '完成!'; }
+    else { statusEl.textContent = '失败: ' + (data.error || '未知'); }
+  } catch(e) { statusEl.textContent = '网络错误'; }
   btn.disabled = false;
-  setTimeout(() => status.textContent = '', 3000);
+  setTimeout(() => statusEl.textContent = '', 3000);
 }
+
+function polishIntro(btn) { polish('intro', btn); }
+function polishOutro(btn) { polish('outro', btn); }
 
 // ===== 图片上传 & 裁剪 =====
 let cropper = null, currentCropIdx = -1;
@@ -403,6 +406,37 @@ function saveCrop() {
 }
 </script>
 
+<!-- ===== 开场白 ===== -->
+<div class="card" style="border-left: 3px solid #f0c040">
+  <h3>{{ intro.display_title }}</h3>
+  <div class="row">
+    <div class="left">
+      <label>口播脚本（TTS配音文本）</label>
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <input type="text" id="instr_intro" placeholder="输入润色指令，如：更热情、更简洁、突出本周重点..."
+             style="flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:4px;padding:6px 10px;font-size:13px">
+        <button type="button" class="btn-polish" onclick="polishIntro(this)" style="white-space:nowrap">✨ AI润色</button>
+        <span class="polish-status" id="polish_status_intro"></span>
+      </div>
+      <textarea name="script_intro" id="script_intro" rows="3">{{ intro.speak_text }}</textarea>
+      <label>图片URL（可直接替换）</label>
+      <input class="img-url" name="img_intro" value="{{ intro.image_url }}">
+    </div>
+    <div class="img-section">
+      {% set has_img = intro.image_url %}
+      {% if has_img %}
+      <img class="img-preview" id="preview_intro" src="{{ intro.image_url }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" onclick="triggerUpload('intro')" title="点击上传/更换图片">
+      <div class="img-preview placeholder" style="display:none" onclick="triggerUpload('intro')" title="点击上传图片">点击上传图片</div>
+      {% else %}
+      <div class="img-preview placeholder" id="preview_intro" onclick="triggerUpload('intro')" title="点击上传图片">点击上传图片</div>
+      {% endif %}
+      <div class="img-btns">
+        <button type="button" class="btn-upload" onclick="triggerUpload('intro')">📷 上传图片</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% for seg in selected %}
 <div class="card">
   <h3>#{{ loop.index }} {{ seg.display_title[:60] }}</h3>
@@ -438,6 +472,38 @@ function saveCrop() {
   </div>
 </div>
 {% endfor %}
+
+<!-- ===== 结尾 ===== -->
+<div class="card" style="border-left: 3px solid #5f5">
+  <h3>{{ outro.display_title }}</h3>
+  <div class="row">
+    <div class="left">
+      <label>口播脚本（TTS配音文本）</label>
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <input type="text" id="instr_outro" placeholder="输入润色指令，如：更简洁、加一句下期预告..."
+             style="flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:4px;padding:6px 10px;font-size:13px">
+        <button type="button" class="btn-polish" onclick="polishOutro(this)" style="white-space:nowrap">✨ AI润色</button>
+        <span class="polish-status" id="polish_status_outro"></span>
+      </div>
+      <textarea name="script_outro" id="script_outro" rows="3">{{ outro.speak_text }}</textarea>
+      <label>图片URL（可直接替换）</label>
+      <input class="img-url" name="img_outro" value="{{ outro.image_url }}">
+    </div>
+    <div class="img-section">
+      {% set has_img = outro.image_url %}
+      {% if has_img %}
+      <img class="img-preview" id="preview_outro" src="{{ outro.image_url }}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" onclick="triggerUpload('outro')" title="点击上传/更换图片">
+      <div class="img-preview placeholder" style="display:none" onclick="triggerUpload('outro')" title="点击上传图片">点击上传图片</div>
+      {% else %}
+      <div class="img-preview placeholder" id="preview_outro" onclick="triggerUpload('outro')" title="点击上传图片">点击上传图片</div>
+      {% endif %}
+      <div class="img-btns">
+        <button type="button" class="btn-upload" onclick="triggerUpload('outro')">📷 上传图片</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="btn-bar">
   <button class="btn" type="button" onclick="history.back()" style="background:#0f3460">↩ 返回选择条目</button>
   <button class="btn" type="submit">下一步 → 生成音频</button>
@@ -709,6 +775,13 @@ def parse_weekly(md_text: str) -> list[dict]:
     return segments
 
 
+def _bg_name(idx) -> str:
+    """背景图片文件名，兼容数字和字符串 ID"""
+    if isinstance(idx, str) and not str(idx).isdigit():
+        return f"bg_{idx}.jpg"
+    return f"bg_{int(idx):03d}.jpg"
+
+
 def _download_image(url: str, idx: int) -> str:
     """下载图片到缓存目录"""
     VIDEO_CACHE.mkdir(parents=True, exist_ok=True)
@@ -730,9 +803,9 @@ def _download_image(url: str, idx: int) -> str:
         return ""
 
 
-def _prepare_bg(img_path: str, idx: int) -> str:
+def _prepare_bg(img_path: str, idx) -> str:
     """图片 → 1920x1080 背景"""
-    dest = WORK_DIR / f"bg_{idx:03d}.jpg"
+    dest = WORK_DIR / _bg_name(idx)
     if dest.exists():
         return str(dest)
     try:
@@ -1688,7 +1761,6 @@ def _copy_draft_framework(folder: "_draft.DraftFolder", draft_name: str) -> None
 
 # ========== Flask 路由 ==========
 
-@app.route("/")
 def _cleanup_temp_cache(keep_stem: str, max_age_days: int = 7):
     """清理 TEMP_DIR 中过期的旧周音频/图片缓存"""
     if not TEMP_DIR.exists():
@@ -1714,6 +1786,7 @@ def _cleanup_temp_cache(keep_stem: str, max_age_days: int = 7):
         console.log(f"[dim]清理了 {removed} 个过期缓存目录[/dim]")
 
 
+@app.route("/")
 def step1():
     """选择条目"""
     # 清理上次工作流的临时文件（裁剪图等），避免旧数据污染新流程
@@ -1738,6 +1811,111 @@ def step1():
     )
 
 
+def _ensure_intro_outro(selected: list[dict] | None = None):
+    """确保 state 中存在开场白和结尾段
+
+    首次进入 Step 2 时，根据用户选中的新闻标题调用 LLM 生成开场白和结尾。
+    后续 GET 返回时保留已生成的文稿不变（支持用户手动编辑后不丢失）。
+    LLM 失败时使用硬编码兜底。
+    """
+    if "intro" not in state or "outro" not in state:
+        state["intro"] = {
+            "_idx": -1, "display_title": "【视频开场白】",
+            "speak_text": "", "image_url": "", "char_count": 0, "category": "intro",
+        }
+        state["outro"] = {
+            "_idx": -2, "display_title": "【视频结尾】",
+            "speak_text": "", "image_url": "", "char_count": 0, "category": "outro",
+        }
+
+    if selected and (not state["intro"]["speak_text"] or not state["outro"]["speak_text"]):
+        titles = "\n".join(
+            f"{i+1}. {s.get('display_title', s.get('title', ''))[:80]}"
+            for i, s in enumerate(selected)
+        )
+        try:
+            intro_text = _ai_generate_intro(titles)
+            if intro_text:
+                state["intro"]["speak_text"] = intro_text
+                state["intro"]["char_count"] = len(intro_text)
+        except Exception:
+            pass
+        try:
+            outro_text = _ai_generate_outro(titles)
+            if outro_text:
+                state["outro"]["speak_text"] = outro_text
+                state["outro"]["char_count"] = len(outro_text)
+        except Exception:
+            pass
+
+    # 兜底
+    if not state["intro"]["speak_text"]:
+        state["intro"]["speak_text"] = "大家好，欢迎收看本期游戏设备周报，今天我们来聊聊最近游戏硬件圈的新鲜事。"
+        state["intro"]["char_count"] = len(state["intro"]["speak_text"])
+    if not state["outro"]["speak_text"]:
+        state["outro"]["speak_text"] = "以上就是本期周报的全部内容，感谢收看，我们下期再见！"
+        state["outro"]["char_count"] = len(state["outro"]["speak_text"])
+
+
+def _ai_generate_intro(titles_text: str) -> str | None:
+    """LLM 根据选中新闻生成开场白口播稿"""
+    try:
+        r = _openai_client().chat.completions.create(
+            model=os.environ.get("OPENAI_MODEL", "deepseek-chat"),
+            messages=[
+                {"role": "system", "content": (
+                    "你是游戏设备资讯视频的主播。根据以下新闻标题列表，"
+                    "生成一段热情有感染力的视频开场白（口播稿，约100-150字）。"
+                    "问候观众后，用1-2句话预告本期最重磅的2-3条新闻。"
+                    "语气活泼自然。直接返回口播文字，不加任何前缀。"
+                )},
+                {"role": "user", "content": f"新闻列表：\n{titles_text}"},
+            ],
+            temperature=0.8, max_tokens=400,
+        )
+        text = r.choices[0].message.content.strip()
+        return text if len(text) >= 20 else None
+    except Exception as e:
+        console.log(f"[yellow]AI生成开场白失败: {e}[/yellow]")
+        return None
+
+
+def _ai_generate_outro(titles_text: str) -> str | None:
+    """LLM 根据选中新闻生成结尾总结口播稿"""
+    try:
+        r = _openai_client().chat.completions.create(
+            model=os.environ.get("OPENAI_MODEL", "deepseek-chat"),
+            messages=[
+                {"role": "system", "content": (
+                    "你是游戏设备资讯视频的主播。根据以下新闻标题列表，"
+                    "生成一段视频结尾口播稿（约80-120字）。"
+                    "简短总结本期主题方向，真诚感谢观众收看，引导点赞关注。"
+                    "语气亲切不做作。直接返回口播文字，不加任何前缀。"
+                )},
+                {"role": "user", "content": f"新闻列表：\n{titles_text}"},
+            ],
+            temperature=0.7, max_tokens=400,
+        )
+        text = r.choices[0].message.content.strip()
+        return text if len(text) >= 15 else None
+    except Exception as e:
+        console.log(f"[yellow]AI生成结尾失败: {e}[/yellow]")
+        return None
+
+
+def _openai_client():
+    """懒加载 OpenAI client（与 polish 复用）"""
+    import importlib
+    try:
+        openai = importlib.import_module("openai")
+    except ImportError:
+        raise RuntimeError("openai 未安装")
+    return openai.OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY", ""),
+        base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+    )
+
+
 @app.route("/step2", methods=["GET", "POST"])
 def step2():
     """编辑脚本 — POST 选择条目 / GET 返回重新编辑"""
@@ -1746,16 +1924,25 @@ def step2():
         selected_idx = set(int(i) for i in idxs)
         selected = [s for s in state["segments"] if s["_idx"] in selected_idx]
         state["selected"] = selected
+        # 基于选中的新闻 AI 生成开场白和结尾
+        _ensure_intro_outro(selected)
     else:
         selected = state.get("selected", [])
         # 仅返回重编时补上上次裁剪的图片预览（首次 POST 进入不查，避免旧数据污染）
         if WORK_DIR:
             for seg in selected:
                 if not seg.get("image_url"):
-                    cropped = WORK_DIR / f"bg_{seg['_idx']:03d}.jpg"
+                    cropped = WORK_DIR / _bg_name(seg["_idx"])
                     if cropped.exists():
-                        seg["_display_img"] = f"/api/bg/bg_{seg['_idx']:03d}.jpg?t={int(cropped.stat().st_mtime)}"
-    return render_template_string(STEP2_TEMPLATE, selected=selected)
+                        seg["_display_img"] = f"/api/bg/{_bg_name(seg['_idx'])}?t={int(cropped.stat().st_mtime)}"
+
+    _ensure_intro_outro()
+    return render_template_string(
+        STEP2_TEMPLATE,
+        selected=selected,
+        intro=state["intro"],
+        outro=state["outro"],
+    )
 
 
 @app.route("/step3", methods=["POST"])
@@ -1773,6 +1960,17 @@ def step3_page():
         if img_key in request.form:
             seg["image_url"] = request.form[img_key]
 
+    # 更新开场白 / 结尾
+    _ensure_intro_outro()
+    for tag in ("intro", "outro"):
+        key = f"script_{tag}"
+        if key in request.form:
+            state[tag]["speak_text"] = request.form[key]
+            state[tag]["char_count"] = len(state[tag]["speak_text"])
+        img_key = f"img_{tag}"
+        if img_key in request.form:
+            state[tag]["image_url"] = request.form[img_key]
+
     state["_progress"] = {
         "done": False,
         "steps": [
@@ -1786,7 +1984,11 @@ def step3_page():
     # 在后台线程执行
     def build():
         p = state["_progress"]
-        s = state["selected"]
+        # 组装完整段列表：开场白 → 新闻条目 → 结尾
+        intro_seg = dict(state.get("intro", {}))
+        outro_seg = dict(state.get("outro", {}))
+        s_all = [intro_seg] + state["selected"] + [outro_seg]
+        s = s_all
         WORK_DIR.mkdir(parents=True, exist_ok=True)
 
         # 1) 图片 — URL 优先，Step 2 裁剪的 bg_{idx}.jpg 作兜底
@@ -1802,7 +2004,7 @@ def step3_page():
                 if local:
                     bg = _prepare_bg(local, idx)
             if not bg:
-                cropped = WORK_DIR / f"bg_{idx:03d}.jpg"
+                cropped = WORK_DIR / _bg_name(idx)
                 if cropped.exists():
                     bg = str(cropped)
             if bg:
@@ -2051,16 +2253,15 @@ def api_serve_upload(filename):
     return send_file(upload_dir / filename)
 
 
-@app.route("/api/save-image/<int:idx>", methods=["POST"])
+@app.route("/api/save-image/<string:idx>", methods=["POST"])
 def api_save_image(idx):
-    """保存裁剪后的图片为 bg_{idx:03d}.jpg（1920x1080）"""
+    """保存裁剪后的图片（1920x1080），支持数字ID和 'intro'/'outro'"""
     data = request.get_json()
     img_b64 = data.get("image", "")
     if not img_b64:
         return jsonify({"error": "无图片数据"}), 400
 
     import base64
-    # 去掉 data:image/...;base64, 前缀
     if "," in img_b64:
         img_b64 = img_b64.split(",", 1)[1]
 
@@ -2069,12 +2270,13 @@ def api_save_image(idx):
     except Exception:
         return jsonify({"error": "Base64 解码失败"}), 400
 
-    # 保存原始裁剪图
-    raw_path = WORK_DIR / f"crop_{idx:03d}.png"
-    raw_path.write_bytes(img_bytes)
-
-    # 缩放/裁剪到 1920x1080
-    dest = WORK_DIR / f"bg_{idx:03d}.jpg"
+    # 文件名：数字ID用 bg_001.jpg 格式，字符串ID直接用 bg_intro.jpg
+    if isinstance(idx, str) and not idx.isdigit():
+        raw_path = WORK_DIR / f"crop_{idx}.png"
+        dest = WORK_DIR / f"bg_{idx}.jpg"
+    else:
+        raw_path = WORK_DIR / f"crop_{int(idx):03d}.png"
+        dest = WORK_DIR / f"bg_{int(idx):03d}.jpg"
     try:
         subprocess.run([
             "ffmpeg", "-y", "-i", str(raw_path),
@@ -2084,7 +2286,8 @@ def api_save_image(idx):
             "-q:v", "2", str(dest),
         ], capture_output=True, check=True, timeout=30)
         raw_path.unlink()  # 清理临时文件
-        return jsonify({"ok": True, "url": f"/api/bg/bg_{idx:03d}.jpg"})
+        bg_name = f"bg_{idx}.jpg" if (isinstance(idx, str) and not idx.isdigit()) else f"bg_{int(idx):03d}.jpg"
+        return jsonify({"ok": True, "url": f"/api/bg/{bg_name}"})
     except Exception as e:
         return jsonify({"error": f"图片处理失败: {e}"}), 500
 
