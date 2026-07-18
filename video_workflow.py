@@ -11,6 +11,7 @@ import json
 import uuid
 import time
 import shutil
+import base64
 import asyncio
 import tempfile
 import hashlib
@@ -57,8 +58,19 @@ except Exception as e:
 TEMP_DIR = Path(tempfile.gettempdir()) / "gaming_news_workflow"
 VIDEO_CACHE = Path(__file__).parent / "storage" / "video_cache"
 WORK_DIR = None
+
+# TTS: 火山引擎 seed-tts-2.0（优先）
+VOLC_APP_ID = os.environ.get("VOLC_TTS_APP_ID", "4526111713")
+VOLC_ACCESS_KEY = os.environ.get("VOLC_TTS_ACCESS_KEY",
+    "DJJJscoNvfmZNcRDmTUl--mVmOwfiJso")
+VOLC_SPEAKER = os.environ.get("VOLC_TTS_SPEAKER", "saturn_zh_female_cancan_tob")
+VOLC_RESOURCE_ID = "seed-tts-2.0"
+VOLC_TTS_URL = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
+
+# TTS: edge-tts 备用
 VOICE = "zh-CN-XiaoxiaoNeural"
 TTS_RATE = "+10%"
+
 VIDEO_W = 1920
 VIDEO_H = 1080
 MAX_TTS_PARALLEL = 3
@@ -748,10 +760,71 @@ def _default_bg() -> str:
     return str(dest)
 
 
-def _generate_tts(text: str, out_path: Path) -> bool:
+def _volc_tts(text: str, out_path: Path) -> bool:
+    """火山引擎 seed-tts-2.0 HTTP 流式 TTS"""
     if out_path.exists() and out_path.stat().st_size > 1024:
         return True
-    # 清理可能损坏的文件
+    if out_path.exists():
+        out_path.unlink()
+    try:
+        response = requests.post(
+            VOLC_TTS_URL,
+            headers={
+                "X-Api-App-Id": VOLC_APP_ID,
+                "X-Api-Access-Key": VOLC_ACCESS_KEY,
+                "X-Api-Resource-Id": VOLC_RESOURCE_ID,
+                "Content-Type": "application/json",
+            },
+            json={
+                "req_params": {
+                    "text": text,
+                    "speaker": VOLC_SPEAKER,
+                    "audio_params": {
+                        "format": "mp3",
+                        "sample_rate": 24000,
+                        "speech_rate": 10,
+                    },
+                },
+            },
+            stream=True,
+            timeout=120,
+        )
+        if response.status_code != 200:
+            console.log(f"[red]火山TTS HTTP {response.status_code}[/red]")
+            return False
+
+        audio_data = bytearray()
+        for line in response.iter_lines():
+            if line:
+                try:
+                    d = json.loads(line.decode("utf-8"))
+                    if d.get("data"):
+                        audio_data.extend(base64.b64decode(d["data"]))
+                except Exception:
+                    pass
+
+        if len(audio_data) < 1024:
+            console.log(f"[red]火山TTS 音频数据不足 1KB[/red]")
+            return False
+
+        out_path.write_bytes(audio_data)
+        return True
+    except requests.Timeout:
+        console.log(f"[red]火山TTS 超时(120s)[/red]")
+        if out_path.exists():
+            out_path.unlink()
+        return False
+    except Exception as e:
+        console.log(f"[red]火山TTS失败: {e}[/red]")
+        if out_path.exists():
+            out_path.unlink()
+        return False
+
+
+def _edge_tts(text: str, out_path: Path) -> bool:
+    """edge-tts 备用 TTS"""
+    if out_path.exists() and out_path.stat().st_size > 1024:
+        return True
     if out_path.exists():
         out_path.unlink()
     try:
@@ -762,15 +835,23 @@ def _generate_tts(text: str, out_path: Path) -> bool:
         asyncio.run(run())
         return out_path.exists() and out_path.stat().st_size > 1024
     except asyncio.TimeoutError:
-        console.log(f"[red]TTS超时(120s)[/red]")
+        console.log(f"[red]edge-tts超时(120s)[/red]")
         if out_path.exists():
             out_path.unlink()
         return False
     except Exception as e:
-        console.log(f"[red]TTS失败: {e}[/red]")
+        console.log(f"[red]edge-tts失败: {e}[/red]")
         if out_path.exists():
             out_path.unlink()
         return False
+
+
+def _generate_tts(text: str, out_path: Path) -> bool:
+    """TTS 入口：火山引擎优先，edge-tts 备用"""
+    if _volc_tts(text, out_path):
+        return True
+    console.log(f"[yellow]火山TTS失败，回退 edge-tts[/yellow]")
+    return _edge_tts(text, out_path)
 
 
 def _sentence_tts_fallback(text: str, out_path: Path) -> None:
@@ -812,30 +893,35 @@ def _sentence_tts_fallback(text: str, out_path: Path) -> None:
 
 
 def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -> list[tuple[str, int, int]]:
-    """整段生成 TTS + 用 SentenceBoundary 获取自然断句时间戳
+    """生成 TTS 音频 + 字幕时序数据
 
-    edge-tts v7.2+ 默认发送 SentenceBoundary 事件，标记 TTS 引擎
-    识别到的自然断句位置。我们利用这个精确时间戳来驱动 SRT 字幕。
+    优先级：火山 TTS（音质好，无字级时序）→ edge-tts（SentenceBoundary 精确时间戳）
+    火山 TTS 返回空列表 → _build_srt 走 _split_subs + 字数比例路径
 
     Returns:
-        [(句子文本, 开始ms, 结束ms), ...] — 基于 TTS 引擎自然韵律的时间戳
+        [(句子文本, 开始ms, 结束ms), ...] — SentenceBoundary 精确时间戳，或空列表
     """
+    import json as _json
     timing_path = Path(str(out_path).replace(".mp3", "_timing.json"))
     if out_path.exists() and timing_path.exists():
-        import json as _json
-        if out_path.stat().st_size > 1024:  # 必须大于 1KB，排除损坏文件
+        if out_path.stat().st_size > 1024:
             with open(timing_path, "r", encoding="utf-8") as f:
                 return [tuple(t) for t in _json.load(f)]
-        else:
-            # 文件损坏，清理后重来
-            out_path.unlink()
-            timing_path.unlink()
+        out_path.unlink()
+        timing_path.unlink()
 
-    import edge_tts, json as _json
-    TTS_TIMEOUT = 120  # 单段总超时（秒）
+    # 优先火山 TTS（音质好，但无字级时序 → 返回 []，_build_srt 用 _split_subs + 字数比例）
+    if _volc_tts(text, out_path):
+        timing_path.write_text("[]", encoding="utf-8")
+        return []
+
+    # 火山 TTS 失败 → edge-tts SentenceBoundary 精确时序
+    console.log("[yellow]火山TTS失败，回退 edge-tts 时序模式[/yellow]")
+
+    import edge_tts
+    TTS_TIMEOUT = 120
 
     async def _stream_to_list(comm) -> list[dict]:
-        """收集所有 chunk 到列表，外层用 wait_for 设总超时"""
         chunks = []
         async for chunk in comm.stream():
             chunks.append(chunk)
@@ -858,7 +944,6 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
         for cue in sub.cues:
             start_ms = int(cue.start.total_seconds() * 1000)
             end_ms = int(cue.end.total_seconds() * 1000)
-            # edge-tts SentenceBoundary 偶尔产生 50ms 重叠，消除之
             if start_ms < prev_end:
                 start_ms = prev_end
             if end_ms <= start_ms:
@@ -876,8 +961,7 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
                 raise RuntimeError("TTS 音频数据不足 1KB")
 
             out_path.write_bytes(audio_data)
-            with open(timing_path, "w", encoding="utf-8") as f:
-                _json.dump(cues, f, ensure_ascii=False)
+            timing_path.write_text(_json.dumps(cues, ensure_ascii=False), encoding="utf-8")
             return cues
 
         except asyncio.TimeoutError:
@@ -885,7 +969,6 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
         except Exception as e:
             last_error = str(e)
 
-        # 清理不完整文件
         for p in (out_path, timing_path):
             try:
                 if p.exists():
@@ -895,25 +978,21 @@ def _generate_tts_with_timing(text: str, out_path: Path, max_retries: int = 3) -
 
         if attempt < max_retries:
             import time as _time
-            wait = 5 * attempt  # 连接错误时用更长的退避
+            wait = 5 * attempt
             console.log(f"[yellow]TTS 第{attempt}次失败({last_error})，{wait}秒后重试...[/yellow]")
             _time.sleep(wait)
 
     # 3 次重试都失败 → 回退到基础 TTS（整段，无精确断句时间戳）
     console.log(f"[red]TTS 3次重试均失败({last_error})，回退到基础模式[/red]")
     if _generate_tts(text, out_path):
-        with open(timing_path, "w", encoding="utf-8") as f:
-            import json as _json
-            _json.dump([], f)
+        timing_path.write_text("[]", encoding="utf-8")
         return []
 
     # 基础 TTS 也失败 → 逐句 TTS + ffmpeg 拼接（最后兜底）
     console.log(f"[yellow]整段TTS失败，回退到逐句模式 (共{len(_split_subs(text))}句)[/yellow]")
     _sentence_tts_fallback(text, out_path)
     if out_path.exists() and out_path.stat().st_size > 1024:
-        with open(timing_path, "w", encoding="utf-8") as f:
-            import json as _json
-            _json.dump([], f)
+        timing_path.write_text("[]", encoding="utf-8")
         return []
     return []
 
@@ -1503,12 +1582,10 @@ def step3_page():
             idx = seg["_idx"]
             img_url = seg.get("image_url", "")
             bg = None
-            # 尝试从 URL 下载
             if img_url:
                 local = _download_image(img_url, idx)
                 if local:
                     bg = _prepare_bg(local, idx)
-            # URL 下载失败 / 无 URL → 兜底用 Step 2 裁剪的文件
             if not bg:
                 cropped = WORK_DIR / f"bg_{idx:03d}.jpg"
                 if cropped.exists():
@@ -1516,6 +1593,7 @@ def step3_page():
             if bg:
                 seg["bg_path"] = bg
                 imgs += 1
+            p["steps"][0]["text"] = f"准备图片: {imgs}/{len(s)}"
         for seg in s:
             if not seg.get("bg_path"):
                 seg["bg_path"] = _default_bg()
@@ -1547,11 +1625,13 @@ def step3_page():
             if timing_path.exists():
                 timing_path.unlink()
             console.log(f"[dim]TTS seg_{i:03d}: {seg['char_count']}字...[/dim]")
+            p["steps"][1]["text"] = f"TTS: {done_tts + skipped_tts}/{len(s)} — 正在生成 seg_{i:03d}..."
             seg["_timing"] = _generate_tts_with_timing(seg["speak_text"], ap)
             if ap.exists():
                 done_tts += 1
             else:
                 console.log(f"[red]TTS seg_{i:03d} 失败: 音频未生成[/red]")
+            p["steps"][1]["text"] = f"TTS: {done_tts + skipped_tts}/{len(s)}"
             if i < len(s) - 1:
                 time.sleep(5)
         total = done_tts + skipped_tts
