@@ -143,6 +143,7 @@ h1{color:#e94560;margin-bottom:4px}
 {% endfor %}
 <div class="btn-bar">
   <button class="btn" type="submit">下一步 → 编辑脚本</button>
+  <button type="button" class="btn" onclick="refreshWeekly()" style="background:#0f3460">🔄 刷新文稿</button>
   <span class="summary">已选 <b id="count">{{ total }}</b> / {{ total }} 条</span>
 </div>
 </form>
@@ -153,6 +154,17 @@ document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
       document.querySelectorAll('input[type=checkbox]:checked').length
   })
 })
+async function refreshWeekly() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '刷新中...';
+  try {
+    const r = await fetch('/api/refresh-weekly', {method:'POST'});
+    const data = await r.json();
+    if (data.ok) { location.reload(); }
+    else { alert('刷新失败: ' + (data.error || '未知')); btn.disabled = false; btn.textContent = '🔄 刷新文稿'; }
+  } catch(e) { alert('网络错误'); btn.disabled = false; btn.textContent = '🔄 刷新文稿'; }
+}
 </script>
 </body>
 </html>"""
@@ -2298,6 +2310,22 @@ def api_serve_bg(filename):
     return send_file(WORK_DIR / filename)
 
 
+@app.route("/api/refresh-weekly", methods=["POST"])
+def api_refresh_weekly():
+    """从 GitHub 重新拉取最新周刊，用于 Step 1 '刷新文稿' 按钮"""
+    repo = os.environ.get("GAMING_NEWS_REPO", "lenventh/gaming-news")
+    md_path = _fetch_latest_from_repo(repo)
+    if md_path:
+        state["md_path"] = str(md_path)
+        state["segments"] = parse_weekly(md_path.read_text(encoding="utf-8"))
+        state.pop("selected", None)
+        state.pop("intro", None)
+        state.pop("outro", None)
+        _cleanup_temp_cache(md_path.stem)
+        return jsonify({"ok": True, "file": md_path.name})
+    return jsonify({"ok": False, "error": "无法从 GitHub 获取最新周刊"}), 500
+
+
 @app.route("/api/jianying-draft")
 def api_jianying_draft():
     """生成/重新生成剪映草稿"""
@@ -2312,15 +2340,89 @@ def api_jianying_draft():
     return jsonify({"success": ok, "message": msg})
 
 
+def _fetch_latest_from_repo(repo: str, branch: str = "master") -> Path | None:
+    """从 GitHub 仓库拉取最新周刊 .md 文件到本地缓存
+
+    Args:
+        repo: 'lenventh/gaming-news' 格式
+        branch: 分支名，默认 master
+
+    Returns:
+        本地缓存路径，失败返回 None
+    """
+    import fnmatch
+    api_url = f"https://api.github.com/repos/{repo}/contents/output?ref={branch}"
+    try:
+        r = requests.get(api_url, timeout=15)
+        if r.status_code != 200:
+            console.log(f"[red]GitHub API 请求失败: {r.status_code}[/red]")
+            return None
+        files = [f["name"] for f in r.json() if f["name"].endswith(".md") and not f["name"].startswith("_")]
+        if not files:
+            console.log("[red]未在 output/ 目录找到周刊 .md 文件[/red]")
+            return None
+        # 取最新的（按文件名排序，ISO 格式自然排序正确）
+        files.sort(reverse=True)
+        latest = files[0]
+        raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/output/{latest}"
+        r2 = requests.get(raw_url, timeout=15)
+        if r2.status_code != 200:
+            return None
+        cache_dir = Path(__file__).parent / ".weekly_cache"
+        cache_dir.mkdir(exist_ok=True)
+        dest = cache_dir / latest
+        dest.write_text(r2.text, encoding="utf-8")
+        console.print(f"[green]✓ 从 GitHub 获取最新周刊: {latest} ({len(r2.text)} 字符)[/green]")
+        return dest
+    except Exception as e:
+        console.log(f"[red]获取 GitHub 周刊失败: {e}[/red]")
+        return None
+
+
 def main():
-    md_input = sys.argv[1] if len(sys.argv) > 1 else "output/2026-W29.md"
+    md_input = sys.argv[1] if len(sys.argv) > 1 else ""
+    port = 5050
+
+    # --repo: 从 GitHub 自动获取最新周刊
+    if md_input == "--repo" and len(sys.argv) > 2:
+        repo = sys.argv[2]
+        md_path = _fetch_latest_from_repo(repo)
+        if not md_path:
+            console.log("[red]无法从 GitHub 获取周刊，请检查网络或仓库名[/red]")
+            sys.exit(1)
+        md_input = str(md_path)
+    elif md_input.startswith("http://") or md_input.startswith("https://"):
+        # 直接传 GitHub raw URL 或任何 URL
+        try:
+            r = requests.get(md_input, timeout=15)
+            if r.status_code != 200:
+                console.log(f"[red]URL 请求失败: {r.status_code}[/red]")
+                sys.exit(1)
+            cache_dir = Path(__file__).parent / ".weekly_cache"
+            cache_dir.mkdir(exist_ok=True)
+            fname = md_input.rsplit("/", 1)[-1].split("?")[0]
+            if not fname.endswith(".md"):
+                fname = "weekly.md"
+            dest = cache_dir / fname
+            dest.write_text(r.text, encoding="utf-8")
+            console.print(f"[green]✓ 从 URL 获取周刊: {fname} ({len(r.text)} 字符)[/green]")
+            md_input = str(dest)
+        except Exception as e:
+            console.log(f"[red]获取 URL 失败: {e}[/red]")
+            sys.exit(1)
+    elif not md_input:
+        # 默认：尝试本地文件
+        md_input = str(Path(__file__).parent / "output" / "2026-W29.md")
+
     if not os.path.isabs(md_input):
         md_input = str(Path(__file__).parent / md_input)
     if not Path(md_input).exists():
         console.log(f"[red]文件不存在: {md_input}[/red]")
+        console.log("[dim]用法: python video_workflow.py [文件.md|URL|--repo 仓库名][/dim]")
         sys.exit(1)
 
     state["md_path"] = md_input
+    state["_md_source"] = md_input  # 记录来源，供 Step 1 "刷新" 使用
 
     global WORK_DIR
     WORK_DIR = TEMP_DIR / Path(md_input).stem
@@ -2330,9 +2432,8 @@ def main():
     # 清理超过 7 天的旧周缓存
     _cleanup_temp_cache(Path(md_input).stem)
 
-    port = 5050
     console.print(f"\n[bold green]🎬 口播视频工作流已启动[/bold green]")
-    console.print(f"  周刊: {md_input}")
+    console.print(f"  周刊: {Path(md_input).name}")
     console.print(f"  打开浏览器: [bold cyan]http://localhost:{port}[/bold cyan]")
     console.print(f"  按 Ctrl+C 停止\n")
     app.run(host="127.0.0.1", port=port, debug=False)
