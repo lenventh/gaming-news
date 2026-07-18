@@ -119,7 +119,7 @@ h1{color:#e94560;margin-bottom:4px}
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 1/5</h1>
-<p class="sub">选择周刊期数，勾选要制作成视频的新闻条目（默认全选）</p>
+<p class="sub">勾选要制作成视频的新闻条目</p>
 {% if available_weeklies and available_weeklies|length > 1 %}
 <div style="margin-bottom:20px;display:flex;gap:12px;align-items:center">
   <label style="color:#aaa;font-size:14px">📅 周刊期数</label>
@@ -137,7 +137,7 @@ h1{color:#e94560;margin-bottom:4px}
   <h2>{{ cat }} ({{ items|length }} 条)</h2>
   {% for seg in items %}
   <label class="item">
-    <input type="checkbox" name="idx" value="{{ seg._idx }}" checked>
+    <input type="checkbox" name="idx" value="{{ seg._idx }}">
     {% if seg.image_url %}
     <img class="preview-img" src="{{ seg.image_url }}" onerror="this.style.display='none'" loading="lazy">
     {% endif %}
@@ -157,10 +157,16 @@ h1{color:#e94560;margin-bottom:4px}
 <div class="btn-bar">
   <button class="btn" type="submit">下一步 → 编辑脚本</button>
   <button type="button" class="btn" onclick="refreshWeekly()" style="background:#0f3460">🔄 刷新文稿</button>
-  <span class="summary">已选 <b id="count">{{ total }}</b> / {{ total }} 条</span>
+  <button type="button" class="btn-ghost" onclick="selectAll(true)" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer">全选</button>
+  <button type="button" class="btn-ghost" onclick="selectAll(false)" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer">全不选</button>
+  <span class="summary">已选 <b id="count">0</b> / {{ total }} 条</span>
 </div>
 </form>
 <script>
+function selectAll(checked) {
+  document.querySelectorAll('input[type=checkbox]').forEach(cb=>{cb.checked = checked});
+  document.getElementById('count').textContent = checked ? document.querySelectorAll('input[type=checkbox]').length : 0;
+}
 document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
   cb.addEventListener('change',()=>{
     document.getElementById('count').textContent=
