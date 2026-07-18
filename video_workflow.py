@@ -117,7 +117,18 @@ h1{color:#e94560;margin-bottom:4px}
 </head>
 <body>
 <h1>🎬 口播视频工作流 — Step 1/5</h1>
-<p class="sub">勾选要制作成视频的新闻条目（默认全选）</p>
+<p class="sub">选择周刊期数，勾选要制作成视频的新闻条目（默认全选）</p>
+{% if available_weeklies and available_weeklies|length > 1 %}
+<div style="margin-bottom:20px;display:flex;gap:12px;align-items:center">
+  <label style="color:#aaa;font-size:14px">📅 周刊期数</label>
+  <select id="weeklySelector" onchange="switchWeekly(this.value)" style="flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:6px;padding:8px 12px;font-size:15px">
+    {% for w in available_weeklies %}
+    <option value="{{ w }}" {% if w == current_weekly %}selected{% endif %}>{{ w.replace('.md','').replace('-',' · ') }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="btn-ghost" onclick="refreshWeekly()" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer;white-space:nowrap">🔄 刷新列表</button>
+</div>
+{% endif %}
 <form id="form" method="POST" action="/step2">
 {% for cat, items in by_category.items() %}
 <div class="cat">
@@ -154,6 +165,20 @@ document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
       document.querySelectorAll('input[type=checkbox]:checked').length
   })
 })
+async function switchWeekly(filename) {
+  const sel = document.getElementById('weeklySelector');
+  sel.disabled = true;
+  try {
+    const r = await fetch('/api/switch-weekly', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({file: filename})
+    });
+    if (r.ok) { location.reload(); }
+    else { sel.disabled = false; alert('切换失败'); }
+  } catch(e) { sel.disabled = false; }
+}
+
 async function refreshWeekly() {
   const btn = event.target;
   btn.disabled = true;
@@ -162,8 +187,8 @@ async function refreshWeekly() {
     const r = await fetch('/api/refresh-weekly', {method:'POST'});
     const data = await r.json();
     if (data.ok) { location.reload(); }
-    else { alert('刷新失败: ' + (data.error || '未知')); btn.disabled = false; btn.textContent = '🔄 刷新文稿'; }
-  } catch(e) { alert('网络错误'); btn.disabled = false; btn.textContent = '🔄 刷新文稿'; }
+    else { alert('刷新失败: ' + (data.error || '未知')); btn.disabled = false; btn.textContent = '🔄 刷新列表'; }
+  } catch(e) { alert('网络错误'); btn.disabled = false; btn.textContent = '🔄 刷新列表'; }
 }
 </script>
 </body>
@@ -1820,6 +1845,8 @@ def step1():
         STEP1_TEMPLATE,
         by_category=by_category,
         total=len(segments),
+        available_weeklies=state.get("_available_weeklies", []),
+        current_weekly=Path(state["md_path"]).name,
     )
 
 
@@ -2310,20 +2337,46 @@ def api_serve_bg(filename):
     return send_file(WORK_DIR / filename)
 
 
+@app.route("/api/switch-weekly", methods=["POST"])
+def api_switch_weekly():
+    """切换 Step 1 显示的周刊期数"""
+    data = request.get_json()
+    filename = data.get("file", "")
+    repo = state.get("_repo", "")
+    if not repo or not filename:
+        return jsonify({"ok": False, "error": "缺少参数"}), 400
+    md_path = _fetch_weekly_from_github(repo, filename)
+    if not md_path:
+        return jsonify({"ok": False, "error": "获取失败"}), 500
+    state["md_path"] = str(md_path)
+    state["segments"] = parse_weekly(md_path.read_text(encoding="utf-8"))
+    state.pop("selected", None)
+    state.pop("intro", None)
+    state.pop("outro", None)
+    _cleanup_temp_cache(md_path.stem)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/refresh-weekly", methods=["POST"])
 def api_refresh_weekly():
-    """从 GitHub 重新拉取最新周刊，用于 Step 1 '刷新文稿' 按钮"""
-    repo = os.environ.get("GAMING_NEWS_REPO", "lenventh/gaming-news")
-    md_path = _fetch_latest_from_repo(repo)
-    if md_path:
-        state["md_path"] = str(md_path)
-        state["segments"] = parse_weekly(md_path.read_text(encoding="utf-8"))
-        state.pop("selected", None)
-        state.pop("intro", None)
-        state.pop("outro", None)
-        _cleanup_temp_cache(md_path.stem)
-        return jsonify({"ok": True, "file": md_path.name})
-    return jsonify({"ok": False, "error": "无法从 GitHub 获取最新周刊"}), 500
+    """刷新周刊列表 + 重新拉取最新"""
+    repo = state.get("_repo", "") or os.environ.get("GAMING_NEWS_REPO", "lenventh/gaming-news")
+    available = _list_github_weeklies(repo)
+    if not available:
+        return jsonify({"ok": False, "error": "无法获取周刊列表"}), 500
+    state["_available_weeklies"] = available
+    state["_repo"] = repo
+    latest = available[0]
+    md_path = _fetch_weekly_from_github(repo, latest)
+    if not md_path:
+        return jsonify({"ok": False, "error": "获取失败"}), 500
+    state["md_path"] = str(md_path)
+    state["segments"] = parse_weekly(md_path.read_text(encoding="utf-8"))
+    state.pop("selected", None)
+    state.pop("intro", None)
+    state.pop("outro", None)
+    _cleanup_temp_cache(md_path.stem)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/jianying-draft")
@@ -2340,42 +2393,39 @@ def api_jianying_draft():
     return jsonify({"success": ok, "message": msg})
 
 
-def _fetch_latest_from_repo(repo: str, branch: str = "master") -> Path | None:
-    """从 GitHub 仓库拉取最新周刊 .md 文件到本地缓存
-
-    Args:
-        repo: 'lenventh/gaming-news' 格式
-        branch: 分支名，默认 master
-
-    Returns:
-        本地缓存路径，失败返回 None
-    """
-    import fnmatch
+def _list_github_weeklies(repo: str, branch: str = "master") -> list[str] | None:
+    """列出 GitHub 仓库 output/ 目录下所有周刊 .md 文件名（倒序）"""
     api_url = f"https://api.github.com/repos/{repo}/contents/output?ref={branch}"
     try:
         r = requests.get(api_url, timeout=15)
         if r.status_code != 200:
             console.log(f"[red]GitHub API 请求失败: {r.status_code}[/red]")
             return None
-        files = [f["name"] for f in r.json() if f["name"].endswith(".md") and not f["name"].startswith("_")]
-        if not files:
-            console.log("[red]未在 output/ 目录找到周刊 .md 文件[/red]")
-            return None
-        # 取最新的（按文件名排序，ISO 格式自然排序正确）
-        files.sort(reverse=True)
-        latest = files[0]
-        raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/output/{latest}"
-        r2 = requests.get(raw_url, timeout=15)
-        if r2.status_code != 200:
+        files = sorted(
+            (f["name"] for f in r.json()
+             if f["name"].endswith(".md") and not f["name"].startswith("_")),
+            reverse=True,
+        )
+        return files
+    except Exception as e:
+        console.log(f"[red]获取周刊列表失败: {e}[/red]")
+        return None
+
+
+def _fetch_weekly_from_github(repo: str, filename: str, branch: str = "master") -> Path | None:
+    """从 GitHub 拉取指定周刊 .md 文件，缓存到本地"""
+    raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/output/{filename}"
+    try:
+        r = requests.get(raw_url, timeout=15)
+        if r.status_code != 200:
             return None
         cache_dir = Path(__file__).parent / ".weekly_cache"
         cache_dir.mkdir(exist_ok=True)
-        dest = cache_dir / latest
-        dest.write_text(r2.text, encoding="utf-8")
-        console.print(f"[green]✓ 从 GitHub 获取最新周刊: {latest} ({len(r2.text)} 字符)[/green]")
+        dest = cache_dir / filename
+        dest.write_text(r.text, encoding="utf-8")
         return dest
     except Exception as e:
-        console.log(f"[red]获取 GitHub 周刊失败: {e}[/red]")
+        console.log(f"[red]获取周刊失败 ({filename}): {e}[/red]")
         return None
 
 
@@ -2383,13 +2433,22 @@ def main():
     md_input = sys.argv[1] if len(sys.argv) > 1 else ""
     port = 5050
 
-    # --repo: 从 GitHub 自动获取最新周刊
+    # --repo: 从 GitHub 获取周刊列表
     if md_input == "--repo" and len(sys.argv) > 2:
         repo = sys.argv[2]
-        md_path = _fetch_latest_from_repo(repo)
-        if not md_path:
-            console.log("[red]无法从 GitHub 获取周刊，请检查网络或仓库名[/red]")
+        state["_repo"] = repo
+        available = _list_github_weeklies(repo)
+        if not available:
+            console.log("[red]无法获取周刊列表，请检查网络或仓库名[/red]")
             sys.exit(1)
+        state["_available_weeklies"] = available
+        # 默认加载最新一期
+        latest = available[0]
+        md_path = _fetch_weekly_from_github(repo, latest)
+        if not md_path:
+            console.log("[red]无法获取周刊[/red]")
+            sys.exit(1)
+        console.print(f"[green]✓ 可用周刊: {len(available)} 期，默认加载最新: {latest}[/green]")
         md_input = str(md_path)
     elif md_input.startswith("http://") or md_input.startswith("https://"):
         # 直接传 GitHub raw URL 或任何 URL
