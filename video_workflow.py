@@ -2369,7 +2369,7 @@ def api_refresh_weekly():
     state["_available_weeklies"] = available
     state["_repo"] = repo
     latest = available[0]
-    md_path = _fetch_weekly_from_github(repo, latest)
+    md_path = _fetch_weekly_from_github(repo, latest, force=True)
     if not md_path:
         return jsonify({"ok": False, "error": "获取失败"}), 500
     state["md_path"] = str(md_path)
@@ -2417,8 +2417,19 @@ def _list_github_weeklies(repo: str) -> list[str] | None:
         return None
 
 
-def _fetch_weekly_from_github(repo: str, filename: str) -> Path | None:
-    """从 GitHub 拉取指定周刊 .md 文件（通过 gh CLI），缓存到本地"""
+def _fetch_weekly_from_github(repo: str, filename: str, force: bool = False) -> Path | None:
+    """从 GitHub 拉取周刊 .md 文件（通过 gh CLI），缓存到本地
+
+    force=False 时优先用本地缓存（已下载过的直接返回），
+    force=True 时强制重新下载（"刷新列表"按钮）。
+    """
+    cache_dir = Path(__file__).parent / ".weekly_cache"
+    cache_dir.mkdir(exist_ok=True)
+    dest = cache_dir / filename
+
+    if not force and dest.exists():
+        return dest
+
     try:
         r = subprocess.run(
             ["gh", "api", f"repos/{repo}/contents/output/{filename}",
@@ -2426,15 +2437,19 @@ def _fetch_weekly_from_github(repo: str, filename: str) -> Path | None:
             capture_output=True, text=True, timeout=20,
         )
         if r.returncode != 0:
+            # 网络失败时如果有本地缓存就用缓存
+            if dest.exists():
+                console.log(f"[yellow]获取 {filename} 失败，使用本地缓存[/yellow]")
+                return dest
             return None
         import base64 as _b64
         content = _b64.b64decode(r.stdout.strip()).decode("utf-8")
-        cache_dir = Path(__file__).parent / ".weekly_cache"
-        cache_dir.mkdir(exist_ok=True)
-        dest = cache_dir / filename
         dest.write_text(content, encoding="utf-8")
         return dest
     except Exception as e:
+        if dest.exists():
+            console.log(f"[yellow]获取 {filename} 失败({e})，使用本地缓存[/yellow]")
+            return dest
         console.log(f"[red]获取周刊失败 ({filename}): {e}[/red]")
         return None
 
