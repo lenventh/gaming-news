@@ -134,7 +134,7 @@ h1{color:#e94560;margin-bottom:4px}
 <form id="form" method="POST" action="/step2">
 {% for cat, items in by_category.items() %}
 <div class="cat">
-  <h2>{{ cat }} ({{ items|length }} 条)</h2>
+  <h2>{{ cat }} ({{ items|length }} 条) <button type="button" onclick="selectInBlock(this,true)" style="font-size:12px;background:transparent;color:#aaa;border:1px solid #555;padding:2px 10px;border-radius:4px;cursor:pointer">全选</button> <button type="button" onclick="selectInBlock(this,false)" style="font-size:12px;background:transparent;color:#aaa;border:1px solid #555;padding:2px 10px;border-radius:4px;cursor:pointer">全不选</button></h2>
   {% for seg in items %}
   <label class="item">
     <input type="checkbox" name="idx" value="{{ seg._idx }}">
@@ -157,15 +157,14 @@ h1{color:#e94560;margin-bottom:4px}
 <div class="btn-bar">
   <button class="btn" type="submit">下一步 → 编辑脚本</button>
   <button type="button" class="btn" onclick="refreshWeekly()" style="background:#0f3460">🔄 刷新文稿</button>
-  <button type="button" class="btn-ghost" onclick="selectAll(true)" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer">全选</button>
-  <button type="button" class="btn-ghost" onclick="selectAll(false)" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer">全不选</button>
-  <span class="summary">已选 <b id="count">0</b> / {{ total }} 条</span>
+<span class="summary">已选 <b id="count">0</b> / {{ total }} 条</span>
 </div>
 </form>
 <script>
-function selectAll(checked) {
-  document.querySelectorAll('input[type=checkbox]').forEach(cb=>{cb.checked = checked});
-  document.getElementById('count').textContent = checked ? document.querySelectorAll('input[type=checkbox]').length : 0;
+function selectInBlock(btn, checked) {
+  const cat = btn.closest('.cat');
+  cat.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = checked; });
+  document.getElementById('count').textContent = document.querySelectorAll('input[type=checkbox]:checked').length;
 }
 document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
   cb.addEventListener('change',()=>{
