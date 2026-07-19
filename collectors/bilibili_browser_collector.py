@@ -133,7 +133,7 @@ BILIBILI_SEARCH_KEYWORDS = {
 # 这里列出已知的官号 mids，用于识别和优先排序
 MANUFACTURER_ACCOUNTS = {
     # === Windows 掌机 ===
-    "AYANEO官方": {"mid": 17560816, "category": "windows_handheld"},
+    "AYANEO官方": {"mid": 366077183, "category": "windows_handheld"},
     "GPD掌机官方": {"mid": 13258977, "category": "windows_handheld"},
     "壹号本科技": {"mid": 519903075, "category": "windows_handheld"},  # OneXPlayer
     "AOKZOE掌机": {"mid": 1760429024, "category": "windows_handheld"},
@@ -352,76 +352,85 @@ class BilibiliBrowserCollector(BaseCollector):
             return ""
 
     def _fetch_from_space_api(self, mid: int, name: str, cat_hint: str) -> list[dict]:
-        """访问 UP主 空间 /video 页面，从 DOM 提取视频列表（API 被 B站 风控封锁）"""
+        """访问 UP主 空间页面，从 DOM 提取视频列表（API 被 B站 风控封锁）
+
+        策略：先试 /video 页面（标准），若跳转到 /upload 或无数据则回退主页。
+        """
         results = []
-        try:
-            video_url = f"https://space.bilibili.com/{mid}/video"
-            self._page.goto(video_url, wait_until="domcontentloaded", timeout=15000)
-            # 等待视频卡片渲染（B站 前端异步加载）
+        pages_to_try = [
+            f"https://space.bilibili.com/{mid}/video",
+            f"https://space.bilibili.com/{mid}",          # 主页兜底（部分账号 /video 不可用）
+        ]
+
+        for page_url in pages_to_try:
             try:
-                self._page.wait_for_selector(
-                    'a[href*="/video/BV"]', timeout=10000
-                )
-            except Exception:
-                pass
-            self._page.wait_for_timeout(1500)
+                self._page.goto(page_url, wait_until="domcontentloaded", timeout=15000)
+                try:
+                    self._page.wait_for_selector(
+                        'a[href*="/video/BV"]', timeout=8000
+                    )
+                except Exception:
+                    pass
+                self._page.wait_for_timeout(1500)
 
-            raw = self._page.evaluate(f"""(mid) => {{
-                const cards = [];
-                const seen = new Set();
-                const items = document.querySelectorAll('a[href*="/video/BV"]');
-                items.forEach(a => {{
-                    const href = a.getAttribute('href') || '';
-                    const bvid = (href.split('/video/')[1] || '').split('?')[0];
-                    if (!bvid || seen.has(bvid)) return;
-                    seen.add(bvid);
+                current_url = self._page.url
+                # 如果被重定向到上传管理页，跳过
+                if "/upload/" in current_url:
+                    continue
 
-                    const title = (a.getAttribute('title') || a.textContent || '').trim();
-                    // 跳过"TA的视频"播放全部卡片
-                    if (title === 'TA的视频' || !title) return;
+                raw = self._page.evaluate(f"""(mid) => {{
+                    const cards = [];
+                    const seen = new Set();
+                    // 匹配两种 BV 链接格式: /video/BVxxx 和 bilibili.com/video/BVxxx
+                    const items = document.querySelectorAll(
+                        'a[href*="/video/BV"], a[href*="bilibili.com/video/BV"]'
+                    );
+                    items.forEach(a => {{
+                        const href = a.getAttribute('href') || '';
+                        let bvid = (href.split('/video/')[1] || '').split('?')[0];
+                        if (!bvid) return;
+                        if (seen.has(bvid)) return;
+                        seen.add(bvid);
 
-                    // 尝试从父级卡片获取更多信息
-                    let card = a.closest('[class*="card"], [class*="item"], [class*="video"]');
-                    if (!card) card = a.parentElement;
+                        const title = (a.getAttribute('title') || a.textContent || '').trim();
+                        if (title === 'TA的视频' || !title) return;
 
-                    const text = card ? card.textContent || '' : '';
+                        let card = a.closest('[class*="card"], [class*="item"], [class*="video"]');
+                        if (!card) card = a.parentElement;
+                        const text = card ? card.textContent || '' : '';
 
-                    // 提取播放量
-                    let play = '';
-                    const playMatch = text.match(/([\\d.]+万?)\\s*(播放|观看|次)/);
-                    if (playMatch) play = playMatch[0];
-                    else {{
-                        const pm = text.match(/([\\d.]+万)/);
-                        if (pm) play = pm[0];
-                    }}
+                        let play = '';
+                        const playMatch = text.match(/([\\d.]+万?)\\s*(播放|观看|次)/);
+                        if (playMatch) play = playMatch[0];
+                        else {{
+                            const pm = text.match(/([\\d.]+万)/);
+                            if (pm) play = pm[0];
+                        }}
 
-                    // 提取时长
-                    let duration = '';
-                    const durMatch = text.match(/(\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?)/);
-                    if (durMatch) duration = durMatch[0];
+                        let duration = '';
+                        const durMatch = text.match(/(\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?)/);
+                        if (durMatch) duration = durMatch[0];
 
-                    // 提取图片
-                    let pic = '';
-                    const img = card ? card.querySelector('img') : null;
-                    if (img) {{
-                        pic = img.getAttribute('src') || img.getAttribute('data-src') || '';
-                        if (pic && pic.startsWith('//')) pic = 'https:' + pic;
-                    }}
+                        let pic = '';
+                        const img = card ? card.querySelector('img') : null;
+                        if (img) {{
+                            pic = img.getAttribute('src') || img.getAttribute('data-src') || '';
+                            if (pic && pic.startsWith('//')) pic = 'https:' + pic;
+                        }}
 
-                    cards.push({{
-                        bvid: bvid,
-                        title: title.substring(0, 200),
-                        play_text: play,
-                        duration: duration,
-                        pic: pic,
-                        mid: mid,
+                        cards.push({{
+                            bvid: bvid, title: title.substring(0, 200),
+                            play_text: play, duration: duration, pic: pic, mid: mid
+                        }});
                     }});
-                }});
-                return cards;
-            }}""", mid)
-        except Exception as e:
-            console.log(f"[dim]  空间页面抓取 '{name}' 失败: {e}[/dim]")
-            return []
+                    return cards;
+                }}""", mid)
+
+                if raw and isinstance(raw, list) and len(raw) > 0:
+                    break  # 拿到数据了，不用再试下一个页面
+            except Exception as e:
+                console.log(f"[dim]  空间页面抓取 '{name}' 失败: {e}[/dim]")
+                continue
 
         if not raw or not isinstance(raw, list):
             return []
