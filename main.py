@@ -185,7 +185,30 @@ def collect_all() -> list[dict]:
     tieba_browser = TiebaBrowserCollector()
     all_items.extend(tieba_browser.fetch())
 
+    # 来源统计面板
+    from collections import Counter
+    src_counter = Counter()
+    for it in all_items:
+        st = it.get("source_type", "unknown")
+        # 合并同类源便于阅读
+        if st.startswith("bilibili_"):
+            src_counter["bilibili_*"] += 1
+        elif st.startswith("tieba_"):
+            src_counter["tieba_*"] += 1
+        elif "reddit" in st.lower():
+            src_counter["reddit_rss"] += 1
+        elif st in ("rss", "web_search", "chinese_web", "zhihu_browser", "smzdm_browser"):
+            src_counter[st] += 1
+        else:
+            src_counter[st] += 1
+
     console.print(f"\n[bold]共采集 {len(all_items)} 条原始新闻[/bold]")
+    if src_counter:
+        parts = []
+        for src, cnt in src_counter.most_common(8):
+            parts.append(f"{src}:{cnt}")
+        console.print(f"[dim]  {' | '.join(parts)}[/dim]")
+
     return all_items
 
 
