@@ -13,3 +13,10 @@ temp/
 test_*.py
 fix_*.py
 package-lock.json
+# 临时测试文件 (Fish Speech / TTS / 图片测试)
+*.wav
+prompt_text*.txt
+test_capcut
+test_frame*.jpg
+volc_protocols.py
+volc_protocols_init.py

@@ -26,10 +26,34 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
     """对新闻标题计算相似度，合并重复条目。
 
     策略：
-    1. 将标题规范化后计算两两相似度
-    2. 相似度 > threshold 的条目视为同一事件，归入同一簇
-    3. 保留发布时间最早的版本，合并来源和素材链接
+    1. 先 URL 精确去重（不同源可能指向同一 URL）
+    2. 再将标题规范化后计算两两相似度
+    3. 相似度 > threshold 的条目视为同一事件，归入同一簇
+    4. 保留发布时间最早的版本，合并来源和素材链接
     """
+    if len(items) <= 1:
+        return items
+
+    # 阶段 1: URL 精确去重
+    seen_urls = {}
+    url_deduped = []
+    url_dup_count = 0
+    for item in items:
+        url = item.get("url", "").strip()
+        if url and url in seen_urls:
+            seen_urls[url]["merged_sources"] = list(set(
+                seen_urls[url].get("merged_sources", [seen_urls[url].get("source_name")]) +
+                [item.get("source_name", "")]
+            ))
+            url_dup_count += 1
+        else:
+            if url:
+                seen_urls[url] = item
+            url_deduped.append(item)
+    if url_dup_count > 0:
+        console.log(f"[dim]  URL 去重: 移除 {url_dup_count} 条精确匹配[/dim]")
+    items = url_deduped
+
     if len(items) <= 1:
         return items
 
@@ -37,7 +61,7 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
     if not all(titles):
         return items
 
-    # 贪心聚类
+    # 阶段 2: 标题相似度聚类
     clusters = []
     visited = set()
 
