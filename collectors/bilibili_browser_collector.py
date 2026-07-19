@@ -21,10 +21,52 @@ from urllib.parse import quote
 
 from rich.console import Console
 
+import hashlib
+from urllib.parse import urlencode, urlparse
+
 from config import CATEGORIES
 from .base import BaseCollector
 
 console = Console()
+
+# ========== WBI 签名 ==========
+
+def _extract_wbi_keys(page) -> tuple[str, str]:
+    """从 B站 nav 接口获取 WBI 签名的 img_key 和 sub_key"""
+    try:
+        raw = page.evaluate("""async () => {
+            try {
+                const r = await fetch('https://api.bilibili.com/x/web-interface/nav');
+                const j = await r.json();
+                if (j.code === 0 && j.data?.wbi_img) {
+                    return {
+                        img_url: j.data.wbi_img.img_url || '',
+                        sub_url: j.data.wbi_img.sub_url || '',
+                    };
+                }
+            } catch(e) {}
+            return null;
+        }""")
+        if raw:
+            img_key = raw["img_url"].rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            sub_key = raw["sub_url"].rsplit("/", 1)[-1].rsplit(".", 1)[0]
+            if img_key and sub_key:
+                return img_key, sub_key
+    except Exception:
+        pass
+    return "", ""
+
+
+def _wbi_sign(params: dict, img_key: str, sub_key: str) -> dict:
+    """给请求参数添加 WBI 签名 (w_rid + wts)"""
+    mixin = img_key + sub_key
+    params["wts"] = int(time.time())
+    # 按 key 排序拼接
+    sorted_params = sorted(params.items(), key=lambda x: x[0])
+    query_str = urlencode(sorted_params)
+    w_rid = hashlib.md5((query_str + mixin).encode()).hexdigest()
+    params["w_rid"] = w_rid
+    return params
 
 # ========== 搜索关键词（按分类组织） ==========
 # 原则：用 B站 用户实际搜索的词，中文口语化，覆盖品牌名+通用词+场景词
@@ -237,6 +279,15 @@ class BilibiliBrowserCollector(BaseCollector):
         self._context = None
         self._page = None
         self._external_page = False
+        self._wbi_img_key = ""
+        self._wbi_sub_key = ""
+
+    def _ensure_wbi_keys(self):
+        """确保 WBI 密钥已获取（懒加载，只请求一次）"""
+        if not self._wbi_img_key or not self._wbi_sub_key:
+            self._wbi_img_key, self._wbi_sub_key = _extract_wbi_keys(self._page)
+            if self._wbi_img_key:
+                console.log(f"[dim]WBI 密钥已获取[/dim]")
 
     def set_page(self, page):
         """注入外部 Playwright page（共享浏览器实例）"""
@@ -351,13 +402,23 @@ class BilibiliBrowserCollector(BaseCollector):
             return ""
 
     def _fetch_from_space_api(self, mid: int, name: str, cat_hint: str) -> list[dict]:
-        """根据 UID 直接从 B站 用户空间 API 拉取最近视频"""
+        """根据 UID 直接从 B站 用户空间 API 拉取最近视频（WBI 签名）"""
+        try:
+            self._ensure_wbi_keys()
+            params = {"mid": str(mid), "ps": "10", "pn": "1", "order": "pubdate"}
+            if self._wbi_img_key:
+                params = _wbi_sign(params, self._wbi_img_key, self._wbi_sub_key)
+            query_str = urlencode(params)
+            api_url = f"https://api.bilibili.com/x/space/wbi/arc/search?{query_str}"
+        except Exception:
+            return []
+
         try:
             raw = self._page.evaluate(f"""
                 async () => {{
                     try {{
                         const res = await fetch(
-                            'https://api.bilibili.com/x/space/wbi/arc/search?mid={mid}&ps=10&pn=1&order=pubdate',
+                            {json.dumps(api_url)},
                             {{ headers: {{ 'Referer': 'https://space.bilibili.com/{mid}' }} }}
                         );
                         const json = await res.json();
