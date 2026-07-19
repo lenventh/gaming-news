@@ -263,32 +263,42 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
         console.print(f"  [dim]扩展窗口: {len(leak_candidates)} 条候选 → {len(leak_signals)} 条leak保留"
                       f" (剔除 {len(leak_candidates) - len(leak_signals)} 条非leak)[/dim]")
 
-    # 3.5 预告→跟进闭环：用 leak 中的产品名做补充搜索
-    if leak_signals:
-        from pipeline.leak_followup import supplement_search, extract_product_names
-        product_names = extract_product_names(leak_signals)
-        if product_names:
-            console.print(f"\n[yellow]  预告跟进: {len(product_names)} 个产品名 → 补充搜索[/yellow]")
-            console.print(f"  [dim]{', '.join(product_names[:8])}{'...' if len(product_names) > 8 else ''}[/dim]")
-            new_items = supplement_search(leak_signals)
-            if new_items:
-                new_ids = set()
-                for item in new_items:
-                    nid = (item.get("url", ""), item.get("title", ""))
-                    if nid not in new_ids:
-                        new_ids.add(nid)
-                        item["category"] = None  # 待 LLM 分类
-                        item["raw_data"] = item.get("raw_data", {})
-                        classified.append(item)
-                console.print(f"  [green]  补充 {len(new_items)} 条 → 重新分类...[/green]")
-                from pipeline.classifier import NewsClassifier, detect_sub_types, count_by_category
-                if OPENAI_API_KEY:  # pragma: no cover
-                    clf2 = NewsClassifier()
-                    classified = clf2.classify(classified)
-                else:
-                    classified = classify_by_keywords(classified)
-                classified = [it for it in classified if it.get("category") != "irrelevant"]
-                classified = detect_sub_types(classified)
+    # 3.5 预告→跟进闭环
+    #   a) 当前 leak 信号 → 存 DB
+    #   b) DB 历史信号 + 当前 leak → 补充搜索
+    #   c) 补充结果 → 标记 DB 信号 found
+    from pipeline.leak_followup import supplement_search, extract_product_names, store_leak_signals, mark_signals_found
+
+    # 存当前 leak 产品名到 DB（含窗口内和扩展窗口的所有 leak）
+    all_leaks = [it for it in classified if it.get("sub_type") == "leak"]
+    if all_leaks:
+        store_leak_signals(all_leaks)
+
+    # 补充搜索（当前 + DB 历史）
+    new_items = supplement_search(all_leaks if all_leaks else None)
+    if new_items:
+        unique_new = []
+        seen = set()
+        for item in new_items:
+            nid = (item.get("url", ""), item.get("title", ""))
+            if nid not in seen:
+                seen.add(nid)
+                item["category"] = None
+                item["raw_data"] = item.get("raw_data", {})
+                unique_new.append(item)
+        if unique_new:
+            classified.extend(unique_new)
+            console.print(f"  [green]  补充 {len(unique_new)} 条 → 重新分类...[/green]")
+            from pipeline.classifier import NewsClassifier, detect_sub_types
+            if OPENAI_API_KEY:
+                clf2 = NewsClassifier()
+                classified = clf2.classify(classified)
+            else:
+                classified = classify_by_keywords(classified)
+            classified = [it for it in classified if it.get("category") != "irrelevant"]
+            classified = detect_sub_types(classified)
+            # 标记已找到
+            mark_signals_found(unique_new)
 
     # 统计
     cat_counts = {}

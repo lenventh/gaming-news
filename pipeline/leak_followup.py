@@ -1,4 +1,7 @@
-"""预告→跟进闭环：从 leak 条目提取产品名，驱动针对性补充搜索"""
+"""预告→跟进闭环：从 leak 条目提取产品名，驱动针对性补充搜索
+
+集成 leak_db：存储未来泄漏信号，下次采集时自动检索并补充搜索。
+"""
 
 import re
 from datetime import datetime, timezone
@@ -10,6 +13,65 @@ from rich.console import Console
 from config import PRODUCT_NAME_PATTERNS, CUTOFF_DATE
 
 console = Console()
+
+
+def get_stored_product_names() -> list[str]:
+    """从泄漏信号数据库获取当前应关注的 pending 产品名"""
+    try:
+        from storage.leak_db import get_pending_signals, expire_old
+        expire_old()
+        signals = get_pending_signals()
+        if signals:
+            names = [s["product_name"] for s in signals]
+            console.log(f"[dim]leak_db: {len(signals)} 个待跟进信号"
+                        f" (最旧: {signals[-1]['first_seen_at'][:10]})[/dim]")
+            return names
+    except Exception as e:
+        console.log(f"[yellow]leak_db 读取失败: {e}[/yellow]")
+    return []
+
+
+def store_leak_signals(leak_items: list[dict]) -> int:
+    """将 leak 条目的产品名存入数据库，供后续跟进"""
+    try:
+        from storage.leak_db import upsert_signals
+        from datetime import datetime as dt
+        names = extract_product_names(leak_items)
+        if not names:
+            return 0
+        now = dt.now(timezone.utc).isoformat()
+        signals = [
+            {
+                "product_name": name,
+                "source_title": leak_items[0].get("display_title",
+                                                   leak_items[0].get("title", ""))[:200],
+                "source_url": leak_items[0].get("url", ""),
+                "first_seen_at": now,
+            }
+            for name in names
+        ]
+        return upsert_signals(signals)
+    except Exception as e:
+        console.log(f"[yellow]leak_db 写入失败: {e}[/yellow]")
+        return 0
+
+
+def mark_signals_found(found_items: list[dict]) -> int:
+    """标记补充搜索结果的对应信号为 found"""
+    try:
+        from storage.leak_db import mark_found, get_stats
+        from pipeline.leak_followup import extract_product_names
+        names = extract_product_names(found_items)
+        if names:
+            count = mark_found(names)
+            if count:
+                stats = get_stats()
+                console.log(f"[dim]leak_db: {count} 个信号→found "
+                            f"(待跟进: {stats.get('pending', 0)}, 已找到: {stats.get('found', 0)})[/dim]")
+            return count
+    except Exception as e:
+        console.log(f"[yellow]leak_db 标记失败: {e}[/yellow]")
+    return 0
 
 
 def extract_product_names(items: list[dict]) -> list[str]:
@@ -75,7 +137,7 @@ def search_google_news_rss(query: str, max_results: int = 5) -> list[dict]:
 
 
 def supplement_search(leak_items: list[dict], browser_page=None) -> list[dict]:
-    """基于 leak 条目的产品名执行补充搜索，返回新条目
+    """基于 leak 条目 + DB 历史信号的产品名执行补充搜索，返回新条目
 
     Args:
         leak_items: sub_type=leak 且在扩展窗口内的条目
@@ -84,16 +146,22 @@ def supplement_search(leak_items: list[dict], browser_page=None) -> list[dict]:
     Returns:
         补充搜索到的新条目列表
     """
-    if not leak_items:
-        return []
+    # 合并当前 leak 提取 + DB 历史信号
+    current_names = extract_product_names(leak_items) if leak_items else []
+    db_names = get_stored_product_names()
 
-    product_names = extract_product_names(leak_items)
+    # 去重，当前 leak 优先
+    product_names = list(dict.fromkeys(current_names + db_names))
+
     if not product_names:
-        console.log("[dim]未从 leak 条目提取到产品名，跳过补充搜索[/dim]")
+        console.log("[dim]无产品名（当前+DB），跳过补充搜索[/dim]")
         return []
 
-    console.log(f"[yellow]  提取到 {len(product_names)} 个产品名: "
-                f"{', '.join(product_names[:8])}{'...' if len(product_names) > 8 else ''}[/yellow]")
+    if current_names:
+        console.log(f"[yellow]  当前 leak: {len(current_names)} 个产品名[/yellow]")
+    if db_names:
+        console.log(f"[yellow]  DB 历史: {len(db_names)} 个待跟进信号[/yellow]")
+    console.log(f"  [dim]合并去重: {len(product_names)} 个[/dim]")
 
     all_new = []
     seen_urls = set()
