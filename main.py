@@ -17,6 +17,7 @@ from rich.console import Console
 from rich.table import Table
 
 from config import (
+    LEAK_CUTOFF_DATE,
     RSS_SOURCES,
     NEWS_WINDOW_DAYS,
     CUTOFF_DATE,
@@ -40,7 +41,7 @@ from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
-from pipeline.filter import filter_by_date, get_week_label, get_week_range
+from pipeline.filter import filter_by_date, prune_expanded, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
@@ -224,8 +225,8 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     deduped = deduplicate(all_items)
 
     # 2. 日期过滤
-    console.print("\n[yellow]日期过滤 (近 {0} 天):[/yellow]".format(NEWS_WINDOW_DAYS))
-    filtered = filter_by_date(deduped, CUTOFF_DATE)
+    console.print("\n[yellow]日期过滤 (近 {0} 天, leak宽限 {1} 天):[/yellow]".format(NEWS_WINDOW_DAYS, LEAK_WINDOW_DAYS))
+    filtered, leak_candidates = filter_by_date(deduped, CUTOFF_DATE, LEAK_CUTOFF_DATE)
 
     # 3. LLM 分类（可用时）或关键词兜底
     if OPENAI_API_KEY and OPENAI_API_KEY != "sk-xxx":
@@ -251,6 +252,43 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     system_count = sum(1 for it in classified if it.get("sub_type") == "system")
     general_count = sum(1 for it in classified if it.get("sub_type") == "general")
     console.print(f"  🔮 爆料: {leak_count}  |  🆕 发售: {release_count}  |  📱 系统: {system_count}  |  📋 其他: {general_count}")
+
+    # 扩展窗口回收：只保留 sub_type=leak 的候选，剔除其余
+    leak_signals = []
+    if leak_candidates:
+        leak_signals = [it for it in classified if it.get("raw_data", {}).get("_expanded_window")
+                        and it.get("sub_type") == "leak"]
+        classified = [it for it in classified if not it.get("raw_data", {}).get("_expanded_window")
+                      or it.get("sub_type") == "leak"]
+        console.print(f"  [dim]扩展窗口: {len(leak_candidates)} 条候选 → {len(leak_signals)} 条leak保留"
+                      f" (剔除 {len(leak_candidates) - len(leak_signals)} 条非leak)[/dim]")
+
+    # 3.5 预告→跟进闭环：用 leak 中的产品名做补充搜索
+    if leak_signals:
+        from pipeline.leak_followup import supplement_search, extract_product_names
+        product_names = extract_product_names(leak_signals)
+        if product_names:
+            console.print(f"\n[yellow]  预告跟进: {len(product_names)} 个产品名 → 补充搜索[/yellow]")
+            console.print(f"  [dim]{', '.join(product_names[:8])}{'...' if len(product_names) > 8 else ''}[/dim]")
+            new_items = supplement_search(leak_signals)
+            if new_items:
+                new_ids = set()
+                for item in new_items:
+                    nid = (item.get("url", ""), item.get("title", ""))
+                    if nid not in new_ids:
+                        new_ids.add(nid)
+                        item["category"] = None  # 待 LLM 分类
+                        item["raw_data"] = item.get("raw_data", {})
+                        classified.append(item)
+                console.print(f"  [green]  补充 {len(new_items)} 条 → 重新分类...[/green]")
+                from pipeline.classifier import NewsClassifier, detect_sub_types, count_by_category
+                if OPENAI_API_KEY:  # pragma: no cover
+                    clf2 = NewsClassifier()
+                    classified = clf2.classify(classified)
+                else:
+                    classified = classify_by_keywords(classified)
+                classified = [it for it in classified if it.get("category") != "irrelevant"]
+                classified = detect_sub_types(classified)
 
     # 统计
     cat_counts = {}

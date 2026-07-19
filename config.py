@@ -1,6 +1,7 @@
 """项目配置 — 新闻来源、分类映射、时间窗口等"""
 
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
@@ -8,13 +9,55 @@ load_dotenv()
 
 # ========== 时间窗口 ==========
 NEWS_WINDOW_DAYS = int(os.getenv("NEWS_WINDOW_DAYS", "4"))
+LEAK_WINDOW_DAYS = int(os.getenv("LEAK_WINDOW_DAYS", "7"))
 NOW = datetime.now(timezone.utc)
 CUTOFF_DATE = NOW - timedelta(days=NEWS_WINDOW_DAYS)
+LEAK_CUTOFF_DATE = NOW - timedelta(days=LEAK_WINDOW_DAYS)
 
 # ========== 路径 ==========
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 DB_PATH = os.path.join(BASE_DIR, "storage", "gaming_news.db")
+
+# ========== 产品名提取模式（用于预告→跟进闭环） ==========
+# 用 re.ASCII 限制 \w 只匹配英文/数字，避免吞掉中文
+PRODUCT_NAME_PATTERNS = [
+    # 品牌 + 型号：GPD Win Max 3 / AYANEO Pocket S / TrimUI Brick Pro
+    re.compile(r"\b(GPD\s+Win\s+(?:Max\s*\d+|Mini|4|5)|"
+               r"AYANEO\s+(?:Pocket\s+(?:S|DMG|EVO|Micro|Max)|KUN|Air|Slide|Flip|Next|3)|"
+               r"ROG\s+Ally(?:\s+X)?|"
+               r"Legion\s+Go(?:\s+S)?|"
+               r"MSI\s+Claw\s+\d+|"
+               r"Anbernic\s+RG\s*\d+\s*(?:H|Plus|SP|V|XX)?|"
+               r"RG\s*\d+\s*(?:H|Plus|SP|V|XX)?|"
+               r"Retroid\s+Pocket\s+(?:Flip|\d+|Mini)|"
+               r"Miyoo\s+(?:Mini|Flip|A30)\s*(?:\+)?|"
+               r"TrimUI\s+(?:Brick\s+Pro|Smart\s+Pro)?|"
+               r"PowKiddy\s+(?:X55|X28|X39|V10|RGB30|RGB20\s*(?:SX|Pro)?)|"
+               r"AYN\s+(?:Odin|Thor|Portal)|"
+               r"AOKZOE\s+\w+|"
+               r"OneXPlayer\s+(?:X1|2|Mini)|"
+               r"ONEXFLY\s+\w+|"
+               r"Mangmi)\b", re.I | re.ASCII),
+
+    # 中文品牌/型号
+    re.compile(r"\b(GKD\s*(?:350H\s*Ultra|小金刚|Pixel|Mini)?|"
+               r"Odin\s*[23]|"
+               r"RP5|RP\s*Mini|RP\s*Flip|"
+               r"沙雕\s*[345]|"
+               r"吹米|芒米|小霸王|霸王小子|泡机堂|周哥|"
+               r"老张|吹砖|"
+               r"Switch\s*2|PS5\s*Pro|PS\s*Portal|"
+               r"Thor|Portal|Miniloong|"
+               r"r36s|r35s|"
+               r"Brick\s+Pro|Smart\s+Pro)\b", re.I | re.ASCII),
+
+    # 系统/模拟器产品名
+    re.compile(r"\b(Batocera|ArkOS|JELOS|OnionOS|GarlicOS|MinUI|MuOS|"
+               r"Rocknix|AmberELEC|EmuELEC|Recalbox|CrossMix|GammaOS|"
+               r"PortMaster|Winlator|Mobox|"
+               r"Yuzu|Ryujinx|Cemu|RPCS3|ShadPS4|Vita3K)\b", re.I | re.ASCII),
+]
 
 # ========== LLM 配置 ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
