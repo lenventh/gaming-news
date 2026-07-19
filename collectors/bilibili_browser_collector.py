@@ -136,7 +136,7 @@ MANUFACTURER_ACCOUNTS = {
     "AYANEO官方": {"mid": 366077183, "category": "windows_handheld"},
     "GPD掌机官方": {"mid": 13258977, "category": "windows_handheld"},
     "壹号本科技": {"mid": 519903075, "category": "windows_handheld"},  # OneXPlayer
-    "AOKZOE掌机": {"mid": 1760429024, "category": "windows_handheld"},
+    "AOKZOE掌机": {"mid": 1451834161, "category": "windows_handheld"},
     "ROG玩家国度": {"mid": 383768376, "category": "windows_handheld"},  # 华硕官方，机构认证
     # 联想 Legion Go / 微星 Claw / 索泰 ZONE / 飞行家 ONEXFLY / 攻氪 KONKR — 未找到独立官号
     # === 安卓掌机 ===
@@ -146,8 +146,7 @@ MANUFACTURER_ACCOUNTS = {
     # === Linux / 开源掌机 ===
     "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},
     "TrimUI掌机": {"mid": 3494368207964283, "category": "linux_handheld"},
-    "PowKiddy掌机": {"mid": 1479010746, "category": "linux_handheld"},
-    # Miyoo / 霸王小子 / 吹米 / 泡机堂 — 未找到独立官号
+    # Miyoo / 吹米 / 泡机堂 — 未找到独立官号; 霸王小子(PowKiddy)=388247581 无公开视频已移除
     # === 主机 ===
     # PlayStation中国 / 腾讯NintendoSwitch / Xbox中国 — 未确认
 }
