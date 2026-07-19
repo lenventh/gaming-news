@@ -14,12 +14,12 @@ from .base import BaseCollector
 console = Console()
 
 # 延迟范围（秒），避免被限流
-# Reddit RSS 源之间的延迟
-REDDIT_SOURCE_DELAY_MIN = 8
-REDDIT_SOURCE_DELAY_MAX = 15
+# Reddit RSS 源之间的延迟（增加以应对 429）
+REDDIT_SOURCE_DELAY_MIN = 12
+REDDIT_SOURCE_DELAY_MAX = 18
 # 单个 Reddit RSS 请求前的延迟
-REDDIT_REQUEST_DELAY_MIN = 2
-REDDIT_REQUEST_DELAY_MAX = 5
+REDDIT_REQUEST_DELAY_MIN = 3
+REDDIT_REQUEST_DELAY_MAX = 7
 # 所有 RSS 源之间的通用延迟（礼貌爬取）
 GENERAL_DELAY_MIN = 1
 GENERAL_DELAY_MAX = 3
@@ -91,8 +91,8 @@ class RSSCollector(BaseCollector):
                     "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
                 })
                 if resp.status_code == 429 and attempt < max_retries - 1:
-                    wait = (attempt + 1) * 10
-                    console.log(f"[yellow]Reddit 限流 [{self.name}], {wait}s 后重试...[/yellow]")
+                    wait = (2 ** attempt) * 10 + random.uniform(0, 5)  # 10s, 20s, 40s + jitter
+                    console.log(f"[yellow]Reddit 限流 [{self.name}], {wait:.0f}s 后重试...[/yellow]")
                     time.sleep(wait)
                     continue
                 resp.raise_for_status()

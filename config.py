@@ -295,7 +295,7 @@ RSS_SOURCES = [
         "category_hint": "android_handheld",
     },
     # --- Reddit RSS (old.reddit.com) ---
-    # 核心 6 个板块，按重要性排序
+    # 掌机核心 16 个板块，请求间隔 3s 防 429
     {
         "name": "Reddit r/SteamDeck",
         "url": "https://old.reddit.com/r/SteamDeck/.rss",
@@ -310,6 +310,56 @@ RSS_SOURCES = [
         "name": "Reddit r/ROGAlly",
         "url": "https://old.reddit.com/r/ROGAlly/.rss",
         "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/LegionGo",
+        "url": "https://old.reddit.com/r/LegionGo/.rss",
+        "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/MSIClaw",
+        "url": "https://old.reddit.com/r/MSIClaw/.rss",
+        "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/gpdwin",
+        "url": "https://old.reddit.com/r/gpdwin/.rss",
+        "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/ayaneo",
+        "url": "https://old.reddit.com/r/ayaneo/.rss",
+        "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/OneXPlayer",
+        "url": "https://old.reddit.com/r/OneXPlayer/.rss",
+        "category_hint": "windows_handheld",
+    },
+    {
+        "name": "Reddit r/ANBERNIC",
+        "url": "https://old.reddit.com/r/ANBERNIC/.rss",
+        "category_hint": "linux_handheld",
+    },
+    {
+        "name": "Reddit r/MiyooMini",
+        "url": "https://old.reddit.com/r/MiyooMini/.rss",
+        "category_hint": "linux_handheld",
+    },
+    {
+        "name": "Reddit r/trimui",
+        "url": "https://old.reddit.com/r/trimui/.rss",
+        "category_hint": "linux_handheld",
+    },
+    {
+        "name": "Reddit r/Handhelds",
+        "url": "https://old.reddit.com/r/Handhelds/.rss",
+        "category_hint": None,
+    },
+    {
+        "name": "Reddit r/HandheldGaming",
+        "url": "https://old.reddit.com/r/HandheldGaming/.rss",
+        "category_hint": None,
     },
     {
         "name": "Reddit r/NintendoSwitch2",
@@ -336,6 +386,11 @@ RSS_SOURCES = [
         "url": "https://old.reddit.com/r/OdinHandheld/.rss",
         "category_hint": "android_handheld",
     },
+    {
+        "name": "Reddit r/SwitchPirates",
+        "url": "https://old.reddit.com/r/SwitchPirates/.rss",
+        "category_hint": "console",
+    },
     # --- 中文游戏/科技媒体 ---
     {
         "name": "IGN中国",
@@ -346,6 +401,35 @@ RSS_SOURCES = [
             "手柄", "硬件", "芯片", "显卡", "屏幕", "显示器",
             "模拟器", "配件", "键盘", "鼠标", "VR", "头显",
             "开箱", "评测", "发售", "发布", "泄露", "传闻",
+        ],
+    },
+    # --- 国外手持/游戏新闻 ---
+    {
+        "name": "GamingOnLinux",
+        "url": "https://www.gamingonlinux.com/feeds/",
+        "category_hint": "steam_deck",
+        "filter_keywords": [
+            "steam deck", "handheld", "linux", "proton", "wine",
+            "gaming", "update", "release",
+        ],
+    },
+    {
+        "name": "IGN",
+        "url": "https://feeds.feedburner.com/ign/all",
+        "category_hint": None,
+        "filter_keywords": [
+            "handheld", "steam deck", "nintendo switch", "playstation",
+            "xbox", "controller", "gaming hardware", "gpu", "pc gaming",
+            "emulator", "console",
+        ],
+    },
+    {
+        "name": "GamesRadar",
+        "url": "https://www.gamesradar.com/feeds/",
+        "category_hint": None,
+        "filter_keywords": [
+            "handheld", "steam deck", "nintendo", "playstation",
+            "xbox", "controller", "gaming hardware", "leak", "rumor",
         ],
     },
 ]

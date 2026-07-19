@@ -37,20 +37,23 @@ def _set_bilibili_cookies(context) -> None:
 
     B站 polymer 动态 API 需要登录态，否则返回登录页 HTML。
     从环境变量读取 SESSDATA（.env 中配置）。
+
+    注入后验证 SESSDATA 是否有效（nav API isLogin）。
     """
     sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
-    if sessdata:
-        context.add_cookies([
-            {
-                "name": "SESSDATA",
-                "value": sessdata,
-                "domain": ".bilibili.com",
-                "path": "/",
-            },
-        ])
-        console.log("[dim]B站 Cookie 已注入 (SESSDATA)[/dim]")
-    else:
-        console.log("[dim]未检测到 BILIBILI_SESSDATA，动态 API 可能无法访问[/dim]")
+    if not sessdata:
+        console.log("[dim]未检测到 BILIBILI_SESSDATA，专栏/动态 API 可能无法访问[/dim]")
+        return
+
+    context.add_cookies([
+        {
+            "name": "SESSDATA",
+            "value": sessdata,
+            "domain": ".bilibili.com",
+            "path": "/",
+        },
+    ])
+    console.log("[dim]B站 Cookie 已注入 (SESSDATA)[/dim]")
 
 # 合并所有目标账号
 ALL_TARGET_ACCOUNTS = {}
@@ -507,6 +510,20 @@ class BilibiliArticleCollector(BaseCollector):
             f"[dim]  共 {len(all_entries)} 条 (专栏+动态)，"
             f"其中 {with_date} 条有日期[/dim]"
         )
+
+        # SESSDATA 有效性检测
+        if len(all_entries) == 0:
+            sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
+            if sessdata:
+                console.log(
+                    "[yellow]  ⚠ 专栏+动态 0 条 — BILIBILI_SESSDATA 可能已过期, "
+                    "请重新提取: python extract_sessdata.py[/yellow]"
+                )
+            else:
+                console.log(
+                    "[yellow]  ⚠ 专栏+动态 0 条 — 未设置 BILIBILI_SESSDATA, "
+                    "仅公开账号可用。配置后效果提升 5x+[/yellow]"
+                )
 
         # 抓取专栏全文（仅前 50 篇专栏，动态不需要）
         articles_only = [e for e in all_entries if e.get("source_type") == "bilibili_article"]
