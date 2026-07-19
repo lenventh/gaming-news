@@ -2039,6 +2039,19 @@ def step3_page():
     # 在后台线程执行
     def build():
         p = state["_progress"]
+        try:
+            _build_impl(p)
+        except Exception as e:
+            console.log(f"[red]build 线程崩溃: {e}[/red]")
+            import traceback
+            traceback.print_exc()
+            for i, step in enumerate(p["steps"]):
+                if step["status"] == "running":
+                    step["status"] = "done"
+                    step["text"] = f"步骤失败: {e}"
+            p["done"] = True
+
+    def _build_impl(p):
         # 组装完整段列表：开场白 → 新闻条目 → 结尾
         intro_seg = dict(state.get("intro", {}))
         outro_seg = dict(state.get("outro", {}))
@@ -2116,14 +2129,21 @@ def step3_page():
 
         # 3) SRT + ASS 字幕
         p["steps"][2]["status"] = "running"
-        srt_content = _build_srt(s)
-        state["_srt_content"] = srt_content
-        (WORK_DIR / "subtitles.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
-        _build_ass(s, WORK_DIR / "subtitles.ass")
-        state["_ass_path"] = str(WORK_DIR / "subtitles.ass")
-        total_dur = int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path', '')).exists()))
-        p["steps"][2]["status"] = "done"
-        p["steps"][2]["text"] = f"字幕已生成，总时长约 {total_dur // 60} 分钟"
+        try:
+            srt_content = _build_srt(s)
+            state["_srt_content"] = srt_content
+            (WORK_DIR / "subtitles.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
+            _build_ass(s, WORK_DIR / "subtitles.ass")
+            state["_ass_path"] = str(WORK_DIR / "subtitles.ass")
+            total_dur = int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path', '')).exists()))
+            p["steps"][2]["status"] = "done"
+            p["steps"][2]["text"] = f"字幕已生成，总时长约 {total_dur // 60} 分钟"
+        except Exception as e:
+            p["steps"][2]["status"] = "done"
+            p["steps"][2]["text"] = f"字幕生成失败: {e}"
+            console.log(f"[red]字幕生成异常: {e}[/red]")
+            import traceback
+            traceback.print_exc()
 
         # 4) 剪映草稿
         p["steps"][3]["status"] = "running"
