@@ -116,32 +116,20 @@ class BilibiliArticleCollector(BaseCollector):
     # ========== 专栏文章 API ==========
 
     def _fetch_user_articles(self, mid: int, account_name: str, cat_hint: str) -> list[dict]:
-        """通过 B站空间 API 获取用户的专栏文章列表"""
+        """通过 B站空间 API 获取用户的专栏文章列表（用 page.goto 避免 fetch 风控）"""
         api_url = (
             f"https://api.bilibili.com/x/space/article"
             f"?mid={mid}&pn=1&ps={MAX_PER_ACCOUNT}"
         )
 
         try:
-            raw = self._page.evaluate(f"""
-                async () => {{
-                    try {{
-                        const r = await fetch({json.dumps(api_url)});
-                        const j = await r.json();
-                        if (j.code !== 0 || !j.data?.articles) return [];
-                        return j.data.articles.map(a => ({{
-                            id: a.id || 0,
-                            title: a.title || '',
-                            summary: (a.summary || '').substring(0, 300),
-                            publish_time: a.publish_time || 0,
-                            view: a.stats?.view || a.view || 0,
-                            like: a.stats?.like || a.like || 0,
-                            category: a.category?.name || '',
-                        }}));
-                    }} catch(e) {{ return []; }}
-                }}
-            """)
-            result = raw if isinstance(raw, list) else []
+            self._page.goto(api_url, wait_until="domcontentloaded", timeout=10000)
+            raw_body = self._page.evaluate("() => document.body.textContent")
+            import json as _json
+            data = _json.loads(raw_body)
+            if data.get("code") != 0 or not data.get("data", {}).get("articles"):
+                return []
+            result = data["data"]["articles"]
         except Exception:
             return []
 
@@ -161,6 +149,7 @@ class BilibiliArticleCollector(BaseCollector):
             if published_at and published_at < CUTOFF_DATE:
                 continue
 
+            stats = a.get("stats", {}) or {}
             articles.append({
                 "title": a.get("title", "").strip(),
                 "url": f"https://www.bilibili.com/read/cv{cvid}",
@@ -168,8 +157,8 @@ class BilibiliArticleCollector(BaseCollector):
                 "author": account_name,
                 "summary": a.get("summary", ""),
                 "published_at": published_at,
-                "view_count": a.get("view", 0),
-                "like_count": a.get("like", 0),
+                "view_count": stats.get("view", 0),
+                "like_count": stats.get("like", 0),
                 "category_hint": cat_hint,
                 "source_type": "bilibili_article",
                 "source_label": f"B站专栏@{account_name}",
@@ -180,10 +169,12 @@ class BilibiliArticleCollector(BaseCollector):
     # ========== 动态 API ==========
 
     def _fetch_user_dynamics(self, mid: int, account_name: str, cat_hint: str) -> list[dict]:
-        """通过 B站动态 API 获取用户最近的文字+图片动态（OPUS / ARTICLE / DRAW）
+        """通过 B站动态 API 获取用户最近的图文/视频动态
 
         直接 navigate 到 API URL 读取 JSON（比 page.evaluate(fetch()) 更可靠，
         fetch 跨域调用时可能因 cookie/origin 检查返回登录页 HTML）。
+
+        处理类型: OPUS(文字帖) / ARTICLE(文章分享) / DRAW(图片帖) / ARCHIVE(视频分享)
         """
         api_url = (
             f"https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space"
@@ -229,6 +220,13 @@ class BilibiliArticleCollector(BaseCollector):
                 text = (draw.get("desc") or "").strip()[:500]
                 draw_items = draw.get("items") or []
                 images = [img.get("src", "") for img in draw_items[:MAX_RECOGNITION_IMAGES] if img.get("src")]
+            elif mtype == "MAJOR_TYPE_ARCHIVE" and major.get("archive"):
+                archive = major["archive"]
+                title = (archive.get("title") or "").strip()[:100]
+                text = (archive.get("desc") or archive.get("dynamic") or "").strip()[:500]
+                cover = archive.get("cover") or ""
+                if cover:
+                    images = [cover]
 
             # DRAW 即使没文字，有图就保留
             if not text and not title and not images:
