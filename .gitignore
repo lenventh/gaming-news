@@ -2,5 +2,13 @@
 __pycache__/
 *.pyc
 storage/gaming_news.db
+storage/video_cache/
 output/.checkpoints/
 output/~$*
+temp/
+.weekly_cache/
+*.npy
+*.log
+test_*.py
+fix_*.py
+package-lock.json
