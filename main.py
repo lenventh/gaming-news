@@ -37,7 +37,6 @@ from collectors.chinese_browser_collector import ChineseBrowserCollector
 from collectors.tieba_collector import TiebaCollector
 from collectors.tieba_browser_collector import TiebaBrowserCollector
 from collectors.bilibili_collector import BilibiliCollector
-from collectors.bilibili_account_collector import BilibiliAccountCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
@@ -97,11 +96,6 @@ def collect_all() -> list[dict]:
     console.print("\n[yellow]B站搜索采集:[/yellow]")
     bilibili = BilibiliCollector()
     all_items.extend(bilibili.fetch())
-
-    # B站厂商官号监控
-    console.print("\n[yellow]B站厂商官号:[/yellow]")
-    bilibili_acct = BilibiliAccountCollector()
-    all_items.extend(bilibili_acct.fetch())
 
     # B站（浏览器视频+文章，共享浏览器实例）
     if os.getenv("BILIBILI_BROWSER", "").lower() in ("1", "true", "yes"):
