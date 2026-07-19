@@ -2407,11 +2407,20 @@ def api_switch_weekly():
     data = request.get_json()
     filename = data.get("file", "")
     repo = state.get("_repo", "")
-    if not repo or not filename:
+    if not filename:
         return jsonify({"ok": False, "error": "缺少参数"}), 400
-    md_path = _fetch_weekly_from_github(repo, filename)
-    if not md_path:
-        return jsonify({"ok": False, "error": "获取失败"}), 500
+
+    # GitHub 模式：从远程拉取
+    if repo:
+        md_path = _fetch_weekly_from_github(repo, filename)
+        if not md_path:
+            return jsonify({"ok": False, "error": "获取失败"}), 500
+    else:
+        # 本地模式：直接从 output/ 读取
+        md_path = Path(__file__).parent / "output" / filename
+        if not md_path.exists():
+            return jsonify({"ok": False, "error": "文件不存在"}), 404
+
     state["md_path"] = str(md_path)
     state["segments"] = parse_weekly(md_path.read_text(encoding="utf-8"))
     state.pop("selected", None)
@@ -2577,6 +2586,19 @@ def main():
 
     state["md_path"] = md_input
     state["_md_source"] = md_input  # 记录来源，供 Step 1 "刷新" 使用
+
+    # 本地模式：扫描 output/ 目录，填充期数选择器
+    if not state.get("_available_weeklies"):
+        output_dir = Path(__file__).parent / "output"
+        if output_dir.exists():
+            local_files = sorted(
+                (f.name for f in output_dir.glob("*.md")
+                 if f.name.startswith("202") and not f.name.startswith("_")),
+                reverse=True,
+            )
+            if len(local_files) > 1:
+                state["_available_weeklies"] = local_files
+                console.print(f"[dim]本地可用周刊: {len(local_files)} 期[/dim]")
 
     global WORK_DIR
     WORK_DIR = TEMP_DIR / Path(md_input).stem
