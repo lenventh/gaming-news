@@ -12,7 +12,7 @@ SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
 # 中文浏览器采集来源 — 给予多样性加分，避免被英文 RSS/Reddit 淹没
 CN_SOURCE_TYPES = {
     "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
-    "bilibili_article",
+    "bilibili_article", "bilibili_dynamic",
     "tieba_browser",
     "zhihu_browser", "smzdm_browser",
 }
