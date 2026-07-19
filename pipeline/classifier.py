@@ -14,17 +14,21 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 
 类别（只返回标识符）：
 {categories_list}
-- irrelevant: 与游戏硬件/设备完全无关的内容（汽车、金融、政治、健康、纯软件游戏评测等）
+- irrelevant: 与游戏硬件/设备完全无关的内容
 
 分类规则：
-- steam_deck: Steam Deck、SteamOS、Proton、Valve 掌机
-- windows_handheld: ROG Ally、AYANEO、GPD、微星Claw、Legion Go 等 Windows 掌机
-- android_handheld: Odin、Retroid Pocket、安卓掌机（注意：不含手机游戏手柄/拉伸手柄）
-- linux_handheld: Anbernic、Miyoo、TrimUI、PowKiddy、开源/Linux 掌机
-- console: PS5、Xbox、Switch/Switch 2 等传统游戏主机（含主机掌机传闻，但不含手柄等外设）
-- emulator: 模拟器（Yuzu、Ryujinx、Cemu、RPCS3、Dolphin 等，不含模拟驾驶/飞行外设硬件）
-- peripherals: VR/AR头显(Quest、PSVR、PICO等)、手柄/控制器(DualSense、Xbox手柄、八位堂、GameSir等)、模拟驾驶/飞行外设(方向盘、HOTAS、MOZA)、扩展坞/底座、采集卡、电竞显示器、游戏耳机
-- irrelevant: 汽车、股票、政治、健康、纯软件游戏评测（不含硬件）等与游戏设备无关的内容
+- steam_deck: Steam Deck、SteamOS、Proton、Valve掌机、Steam Deck 2/OLED
+- windows_handheld: ROG Ally(X)、AYANEO、GPD(Win)、微星Claw、Legion Go、AOKZOE、ONEXFLY、KONKR等Windows掌机; (不含纯笔记本/台式机)
+- android_handheld: Odin(Odin2)、Retroid Pocket、安卓掌机、高通/骁龙掌机; (拉伸手柄→peripherals)
+- linux_handheld: Anbernic(RG35XX/RG Cube)、Miyoo(Mini/Flip/A30)、TrimUI(Brick/Smart Pro)、PowKiddy、GKD、MagicX、r36s/r35s等开源/复古掌机
+- console: PS5(Pro)、Xbox、Switch/Switch 2等传统主机; (不含配件/外设)
+- emulator: 模拟器软件(Yuzu/Ryujinx/Cemu/RPCS3/Vita3K、Batocera、Winlator等); (不含模拟驾驶外设)
+- peripherals: VR/AR头显(Quest/PSVR/PICO)、手柄/控制器(DualSense/八位堂/GameSir)、拉伸手柄、模拟驾驶/飞行外设(方向盘/HOTAS)、扩展坞/底座、采集卡、电竞显示器/游戏耳机、键鼠外设、硅胶套/贴膜/收纳包
+
+注意区分：
+- 中文"掌机"需根据品牌/系统判断: Windows品牌→windows_handheld; Anbernic等→linux_handheld
+- 英文"handheld gaming PC"→windows_handheld; "retro handheld"→linux_handheld
+- 仅游戏软件评测(不含硬件)→irrelevant; 手机手柄/拉伸手柄→peripherals
 
 {items}
 
