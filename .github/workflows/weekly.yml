@@ -50,6 +50,7 @@ jobs:
           PYTHONIOENCODING: utf-8
           NEWS_WINDOW_DAYS: 4
           BILIBILI_BROWSER: true
+          BILIBILI_SESSDATA: ${{ secrets.BILIBILI_SESSDATA }}
         run: python main.py
 
       - name: Commit and push output
