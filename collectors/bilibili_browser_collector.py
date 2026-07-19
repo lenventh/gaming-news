@@ -21,52 +21,12 @@ from urllib.parse import quote
 
 from rich.console import Console
 
-import hashlib
 from urllib.parse import urlencode, urlparse
 
 from config import CATEGORIES
 from .base import BaseCollector
 
 console = Console()
-
-# ========== WBI 签名 ==========
-
-def _extract_wbi_keys(page) -> tuple[str, str]:
-    """从 B站 nav 接口获取 WBI 签名的 img_key 和 sub_key"""
-    try:
-        raw = page.evaluate("""async () => {
-            try {
-                const r = await fetch('https://api.bilibili.com/x/web-interface/nav');
-                const j = await r.json();
-                if (j.code === 0 && j.data?.wbi_img) {
-                    return {
-                        img_url: j.data.wbi_img.img_url || '',
-                        sub_url: j.data.wbi_img.sub_url || '',
-                    };
-                }
-            } catch(e) {}
-            return null;
-        }""")
-        if raw:
-            img_key = raw["img_url"].rsplit("/", 1)[-1].rsplit(".", 1)[0]
-            sub_key = raw["sub_url"].rsplit("/", 1)[-1].rsplit(".", 1)[0]
-            if img_key and sub_key:
-                return img_key, sub_key
-    except Exception:
-        pass
-    return "", ""
-
-
-def _wbi_sign(params: dict, img_key: str, sub_key: str) -> dict:
-    """给请求参数添加 WBI 签名 (w_rid + wts)"""
-    mixin = img_key + sub_key
-    params["wts"] = int(time.time())
-    # 按 key 排序拼接
-    sorted_params = sorted(params.items(), key=lambda x: x[0])
-    query_str = urlencode(sorted_params)
-    w_rid = hashlib.md5((query_str + mixin).encode()).hexdigest()
-    params["w_rid"] = w_rid
-    return params
 
 # ========== 搜索关键词（按分类组织） ==========
 # 原则：用 B站 用户实际搜索的词，中文口语化，覆盖品牌名+通用词+场景词
@@ -279,16 +239,6 @@ class BilibiliBrowserCollector(BaseCollector):
         self._context = None
         self._page = None
         self._external_page = False
-        self._wbi_img_key = ""
-        self._wbi_sub_key = ""
-
-    def _ensure_wbi_keys(self):
-        """确保 WBI 密钥已获取（懒加载，只请求一次）"""
-        if not self._wbi_img_key or not self._wbi_sub_key:
-            self._wbi_img_key, self._wbi_sub_key = _extract_wbi_keys(self._page)
-            if self._wbi_img_key:
-                console.log(f"[dim]WBI 密钥已获取[/dim]")
-
     def set_page(self, page):
         """注入外部 Playwright page（共享浏览器实例）"""
         self._page = page
@@ -402,51 +352,82 @@ class BilibiliBrowserCollector(BaseCollector):
             return ""
 
     def _fetch_from_space_api(self, mid: int, name: str, cat_hint: str) -> list[dict]:
-        """根据 UID 直接从 B站 用户空间 API 拉取最近视频（WBI 签名）"""
-        try:
-            self._ensure_wbi_keys()
-            params = {"mid": str(mid), "ps": "10", "pn": "1", "order": "pubdate"}
-            if self._wbi_img_key:
-                params = _wbi_sign(params, self._wbi_img_key, self._wbi_sub_key)
-            query_str = urlencode(params)
-            api_url = f"https://api.bilibili.com/x/space/wbi/arc/search?{query_str}"
-        except Exception:
-            return []
-
-        try:
-            raw = self._page.evaluate(f"""
-                async () => {{
-                    try {{
-                        const res = await fetch(
-                            {json.dumps(api_url)},
-                            {{ headers: {{ 'Referer': 'https://space.bilibili.com/{mid}' }} }}
-                        );
-                        const json = await res.json();
-                        if (json.code === 0 && json.data?.list?.vlist) {{
-                            return json.data.list.vlist.map(v => ({{
-                                title: v.title || '',
-                                bvid: v.bvid || '',
-                                author: v.author || '',
-                                description: (v.description || '').substring(0, 200),
-                                play: v.play || 0,
-                                video_review: v.video_review || 0,
-                                pubdate: v.created || 0,
-                                length: v.length || '',
-                                mid: v.mid || {mid},
-                                pic: v.pic || '',
-                            }}));
-                        }}
-                    }} catch(e) {{}}
-                    return [];
-                }}
-            """)
-            result = raw if isinstance(raw, list) else []
-        except Exception:
-            return []
-
+        """访问 UP主 空间 /video 页面，从 DOM 提取视频列表（API 被 B站 风控封锁）"""
         results = []
-        for v in result:
-            title = v.get("title", "").strip()
+        try:
+            video_url = f"https://space.bilibili.com/{mid}/video"
+            self._page.goto(video_url, wait_until="domcontentloaded", timeout=15000)
+            # 等待视频卡片渲染（B站 前端异步加载）
+            try:
+                self._page.wait_for_selector(
+                    'a[href*="/video/BV"]', timeout=10000
+                )
+            except Exception:
+                pass
+            self._page.wait_for_timeout(1500)
+
+            raw = self._page.evaluate(f"""(mid) => {{
+                const cards = [];
+                const seen = new Set();
+                const items = document.querySelectorAll('a[href*="/video/BV"]');
+                items.forEach(a => {{
+                    const href = a.getAttribute('href') || '';
+                    const bvid = (href.split('/video/')[1] || '').split('?')[0];
+                    if (!bvid || seen.has(bvid)) return;
+                    seen.add(bvid);
+
+                    const title = (a.getAttribute('title') || a.textContent || '').trim();
+                    // 跳过"TA的视频"播放全部卡片
+                    if (title === 'TA的视频' || !title) return;
+
+                    // 尝试从父级卡片获取更多信息
+                    let card = a.closest('[class*="card"], [class*="item"], [class*="video"]');
+                    if (!card) card = a.parentElement;
+
+                    const text = card ? card.textContent || '' : '';
+
+                    // 提取播放量
+                    let play = '';
+                    const playMatch = text.match(/([\\d.]+万?)\\s*(播放|观看|次)/);
+                    if (playMatch) play = playMatch[0];
+                    else {{
+                        const pm = text.match(/([\\d.]+万)/);
+                        if (pm) play = pm[0];
+                    }}
+
+                    // 提取时长
+                    let duration = '';
+                    const durMatch = text.match(/(\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?)/);
+                    if (durMatch) duration = durMatch[0];
+
+                    // 提取图片
+                    let pic = '';
+                    const img = card ? card.querySelector('img') : null;
+                    if (img) {{
+                        pic = img.getAttribute('src') || img.getAttribute('data-src') || '';
+                        if (pic && pic.startsWith('//')) pic = 'https:' + pic;
+                    }}
+
+                    cards.push({{
+                        bvid: bvid,
+                        title: title.substring(0, 200),
+                        play_text: play,
+                        duration: duration,
+                        pic: pic,
+                        mid: mid,
+                    }});
+                }});
+                return cards;
+            }}""", mid)
+        except Exception as e:
+            console.log(f"[dim]  空间页面抓取 '{name}' 失败: {e}[/dim]")
+            return []
+
+        if not raw or not isinstance(raw, list):
+            return []
+
+        for v in raw:
+            title = (v.get("title") or "").strip()
             bvid = v.get("bvid", "")
             if not title or not bvid:
                 continue
@@ -455,38 +436,23 @@ class BilibiliBrowserCollector(BaseCollector):
             self._seen_bvs.add(bvid)
 
             url = f"https://www.bilibili.com/video/{bvid}"
-            author = v.get("author", "")
-            description = v.get("description", "").strip()
-            if description in ("-", "暂无简介"):
-                description = ""
 
-            summary_parts = [f"UP主: {author}"]
-            play_count = v.get("play", 0)
-            if play_count > 0:
-                summary_parts.append(
-                    f"播放: {play_count/10000:.1f}万" if play_count >= 10000
-                    else f"播放: {play_count}"
-                )
-            if description:
-                summary_parts.append(description[:200])
+            summary_parts = [f"UP主: {name}"]
+            play_text = v.get("play_text", "")
+            if play_text:
+                summary_parts.append(play_text)
 
-            published_at = None
-            pubdate = v.get("pubdate", 0)
-            if pubdate > 0:
-                try:
-                    published_at = datetime.fromtimestamp(pubdate, tz=timezone.utc)
-                except Exception:
-                    pass
+            duration = v.get("duration", "")
 
             results.append({
                 "title": title,
                 "url": url,
-                "published_at": published_at,
+                "published_at": None,  # DOM 中难以提取精确日期
                 "summary": " | ".join(summary_parts),
                 "raw": {
-                    "bvid": bvid, "author": author, "mid": v.get("mid", mid),
-                    "play_count": play_count, "danmaku": str(v.get("video_review", "")),
-                    "duration": v.get("length", ""), "is_official": True,
+                    "bvid": bvid, "author": name, "mid": v.get("mid", mid),
+                    "play_count": 0, "danmaku": "",
+                    "duration": duration, "is_official": True,
                     "manufacturer": name, "pic": v.get("pic", ""),
                 },
                 "category_hint": cat_hint,
