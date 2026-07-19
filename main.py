@@ -18,6 +18,7 @@ from rich.table import Table
 
 from config import (
     LEAK_CUTOFF_DATE,
+    LEAK_WINDOW_DAYS,
     RSS_SOURCES,
     NEWS_WINDOW_DAYS,
     CUTOFF_DATE,
