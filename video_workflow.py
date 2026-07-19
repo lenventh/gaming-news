@@ -1445,7 +1445,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         )
 
         # 内容字幕
-        text = seg["speak_text"].replace(",", "，")
+        text = seg.get("speak_text", "").replace(",", "，")
         sentences = _split_subs(text)
         seg_dur = (dur - 3.0) / max(len(sentences), 1)
         sent_start = start_ms + 3000
@@ -2039,12 +2039,23 @@ def step3_page():
     # 在后台线程执行
     def build():
         p = state["_progress"]
+        # 写入日志验证新代码正在运行
+        try:
+            with open(WORK_DIR / "build.log", "a", encoding="utf-8") as _f:
+                _f.write(f"[build] START pid={os.getpid()}\n")
+        except Exception:
+            pass
         try:
             _build_impl(p)
         except Exception as e:
+            try:
+                with open(WORK_DIR / "build.log", "a", encoding="utf-8") as _f:
+                    _f.write(f"[build] CRASH: {e}\n")
+                    import traceback
+                    traceback.print_exc(file=_f)
+            except Exception:
+                pass
             console.log(f"[red]build 线程崩溃: {e}[/red]")
-            import traceback
-            traceback.print_exc()
             for i, step in enumerate(p["steps"]):
                 if step["status"] == "running":
                     step["status"] = "done"
@@ -2058,6 +2069,10 @@ def step3_page():
         s_all = [intro_seg] + state["selected"] + [outro_seg]
         s = s_all
         WORK_DIR.mkdir(parents=True, exist_ok=True)
+        _log = open(WORK_DIR / "build.log", "a", encoding="utf-8")
+        _log.write(f"[DEBUG] build_impl started: {len(s)} segments (intro={bool(intro_seg)}, outro={bool(outro_seg)})\n")
+        _log.write(f"[DEBUG] Segment keys: {[(seg.get('_idx'), seg.get('display_title','')[:30]) for seg in s]}\n")
+        _log.close()
 
         # 1) 图片 — URL 优先，Step 2 裁剪的 bg_{idx}.jpg 作兜底
         p["steps"][0]["status"] = "running"
@@ -2129,21 +2144,31 @@ def step3_page():
 
         # 3) SRT + ASS 字幕
         p["steps"][2]["status"] = "running"
+        _log = open(WORK_DIR / "build.log", "a", encoding="utf-8")
+        _log.write(f"[DEBUG] Step 3 started, {len(s)} segments\n")
+        _log.flush()
         try:
             srt_content = _build_srt(s)
+            _log.write(f"[DEBUG] SRT done: {len(srt_content)} chars\n"); _log.flush()
             state["_srt_content"] = srt_content
             (WORK_DIR / "subtitles.srt").write_text(srt_content.replace("\r", ""), encoding="utf-8", newline="")
+            _log.write("[DEBUG] Building ASS...\n"); _log.flush()
             _build_ass(s, WORK_DIR / "subtitles.ass")
+            _log.write("[DEBUG] ASS done\n"); _log.flush()
             state["_ass_path"] = str(WORK_DIR / "subtitles.ass")
             total_dur = int(sum(_get_audio_dur(Path(seg['audio_path'])) for seg in s if Path(seg.get('audio_path', '')).exists()))
             p["steps"][2]["status"] = "done"
             p["steps"][2]["text"] = f"字幕已生成，总时长约 {total_dur // 60} 分钟"
+            _log.write(f"[DEBUG] Step 3 done: {total_dur//60}min\n"); _log.flush()
         except Exception as e:
+            _log.write(f"[DEBUG] Step 3 ERROR: {e}\n")
+            import traceback
+            traceback.print_exc(file=_log)
+            _log.flush()
             p["steps"][2]["status"] = "done"
             p["steps"][2]["text"] = f"字幕生成失败: {e}"
-            console.log(f"[red]字幕生成异常: {e}[/red]")
-            import traceback
-            traceback.print_exc()
+        finally:
+            _log.close()
 
         # 4) 剪映草稿
         p["steps"][3]["status"] = "running"
