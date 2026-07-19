@@ -32,18 +32,19 @@ FETCH_DELAY_MIN = 2
 FETCH_DELAY_MAX = 4
 
 
-def _set_bilibili_cookies(context) -> None:
-    """把 BILIBILI_SESSDATA 等 Cookie 注入浏览器上下文。
+def _set_bilibili_cookies(context, page=None) -> bool:
+    """把 BILIBILI_SESSDATA 等 Cookie 注入浏览器上下文，返回是否有效。
 
     B站 polymer 动态 API 需要登录态，否则返回登录页 HTML。
     从环境变量读取 SESSDATA（.env 中配置）。
 
-    注入后验证 SESSDATA 是否有效（nav API isLogin）。
+    如果提供 page，注入后调用 nav API 验证 isLogin。
+    返回 True=SESSDATA有效, False=无效或未设置。
     """
     sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
     if not sessdata:
         console.log("[dim]未检测到 BILIBILI_SESSDATA，专栏/动态 API 可能无法访问[/dim]")
-        return
+        return False
 
     context.add_cookies([
         {
@@ -54,6 +55,28 @@ def _set_bilibili_cookies(context) -> None:
         },
     ])
     console.log("[dim]B站 Cookie 已注入 (SESSDATA)[/dim]")
+
+    # 验证 SESSDATA 是否有效
+    if page is not None:
+        try:
+            import json as _json
+            page.goto("https://api.bilibili.com/x/web-interface/nav",
+                      wait_until="domcontentloaded", timeout=10000)
+            raw = page.evaluate("() => document.body.textContent")
+            data = _json.loads(raw)
+            is_login = data.get("data", {}).get("isLogin", False)
+            uname = data.get("data", {}).get("uname", "?")
+            if is_login:
+                console.log(f"[green]  ✓ SESSDATA 有效 (已登录: {uname})[/green]")
+            else:
+                console.log(
+                    f"[yellow]  ⚠ SESSDATA 可能已过期 (nav isLogin={is_login}), "
+                    "请重新提取: python extract_sessdata.py[/yellow]"
+                )
+            return is_login
+        except Exception as e:
+            console.log(f"[yellow]  ⚠ SESSDATA 验证失败: {e}[/yellow]")
+    return True  # 无法验证时默认为有效
 
 # 合并所有目标账号
 ALL_TARGET_ACCOUNTS = {}
@@ -425,7 +448,7 @@ class BilibiliArticleCollector(BaseCollector):
         )
 
         if self._page is not None:
-            _set_bilibili_cookies(self._page.context)
+            _set_bilibili_cookies(self._page.context, self._page)
             return self._do_fetch()
 
         with sync_playwright() as p:
@@ -458,7 +481,7 @@ class BilibiliArticleCollector(BaseCollector):
                 page.wait_for_timeout(2000)
             except Exception:
                 pass
-            _set_bilibili_cookies(context)
+            _set_bilibili_cookies(context, page)
 
             result = self._do_fetch()
             browser.close()
