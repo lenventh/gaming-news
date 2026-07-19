@@ -90,7 +90,11 @@ BILIBILI_SEARCH_KEYWORDS = {
         "怀旧 掌机 游戏",
         "寨机 推荐", "寨机 评测",
         # 小众品牌/型号
-        "GKD 掌机", "GKD 小金刚", "吹砖 掌机", "芒米 掌机",
+        "GKD 掌机", "GKD 小金刚", "GKD Pixel", "GKD Mini",
+        "Game Kiddy 掌机",
+        "RG Cube 掌机", "RG Cube 评测",
+        "MagicX 掌机", "Mini Zero 28",
+        "吹砖 掌机", "芒米 掌机",
         "r36s 掌机", "r35s 掌机",
     ],
     "console": [
@@ -125,6 +129,10 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 通用
         "模拟器 更新", "模拟器 推荐",
         "安卓 模拟器 掌机 游戏",
+        # 模拟前端
+        "Batocera 模拟器", "Batocera 系统",
+        "EmulationStation 模拟器",
+        "RetroArch 模拟器",
     ],
 }
 
@@ -185,6 +193,9 @@ MANUFACTURER_SEARCHES = [
     ("霸王小子 掌机", "linux_handheld"),
     ("泡机堂 掌机", "linux_handheld"),
     ("周哥 开源掌机", "linux_handheld"),
+    ("MagicX 掌机", "linux_handheld"),
+    ("GKD 掌机 小金刚", "linux_handheld"),
+    ("RG Cube 掌机", "linux_handheld"),
     # === 主机 ===
     ("PlayStation 中国", "console"),
     ("任天堂 Switch 官方", "console"),
