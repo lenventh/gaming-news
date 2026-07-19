@@ -1439,7 +1439,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         # 标题字幕
         title_end = min(end_ms, start_ms + 3000)
-        title_text = seg.get("display_title", seg["title"]).replace(",", "，")
+        title_text = seg.get("display_title", seg.get("title", "")).replace(",", "，")
         lines.append(
             f"Dialogue: 0,{fmt(start_ms)},{fmt(title_end)},Title,,0,0,0,,{title_text}"
         )
