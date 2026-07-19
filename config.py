@@ -22,41 +22,47 @@ DB_PATH = os.path.join(BASE_DIR, "storage", "gaming_news.db")
 # ========== 产品名提取模式（用于预告→跟进闭环） ==========
 # 用 re.ASCII 限制 \w 只匹配英文/数字，避免吞掉中文
 PRODUCT_NAME_PATTERNS = [
-    # 品牌 + 型号：GPD Win Max 3 / AYANEO Pocket S / TrimUI Brick Pro
+    # 品牌 + 型号
     re.compile(r"\b(GPD\s+Win\s+(?:Max\s*\d+|Mini|4|5)|"
-               r"AYANEO\s+(?:Pocket\s+(?:S|DMG|EVO|Micro|Max)|KUN|Air|Slide|Flip|Next|3)|"
-               r"ROG\s+Ally(?:\s+X)?|"
+               r"AYANEO\s+(?:Pocket\s+(?:S|DMG|EVO|Micro|Max|AIR)|KUN|Air|Slide|Flip|Next|3)|"
+               r"ROG\s+Ally(?:\s+X)?(?:\s+2)?|"
                r"Legion\s+Go(?:\s+S)?|"
-               r"MSI\s+Claw\s+\d+|"
-               r"Anbernic\s+RG\s*\d+\s*(?:H|Plus|SP|V|XX)?|"
-               r"RG\s*\d+\s*(?:H|Plus|SP|V|XX)?|"
-               r"Retroid\s+Pocket\s+(?:Flip|\d+|Mini)|"
-               r"Miyoo\s+(?:Mini|Flip|A30)\s*(?:\+)?|"
-               r"TrimUI\s+(?:Brick\s+Pro|Smart\s+Pro)?|"
+               r"MSI\s+Claw\s*(?:\d+|8\s*AI\+?)?|"
+               r"ZOTAC\s+ZONE\s*(?:2)?|"
+               r"Anbernic\s+RG\s*\d+\s*(?:H|Plus|SP|V|XX|M)?|"
+               r"RG\s*(?:\d+\s*(?:H|Plus|SP|V|XX|M)|Cube)(?!\s*[Cc]ontroller)|"
+               r"Retroid\s+Pocket\s+(?:Flip|\d+|Mini|Nova)|"
+               r"Miyoo\s+(?:Mini|Flip|A30|Plus)\s*(?:\+)?|"
+               r"TrimUI\s+(?:Brick\s*(?:Pro)?|Smart\s*(?:Pro)?)|"
                r"PowKiddy\s+(?:X55|X28|X39|V10|RGB30|RGB20\s*(?:SX|Pro)?)|"
-               r"AYN\s+(?:Odin|Thor|Portal)|"
+               r"AYN\s+(?:Odin\s*(?:2|Portal)?|Thor)|"
                r"AOKZOE\s+\w+|"
                r"OneXPlayer\s+(?:X1|2|Mini)|"
                r"ONEXFLY\s+\w+|"
+               r"KONKR\s+\w+|"
+               r"Magic\s*X\s+(?:Mini\s*(?:Zero\s*28)?|Touch)|"
+               r"GKD\s+(?:Pixel|Mini|350H\s*Ultra)|"
                r"Mangmi)\b", re.I | re.ASCII),
 
     # 中文品牌/型号
     re.compile(r"\b(GKD\s*(?:350H\s*Ultra|小金刚|Pixel|Mini)?|"
                r"Odin\s*[23]|"
-               r"RP5|RP\s*Mini|RP\s*Flip|"
-               r"沙雕\s*[345]|"
+               r"RP5|RP\s*Mini|RP\s*Flip|RP\s*6|"
+               r"沙雕\s*[3456]|"
                r"吹米|芒米|小霸王|霸王小子|泡机堂|周哥|"
                r"老张|吹砖|"
                r"Switch\s*2|PS5\s*Pro|PS\s*Portal|"
                r"Thor|Portal|Miniloong|"
                r"r36s|r35s|"
-               r"Brick\s+Pro|Smart\s+Pro)\b", re.I | re.ASCII),
+               r"Brick\s+Pro|Smart\s+Pro|"
+               r"攻氪|索泰\s*ZONE|飞行家|壹号本)\b", re.I | re.ASCII),
 
     # 系统/模拟器产品名
     re.compile(r"\b(Batocera|ArkOS|JELOS|OnionOS|GarlicOS|MinUI|MuOS|"
                r"Rocknix|AmberELEC|EmuELEC|Recalbox|CrossMix|GammaOS|"
                r"PortMaster|Winlator|Mobox|"
-               r"Yuzu|Ryujinx|Cemu|RPCS3|ShadPS4|Vita3K)\b", re.I | re.ASCII),
+               r"Yuzu|Ryujinx|Cemu|RPCS3|ShadPS4|Vita3K|"
+               r"Sudachi|Citron|Citra|Lime3DS|Dolphin|PCSX2)\b", re.I | re.ASCII),
 ]
 
 # ========== LLM 配置 ==========
@@ -474,6 +480,9 @@ NEWS_SUB_TAGS = {
             "正式公布", "首次亮相", "首秀", "即将亮相",
             "预告", "预告片", "宣传片", "pv",
             "直播回顾", "发布会回顾", "新品速递",
+            "spotted", "confirmed specs", "listing",
+            "hands-on", "first look", "roadmap",
+            "upcoming", "in development",
         ],
     },
     "release": {
@@ -482,6 +491,8 @@ NEWS_SUB_TAGS = {
         "keywords": [
             "发售", "发布", "上市", "开售", "开卖", "预售",
             "预定", "预订", "到货", "现货", "开箱",
+            "available now", "in stock", "shipping",
+            "pre-order", "now available",
             "released", "launched", "launch", "launches",
             "available", "now shipping", "ships", "shipping",
             "pre-order", "preorder", "pre order",
