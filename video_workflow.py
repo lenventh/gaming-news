@@ -14,6 +14,9 @@ import shutil
 import base64
 import asyncio
 import tempfile
+
+from dotenv import load_dotenv
+load_dotenv()
 import hashlib
 import subprocess
 import threading
