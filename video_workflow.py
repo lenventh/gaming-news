@@ -1969,6 +1969,15 @@ def step2():
         idxs = request.form.getlist("idx")
         selected_idx = set(int(i) for i in idxs)
         selected = [s for s in state["segments"] if s["_idx"] in selected_idx]
+        # 如果用户从 Step 2 返回 Step 1 重选，清空旧开场白/结尾触发重新生成
+        old_ids = set(s["_idx"] for s in state.get("selected", []))
+        if selected_idx != old_ids:
+            if "intro" in state:
+                state["intro"]["speak_text"] = ""
+                state["intro"]["char_count"] = 0
+            if "outro" in state:
+                state["outro"]["speak_text"] = ""
+                state["outro"]["char_count"] = 0
         state["selected"] = selected
         # 基于选中的新闻 AI 生成开场白和结尾
         _ensure_intro_outro(selected)
