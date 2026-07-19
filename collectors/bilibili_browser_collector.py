@@ -835,6 +835,15 @@ class BilibiliBrowserCollector(BaseCollector):
             time.sleep(random.uniform(SEARCH_DELAY_MIN, SEARCH_DELAY_MAX))
 
         # ===== 阶段 3：视频内容提取（字幕 + 转录，高热度优先）=====
+        # CI 环境默认跳过（page.evaluate fetch 不可靠）; 本地 ENRICH_VIDEO_CONTENT=true 开启
+        enrich_enabled = os.getenv("ENRICH_VIDEO_CONTENT", "").lower() in ("1", "true", "yes")
+        if not enrich_enabled:
+            console.log(
+                "[dim]  视频内容提取已跳过 (设置 ENRICH_VIDEO_CONTENT=true 开启)[/dim]"
+            )
+            console.log(f"[green]B站浏览器总计: {len(all_items)} 条[/green]")
+            return all_items
+
         from utils.video_content import extract_video_content, is_transcription_available
 
         subtitle_candidates = sorted(
