@@ -38,32 +38,35 @@ BILIBILI_SEARCH_KEYWORDS = {
         "SteamOS 更新",
         "Steam Deck 游戏",
         "Steam Deck 二代",
+        "Steam Machine",
+        "Steam 控制器",
+        "Steam Controller",
     ],
     "windows_handheld": [
-        # 一线品牌（每品牌1-2词）
+        # 一线品牌
         "ROG Ally 掌机", "ROG Ally 二代",
         "AYANEO 掌机", "AYANEO 新品",
         "GPD 掌机", "GPD Win 新品",
-        "OneXPlayer 掌机",
-        "联想 Legion Go 掌机",
-        "MSI Claw 掌机",
+        "OneXPlayer 掌机", "壹号本 掌机",
+        "联想 Legion Go 掌机", "联想 拯救者 掌机",
+        "MSI Claw 掌机", "微星 Claw 掌机",
         "索泰 ZONE 掌机",
         # 其他品牌
         "AOKZOE 掌机",
         "ONEXFLY 掌机",
         "攻氪 KONKR 掌机",
-        # 通用（有区分度的保留）
+        # 通用
+        "Windows 掌机", "Win 掌机",
         "Windows 掌机 新品",
         "掌机 新品 发布",
-        "Win 掌机 2026",
     ],
     "android_handheld": [
         "安卓掌机", "安卓掌机 新品",
-        "Retroid Pocket", "沙雕 掌机",
-        "AYN Odin 掌机", "奥丁2 掌机",
-        "盖世小鸡 掌机",
+        "Retroid Pocket", "RP 掌机", "沙雕 掌机",
+        "AYN Odin 掌机", "奥丁 掌机",
+        "AYANEO Pocket",
+        "Anbernic 安卓", "RG 安卓掌机",
         "高通 掌机",
-        "Retroid Pocket Mini",
         "安卓 模拟器 掌机",
     ],
     "linux_handheld": [
@@ -76,36 +79,43 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 通用
         "复古掌机 新品",
         "Linux 掌机", "寨机 评测",
+        "ArkOS", "OnionOS", "GarlicOS",
         # 小众品牌
         "GKD 掌机", "GKD Pixel",
         "RG Cube 掌机",
-        "MagicX 掌机", "Mini Zero 28",
+        "MagicX 掌机",
         "吹砖 掌机", "芒米 掌机",
         "r36s 掌机",
     ],
     "console": [
-        # Switch 2 核心 + 游戏
-        "Switch 2", "Switch 2 游戏", "Switch 2 爆料",
-        # PS/Xbox/任天堂 掌机传闻
-        "PS5 Pro", "PlayStation 掌机",
+        # Switch
+        "Switch 2", "Switch 2 爆料",
+        "Switch 游戏",
+        # PS
+        "PS5", "PS5 游戏",
+        "PS6", "PS6 游戏",
+        "PlayStation 掌机",
+        # Xbox
         "Xbox 掌机",
+        # 任天堂
         "任天堂 新机", "任天堂 发布会",
         # 通用
         "主机 新闻", "次世代 主机",
     ],
     "emulator": [
-        # Switch 模拟器（仅活跃的）
+        # Switch（独立模拟器各有新闻价值）
         "Switch 模拟器 安卓", "Switch 模拟器 PC",
-        "Yuzu 模拟器", "Sudachi 模拟器",
+        "Sudachi 模拟器", "Citron 模拟器",
         "Ryujinx 模拟器",
-        # 其他活跃模拟器
-        "PS4 模拟器", "PS3 模拟器",
+        # 平台级（平台词天然覆盖所有同平台模拟器）
+        "PS4 模拟器", "PS3 模拟器", "PS2 模拟器",
+        "PSP 模拟器", "PSV 模拟器",
+        "3DS 模拟器", "Wii U 模拟器",
+        # Android 转译（掌机热点）
         "Winlator 模拟器", "Mobox 模拟器",
-        "Citra 模拟器", "Vita3K 模拟器",
-        # 通用
+        # 前端/通用
         "模拟器 更新",
-        "Batocera 系统",
-        "RetroArch 模拟器",
+        "Batocera 系统", "RetroArch 模拟器",
     ],
 }
 
