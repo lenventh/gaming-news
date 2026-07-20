@@ -61,7 +61,46 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
     if not all(titles):
         return items
 
-    # 阶段 2: 标题相似度聚类
+    # 阶段 2: 同一天 + 同产品名 → 合并（跨语言去重）
+    from pipeline.device_os_map import DEVICE_CATEGORY_MAP
+    product_groups: dict[str, list[int]] = {}
+    for idx, item in enumerate(items):
+        pub = item.get("published_at")
+        if not pub:
+            continue
+        date_key = pub.strftime("%Y-%m-%d") if hasattr(pub, 'strftime') else str(pub)[:10]
+        title = item.get("title", "").lower()
+        # 提取匹配的产品名
+        for device in DEVICE_CATEGORY_MAP:
+            if device in title and len(device) > 4:  # 忽略太短的（如 "rp5" 误匹配）
+                key = f"{date_key}|{device}"
+                if key not in product_groups:
+                    product_groups[key] = []
+                product_groups[key].append(idx)
+                break  # 一个条目只记一次
+    # 合并同组
+    to_merge = set()
+    for key, indices in product_groups.items():
+        if len(indices) > 1:
+            # 标记除第一个外的所有为待合并
+            primary = min(indices)
+            for i in indices[1:]:
+                to_merge.add(i)
+    if to_merge:
+        product_deduped = []
+        merged_count = 0
+        for idx, item in enumerate(items):
+            if idx in to_merge:
+                merged_count += 1
+            else:
+                product_deduped.append(item)
+        console.log(f"[dim]  产品名去重: 移除 {merged_count} 条(同天同产品)[/dim]")
+        items = product_deduped
+
+    if len(items) <= 1:
+        return items
+
+    # 阶段 3: 标题相似度聚类
     clusters = []
     visited = set()
 
