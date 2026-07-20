@@ -411,7 +411,7 @@ RSS_SOURCES = [
     # --- 国外手持/游戏新闻 ---
     {
         "name": "GamingOnLinux",
-        "url": "https://www.gamingonlinux.com/feeds/",
+        "url": "https://www.gamingonlinux.com/article_rss.php",
         "category_hint": "steam_deck",
         "filter_keywords": [
             "steam deck", "handheld", "linux", "proton", "wine",
@@ -430,7 +430,7 @@ RSS_SOURCES = [
     },
     {
         "name": "GamesRadar",
-        "url": "https://www.gamesradar.com/feeds/",
+        "url": "https://www.gamesradar.com/feeds/news/",
         "category_hint": None,
         "filter_keywords": [
             "handheld", "steam deck", "nintendo", "playstation",
