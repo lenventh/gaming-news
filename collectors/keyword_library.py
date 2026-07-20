@@ -31,6 +31,15 @@
 
 EVENT_KEYWORDS = {
     "steam_deck": {
+        "neutral": [
+            # Steam Deck 新品/爆料/第三方SteamOS
+            "Steam Deck 2", "Steam Deck 二代", "Steam Deck 新品",
+            "SteamOS 第三方", "SteamOS 授权", "SteamOS 掌机",
+            "Steam Deck OLED", "Steam Deck 降价", "Steam Deck 国行",
+            "Steam Deck 销量", "SteamOS 更新",
+            "Proton 更新", "Proton 兼容", "Steam Deck 配件",
+            "Legion Go SteamOS", "Legion Go S SteamOS",
+        ],
         "positive": [
             # 促销/价格
             "Steam Deck 促销", "Steam Deck 折扣", "Steam Deck 好价",
@@ -55,6 +64,20 @@ EVENT_KEYWORDS = {
         ],
     },
     "windows_handheld": {
+        "neutral": [
+            # Win掌机新品/芯片/系统
+            "ROG Ally 2", "ROG Ally X 2", "ROG Ally 新品",
+            "AYANEO 3", "AYANEO Next", "AYANEO 新品",
+            "GPD Win 5", "GPD Win Max 3", "GPD 新品",
+            "Legion Go 2", "Legion Go S", "Legion Go 新品",
+            "MSI Claw 8", "MSI Claw 新品",
+            "AMD Z2 Extreme", "AMD Z2 Go", "AMD 掌机芯片",
+            "Intel 掌机芯片", "高通 掌机芯片",
+            "Windows 掌机 新品", "Win掌机 2026",
+            "Xbox 掌机", "Xbox 掌机 传闻", "Xbox 掌机 原型",
+            "PlayStation 掌机", "索尼 掌机 传闻",
+            "SteamOS 掌机", "FydeOS 掌机",
+        ],
         "positive": [
             # 促销/价格
             "掌机 促销", "掌机 限时优惠", "掌机 折扣", "掌机 史低",
@@ -80,6 +103,14 @@ EVENT_KEYWORDS = {
         ],
     },
     "android_handheld": {
+        "neutral": [
+            # 安卓掌机新品
+            "Retroid Pocket 6", "Retroid Pocket Flip 2", "Retroid 新品",
+            "Odin 3", "Odin Portal", "Odin 新品",
+            "AYANEO Pocket S", "AYANEO Pocket DMG", "AYANEO Pocket EVO",
+            "安卓掌机 新品", "安卓掌机 2026",
+            "骁龙 掌机 新品", "天玑 掌机",
+        ],
         "positive": [
             # 促销/价格
             "安卓掌机 促销", "安卓掌机 折扣", "安卓掌机 好价",
@@ -103,6 +134,14 @@ EVENT_KEYWORDS = {
         ],
     },
     "linux_handheld": {
+        "neutral": [
+            # 开源掌机新品/系统
+            "Anbernic RG 新品", "Anbernic 2026", "Miyoo 新品",
+            "TrimUI 新品", "开源掌机 新品 2026",
+            "复古掌机 新品", "寨机 新品",
+            "ArkOS 更新", "OnionOS 更新", "GarlicOS 更新",
+            "Batocera 更新", "MuOS 更新", "MinUI 更新",
+        ],
         "positive": [
             # 促销/价格
             "开源掌机 促销", "开源掌机 折扣", "开源掌机 好价",
@@ -126,6 +165,16 @@ EVENT_KEYWORDS = {
         ],
     },
     "console": {
+        "neutral": [
+            # 主机热点
+            "Switch 2 价格", "Switch 2 发售日", "Switch 2 规格",
+            "Switch 2 游戏", "Switch 2 新功能", "Switch 2 销量",
+            "PS5 Pro 销量", "PS5 Pro 评测", "PS5 Pro 游戏",
+            "Xbox 掌机 传闻", "Xbox 掌机 原型",
+            "PlayStation 掌机 传闻", "索尼 新掌机",
+            "任天堂 发布会", "索尼 State of Play",
+            "Switch 2 破解", "Switch 2 越狱",
+        ],
         "positive": [
             # 促销/价格
             "Switch 促销", "Switch 折扣", "PS5 促销", "PS5 折扣",
@@ -176,6 +225,14 @@ EVENT_KEYWORDS = {
         ],
     },
     "emulator": {
+        "neutral": [
+            # 模拟器热点
+            "Switch 模拟器 更新", "Switch 2 模拟器",
+            "Yuzu 模拟器 进展", "Ryujinx 更新",
+            "PS4 模拟器 进展", "PS3 模拟器 更新",
+            "Winlator 更新", "Mobox 更新",
+            "模拟器 安卓 新版本", "模拟器 PC 进展",
+        ],
         "positive": [
             # 更新/新版本
             "模拟器 更新", "模拟器 大更新", "模拟器 新版本",
@@ -225,9 +282,19 @@ def get_negative_keywords(category_key: str) -> list[str]:
     return info.get("negative", [])
 
 
+def get_neutral_keywords(category_key: str) -> list[str]:
+    """获取某分类的热点新闻关键词"""
+    info = EVENT_KEYWORDS.get(category_key, {})
+    return info.get("neutral", [])
+
+
 def get_event_keywords(category_key: str) -> list[str]:
-    """获取某分类的全部事件关键词（正面 + 负面合并）"""
-    return get_positive_keywords(category_key) + get_negative_keywords(category_key)
+    """获取某分类的全部事件关键词（热点新闻 + 正面 + 负面合并）"""
+    return (
+        get_neutral_keywords(category_key) +
+        get_positive_keywords(category_key) +
+        get_negative_keywords(category_key)
+    )
 
 
 def with_site(keywords: list[str], site: str) -> list[str]:
