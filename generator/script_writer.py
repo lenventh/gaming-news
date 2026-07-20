@@ -177,30 +177,54 @@ class ScriptWriter:
         # 跨板块去重
         _cross_category_dedup(categorized_items)
 
+        # 拆国内/海外
+        cn_source_types = {
+            "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
+            "bilibili_article", "bilibili_dynamic",
+            "tieba_browser", "zhihu_browser", "smzdm_browser",
+            "chinese_web",
+        }
+
+        def _split(items_list):
+            domestic = [it for it in items_list
+                        if it.get("source_type", "") in cn_source_types]
+            overseas = [it for it in items_list
+                        if it.get("source_type", "") not in cn_source_types]
+            return domestic, overseas
+
         all_items = []
-        total_count = 0
 
-        for cat_key in CATEGORIES:
-            items = categorized_items.get(cat_key, [])
-            if not items:
-                continue
+        for region_label, region_key in [("🌍 海外资讯", "overseas"), ("🇨🇳 国内资讯", "domestic")]:
+            region_lines = [f"## {region_label}\n"]
+            region_items = []
+            item_counter = 0
 
-            cat_name = CATEGORIES[cat_key]["name"]
-            all_items.extend(items)
+            for cat_key in CATEGORIES:
+                items = categorized_items.get(cat_key, [])
+                domestic, overseas = _split(items)
+                region_items_list = domestic if region_key == "domestic" else overseas
+                if not region_items_list:
+                    continue
 
-            if self.client:
-                section = self._generate_section(cat_name, items)
-            else:
-                section = self._template_section(cat_name, items, total_count)
-                total_count += len(items)
+                cat_name = CATEGORIES[cat_key]["name"]
+                region_items.extend(region_items_list)
 
-            lines.append(section)
-            lines.append("")
+                if self.client:
+                    section = self._generate_section(f"{cat_name} ({region_label})", region_items_list)
+                else:
+                    section = self._template_section(cat_name, region_items_list, item_counter)
+                    item_counter += len(region_items_list)
 
-        lines.append(generate_citations_block(all_items))
+                region_lines.append(section)
+                region_lines.append("")
+
+            region_lines.append(generate_citations_block(region_items))
+            lines.extend(region_lines)
+            lines.append("---")
+            all_items.extend(region_items)
 
         report = "\n".join(lines)
-        console.log(f"[green]周报生成完成: {sum(len(v) for v in categorized_items.values())} 条资讯[/green]")
+        console.log(f"[green]周报生成完成: {len(all_items)} 条资讯[/green]")
         return report
 
     def _generate_section(self, cat_name: str, items: list[dict]) -> str:

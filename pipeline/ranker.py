@@ -37,25 +37,38 @@ def _sort_key(item: dict) -> tuple:
 
 
 def select_top_items(items: list[dict], top_n: int = TOP_PER_CATEGORY) -> dict[str, list[dict]]:
-    """按分类分组，每类按 sub_type 优先级 + 热度选取 top_n 条"""
+    """按分类分组，每类按 sub_type 优先级 + 热度选取 top_n 条
+
+    拆分国内/海外两套，各取 top_n 条，互不干扰。
+    """
     grouped: dict[str, list[dict]] = {}
     for item in items:
         cat = item.get("category", "other")
         grouped.setdefault(cat, []).append(item)
 
     selected: dict[str, list[dict]] = {}
+    cn_total = 0
+    os_total = 0
 
     for cat, cat_items in grouped.items():
-        cat_items.sort(key=_sort_key)
-        selected[cat] = cat_items[:top_n]
-        sub_counts = {}
-        cn_count = 0
-        for it in selected[cat]:
-            st = it.get("sub_type", "?")
-            sub_counts[st] = sub_counts.get(st, 0) + 1
-            if it.get("source_type", "") in CN_SOURCE_TYPES:
-                cn_count += 1
-        breakdown = " ".join(f"{k}:{v}" for k, v in sorted(sub_counts.items()))
-        console.log(f"[blue]  {cat}: {len(cat_items)} 条 → 精选 {len(selected[cat])} 条 ({breakdown}) | 中文源: {cn_count}[/blue]")
+        # 按来源拆国内/海外
+        domestic = [it for it in cat_items if it.get("source_type", "") in CN_SOURCE_TYPES]
+        overseas = [it for it in cat_items if it.get("source_type", "") not in CN_SOURCE_TYPES]
 
+        domestic.sort(key=_sort_key)
+        overseas.sort(key=_sort_key)
+
+        picked_d = domestic[:top_n]
+        picked_o = overseas[:top_n]
+        combined = picked_d + picked_o
+        selected[cat] = combined
+
+        cn_total += len(picked_d)
+        os_total += len(picked_o)
+        console.log(
+            f"[blue]  {cat}: {len(cat_items)}条 → 国内{len(picked_d)} + 海外{len(picked_o)}"
+            f" = {len(combined)}条[/blue]"
+        )
+
+    console.log(f"[green]  总计精选: 国内{cn_total}条 + 海外{os_total}条 = {cn_total+os_total}条[/green]")
     return selected
