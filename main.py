@@ -455,6 +455,13 @@ def run():
         console.print("[red]未采集到任何新闻，退出[/red]")
         return
 
+    # 交叉来源补全（短摘要 RSS → B站 搜索）
+    try:
+        from pipeline.enrich import enrich_thin_items
+        enriched = enrich_thin_items(all_items)
+    except Exception as e:
+        console.print(f"[yellow]交叉补全失败(非致命): {e}[/yellow]")
+
     # 保存原始采集 checkpoint（防中途崩溃）
     save_raw_checkpoint(all_items)
     console.print(f"[dim]已保存采集 checkpoint: {len(all_items)} 条[/dim]")
