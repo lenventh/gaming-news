@@ -2,8 +2,8 @@ name: Weekly Gaming News
 
 on:
   schedule:
-    - cron: '0 21 * * 0'  # 周一 05:00 北京时间 → 起床前报告就绪 → 傍晚发布
-    - cron: '0 21 * * 3'  # 周四 05:00 北京时间 → 起床前报告就绪 → 傍晚发布
+    - cron: '0 21 * * 4'  # 周五 05:00 北京 → 周六发布
+    - cron: '0 21 * * 0'  # 周一 05:00 北京 → 周二发布
   workflow_dispatch:
 
 permissions:
@@ -63,7 +63,7 @@ jobs:
           git pull --rebase origin master
           git stash pop || true
           git add output/
-          HALF=$(python3 -c "import datetime; wd=datetime.datetime.now(datetime.timezone.utc).weekday(); print('下' if wd<=2 else '上')")
+          HALF=$(python3 -c "import datetime; wd=datetime.datetime.now(datetime.timezone.utc).weekday(); print({3:'上',6:'下'}.get(wd,'上'))")
           LABEL="$(date +%G-W%V)-${HALF}"
           git diff --staged --quiet || git commit -m "${LABEL} semi-weekly report"
           git push
