@@ -125,9 +125,10 @@ BILIBILI_SEARCH_KEYWORDS = {
         "八位堂", "盖世小鸡 手柄",
         "拉伸手柄",
         # Switch 外设
+        "Switch 配件", "Switch 外设",
         "Joy-Con", "Switch Pro 手柄",
         # PlayStation 外设
-        "DualSense Edge", "PS Portal",
+        "PS Portal", "DualSense Edge",
         # 模拟外设
         "方向盘 模拟", "飞行摇杆",
     ],
