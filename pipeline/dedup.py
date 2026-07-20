@@ -88,7 +88,8 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
     for cluster in clusters:
         cluster_items = [items[idx] for idx in cluster]
         # 保留最早发布时间的
-        cluster_items.sort(key=lambda x: x.get("published_at") or "")
+        from datetime import datetime, timezone
+        cluster_items.sort(key=lambda x: x.get("published_at") or datetime(2000, 1, 1, tzinfo=timezone.utc))
         primary = cluster_items[0]
 
         # 合并来源名和素材链接
