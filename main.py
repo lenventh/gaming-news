@@ -479,6 +479,17 @@ def run():
     # 阶段 3：生成
     markdown = generate(selected, week_label, week_range)
 
+    # 可选：追加游戏折扣
+    if os.getenv("GAME_DEALS", "").lower() in ("1", "true", "yes"):
+        try:
+            from deals.fetcher import fetch_and_format
+            deals_md = fetch_and_format()
+            if deals_md:
+                markdown += "\n\n---\n\n" + deals_md
+                console.print("[green]游戏折扣已追加[/green]")
+        except Exception as e:
+            console.print(f"[yellow]游戏折扣抓取失败: {e}[/yellow]")
+
     if markdown:
         # 保存
         save_output(markdown, week_label, selected)
