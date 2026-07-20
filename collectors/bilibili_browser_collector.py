@@ -152,7 +152,7 @@ MANUFACTURER_ACCOUNTS = {
     # === 安卓掌机 ===
     "AYN掌机": {"mid": 2008853645, "category": "android_handheld"},  # AYN Odin
     "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},
-    "盖世小鸡": {"mid": 429886010, "category": "android_handheld"},  # 外设/拉伸手柄
+    "盖世小鸡": {"mid": 429886010, "category": "peripherals"},  # 手柄/外设
     # === Linux / 开源掌机 ===
     "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},
     "TrimUI掌机": {"mid": 3494368207964283, "category": "linux_handheld"},
@@ -186,7 +186,7 @@ MANUFACTURER_SEARCHES = [
     # === 安卓掌机 ===
     ("AYN Odin 奥丁 掌机", "android_handheld"),
     ("Retroid Pocket 沙雕 掌机", "android_handheld"),
-    ("盖世小鸡 掌机", "android_handheld"),
+    ("盖世小鸡 手柄", "peripherals"),
     # === Linux / 开源掌机 ===
     ("Anbernic 安伯尼克 掌机", "linux_handheld"),
     ("Miyoo Mini 掌机", "linux_handheld"),
