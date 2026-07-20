@@ -441,27 +441,24 @@ RSS_SOURCES = [
 
 # ========== B站搜索关键词 ==========
 BILIBILI_SEARCH_KEYWORDS = [
-    # 掌机核心
-    "Steam Deck 掌机", "Steam Deck 新品",
-    "Switch 2 评测", "Switch 2 新品", "Switch 2 发售",
-    "ROG Ally 掌机", "ROG Ally 新品",
-    "开源掌机 新品", "开源掌机 评测",
-    "Windows 掌机 新品", "安卓掌机 新品",
-    "模拟器 更新", "模拟器 新品",
-    "PS5 Pro", "PS5 新品",
-    "掌机 新品发布", "掌机 发布会",
-    # 小众品牌
-    "GKD 小金刚", "吹砖 掌机", "芒米 掌机",
-    "r36s 掌机", "沙雕5", "奥丁2",
-    "AYANEO 新品", "GPD Win 新品", "壹号本 新品",
-    "Retroid Pocket 新品", "Anbernic 新品", "Miyoo 新品",
-    # 主机游戏资讯
-    "Switch 新游戏", "Switch 2 新作", "PS5 新作",
-    "Switch 游戏 发售", "PS5 游戏 发售",
-    "主机游戏 资讯", "主机 大作",
-    # 外设/VR
-    "游戏手柄 新品", "VR 头显 新品",
-    "电竞显示器 新品",
+    # Steam Deck
+    "Steam Deck 掌机", "Steam Deck OLED",
+    # Windows 掌机
+    "ROG Ally 掌机", "AYANEO 掌机", "GPD Win 掌机",
+    "Windows 掌机 新品", "掌机 新品发布",
+    # 安卓掌机
+    "安卓掌机 新品", "Retroid Pocket", "Odin 掌机",
+    # 开源掌机
+    "开源掌机 新品", "Anbernic 掌机", "Miyoo Mini",
+    # 主机
+    "Switch 2", "Switch 游戏", "PS5 Pro", "Xbox 掌机",
+    "任天堂 新机", "主机 新闻",
+    # 模拟器
+    "模拟器 更新", "Switch 模拟器",
+    # 外设
+    "VR 头显 新品", "游戏手柄 新品",
+    # 英文覆盖
+    "handheld gaming PC", "retro handheld",
 ]
 
 # ========== 新闻子类型 ==========
