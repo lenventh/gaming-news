@@ -473,6 +473,45 @@ class BilibiliBrowserCollector(BaseCollector):
 
         return results
 
+    def _enrich_dates(self, items: list[dict], max_items: int = 100):
+        """为无日期的 B站 条目批量补全发布时间（视频信息 API）
+
+        间隔 2-3s 避免反爬，100条上限 ~4分钟。
+        """
+        import random as _random, time as _time, json as _json
+        from datetime import datetime as _datetime, timezone as _tz
+
+        undated = []
+        for it in items:
+            bvid = it.get("raw_data", {}).get("bvid", "")
+            if bvid and not it.get("published_at"):
+                undated.append(it)
+        if not undated:
+            return
+
+        capped = undated[:max_items]
+        console.log(f"[dim]  补全 {len(capped)} 条无日期 ({max_items}上限, ~{max_items*2.5:.0f}s)...[/dim]")
+        enriched = 0
+        for it in capped:
+            bvid = it["raw_data"]["bvid"]
+            try:
+                self._page.goto(
+                    f"https://api.bilibili.com/x/web-interface/view?bvid={bvid}",
+                    wait_until="domcontentloaded", timeout=8000,
+                )
+                data = _json.loads(self._page.evaluate("() => document.body.textContent"))
+                ts = data.get("data", {}).get("pubdate", 0)
+                if ts and ts > 0:
+                    it["published_at"] = _datetime.fromtimestamp(ts, tz=_tz.utc)
+                    pub_str = it["published_at"].strftime("%Y-%m-%d")
+                    it["summary"] = f"[{pub_str}] {it.get('summary', '')}"
+                    enriched += 1
+            except Exception:
+                pass
+            _time.sleep(_random.uniform(2, 3))
+        if enriched:
+            console.log(f"[green]  补全 {enriched}/{len(capped)} 条日期[/green]")
+
     def _search_keyword(self, keyword: str, cat_hint: str) -> list[dict]:
         """通过 B站搜索 API 搜索关键词，获取精确发布日期和简介"""
         api_url = (
@@ -835,8 +874,11 @@ class BilibiliBrowserCollector(BaseCollector):
             console.log(
                 "[dim]  视频内容提取已跳过 (设置 ENRICH_VIDEO_CONTENT=true 开启)[/dim]"
             )
-            console.log(f"[green]B站浏览器总计: {len(all_items)} 条[/green]")
-            return all_items
+        # 批量补全日期（DOM 抓取的无日期条用 API 获取）
+        self._enrich_dates(all_items)
+
+        console.log(f"[green]B站浏览器总计: {len(all_items)} 条[/green]")
+        return all_items
 
         from utils.video_content import extract_video_content, is_transcription_available
 
