@@ -1,0 +1,76 @@
+name: Update Device OS Map
+
+# 每月1号自动从 retrospecgame.com 更新设备→OS映射
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'   # 每月1号 UTC 00:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install playwright && playwright install chromium --with-deps
+
+      - name: Scrape retrospecgame.com
+        run: python pipeline/scrape_retrocatalog.py > /tmp/scraped_devices.py
+
+      - name: Merge into device_os_map.py
+        run: |
+          python -c "
+          import sys, ast
+          # Parse scraped data
+          exec(open('/tmp/scraped_devices.py').read())
+          new_count = len(ANDROID_DEVICES) + len(LINUX_DEVICES) + len(WINDOWS_DEVICES)
+          print(f'Scraped {new_count} devices')
+
+          # Merge with existing
+          from pipeline.device_os_map import *
+          old_count = len(ANDROID_DEVICES | LINUX_DEVICES | WINDOWS_DEVICES | STEAM_DECK_DEVICES)
+          combined = ANDROID_DEVICES | LINUX_DEVICES | WINDOWS_DEVICES
+
+          # Check if updated
+          merged = combined | ANDROID_DEVICES | LINUX_DEVICES | WINDOWS_DEVICES  # noqa
+          added = len(merged) - old_count
+          print(f'Added {added} new devices')
+          if added == 0:
+              print('No updates, skipping commit')
+              sys.exit(0)
+
+          # Write updated map
+          with open('pipeline/device_os_map.py', 'r') as f:
+              original = f.read()
+
+          # Replace sets with merged versions
+          for label, var, devices in [('android','ANDROID_DEVICES',ANDROID_DEVICES),
+                                        ('linux','LINUX_DEVICES',LINUX_DEVICES),
+                                        ('windows','WINDOWS_DEVICES',WINDOWS_DEVICES)]:
+              import re
+              pattern = f'{var} = {{[^}}]+}}'
+              replacement = f'{var} = {{\n    \"' + '\",\\n    \"'.join(sorted(devices)) + '\",\\n}}'
+              original = re.sub(pattern, replacement, original, count=1)
+          with open('pipeline/device_os_map.py', 'w') as f:
+              f.write(original)
+          "
+
+      - name: Commit and push
+        run: |
+          git config user.name "device-bot"
+          git config user.email "bot@retro-handhelds.local"
+          git add pipeline/device_os_map.py
+          git diff --staged --quiet || git commit -m "chore: auto-update device OS map ($NEW devices)"
+          git push
