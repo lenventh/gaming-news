@@ -96,10 +96,18 @@ def enrich_thin_items(items: list[dict]) -> int:
     capped = candidates[:MAX_ENRICH_ITEMS]
     console.log(f"[dim]  交叉补全 {len(capped)} 条短摘要 (B站 搜索)...[/dim]")
     enriched = 0
+    from difflib import SequenceMatcher
     for it, product in capped:
         extra = _search_bilibili(product)
         if extra:
-            old_len = len(it.get("summary", ""))
+            # 防跑偏：B站 结果标题与原标题需有一定相似度
+            extra_title = extra.split(" | ")[0] if " | " in extra else extra[:60]
+            sim = SequenceMatcher(None,
+                it.get("title", "")[:80].lower(),
+                extra_title.lower()
+            ).ratio()
+            if sim < 0.15:
+                continue
             it["summary"] = f"{it['summary']} | [B站补全] {extra}"
             enriched += 1
         time.sleep(random.uniform(*SEARCH_DELAY))
