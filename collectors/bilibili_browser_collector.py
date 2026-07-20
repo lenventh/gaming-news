@@ -164,6 +164,9 @@ CATEGORY_EXCLUSIONS: dict[str, list[str]] = {
         "手机壳", "手机膜", "平板",
     ],
     # 全分类盗版/破解工具排除
+    "peripherals": [
+        "相机", "云台", "稳定器",
+    ],
     "_global": [
         "dlc 解锁", "dlc解锁", "dlc补丁", "解锁补丁",
         "破解补丁", "steam解锁", "epic解锁",
