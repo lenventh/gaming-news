@@ -51,6 +51,7 @@ jobs:
           NEWS_WINDOW_DAYS: 4
           BILIBILI_BROWSER: true
           BILIBILI_SESSDATA: ${{ secrets.BILIBILI_SESSDATA }}
+          ENRICH_VIDEO_CONTENT: true
           # GAME_DEALS: true   # 取消注释以追加折扣表格
         run: python main.py
 
