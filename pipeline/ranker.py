@@ -11,10 +11,16 @@ SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
 
 # 中文浏览器采集来源 — 给予多样性加分，避免被英文 RSS/Reddit 淹没
 CN_SOURCE_TYPES = {
+    # B站 全系
     "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
     "bilibili_article", "bilibili_dynamic",
-    "tieba_browser",
+    # 贴吧 / 知乎 / 什么值得买
+    "tieba", "tieba_browser",
     "zhihu_browser", "smzdm_browser",
+    # Google News 中文关键词搜索
+    "chinese_web",
+    # 中文 RSS (IT之家/机核/IGN中国等)
+    "rss_cn",
 }
 
 # 来源多样性加分系数（加到 score 上，使其在同类中排名靠前）

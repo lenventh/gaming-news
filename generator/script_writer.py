@@ -181,8 +181,9 @@ class ScriptWriter:
         cn_source_types = {
             "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
             "bilibili_article", "bilibili_dynamic",
-            "tieba_browser", "zhihu_browser", "smzdm_browser",
-            "chinese_web",
+            "tieba", "tieba_browser",
+            "zhihu_browser", "smzdm_browser",
+            "chinese_web", "rss_cn",
         }
 
         def _split(items_list):

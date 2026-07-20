@@ -136,11 +136,14 @@ class RSSCollector(BaseCollector):
                 if not any(kw in text for kw in self.filter_keywords):
                     continue
 
+            # 中文 RSS 源打 rss_cn 标记，归国内资讯
+            is_cn = any(kw in (self.name or "").lower() for kw in
+                        ("机核", "it之家", "ign中国", "ithome", "gcores"))
             item = self.normalize_item(
                 title=title,
                 url=link,
                 source_name=self.name,
-                source_type="rss",
+                source_type="rss_cn" if is_cn else "rss",
                 published_at=published_at,
                 summary=summary,
                 raw_data={"feed_title": feed.feed.get("title", "")},
