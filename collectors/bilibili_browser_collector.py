@@ -78,13 +78,12 @@ BILIBILI_SEARCH_KEYWORDS = {
         "霸王小子 掌机", "泡机堂 掌机",
         # 通用
         "复古掌机 新品",
-        "Linux 掌机", "寨机 评测",
+        "Linux 掌机", "寨机", "山寨掌机",
         "ArkOS", "OnionOS", "GarlicOS",
         # 小众品牌
         "GKD 掌机", "GKD Pixel",
         "MagicX 掌机",
         "吹砖 掌机", "芒米 掌机",
-        "r36s 掌机",
     ],
     "console": [
         # Switch
