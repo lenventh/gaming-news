@@ -1,97 +1,134 @@
-"""从 retrocatalog.com 抓取设备列表
+"""retrospecgame.com 设备列表抓取 — 中文搜索页，信息完整"""
 
-网站 JS 渲染，需 Playwright。运行:
-    python pipeline/scrape_retrocatalog.py
-
-输出格式可直接复制到 device_os_map.py。
-"""
-
-import sys
-import json
+import sys, io, re
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 from playwright.sync_api import sync_playwright
+
+# 品牌OS映射规则
+BRAND_OS = {
+    "retroid": "android", "ayn": "android", "razer": "android",
+    "logitech": "android", "abxylute": "android", "pimax": "android",
+    "miyoo": "linux", "trimui": "linux", "powkiddy": "linux",
+    "gkd": "linux", "game kiddy": "linux", "magicx": "linux",
+    "mangmi": "linux", "minilong": "linux",
+    "rog": "windows", "legion": "windows", "msi": "windows",
+    "zotac": "windows", "acer": "windows", "gigabyte": "windows",
+    "onexplayer": "windows", "aokzoe": "windows", "onexfly": "windows",
+    "valve": "steam",
+    "gamemt": "android", "kinhank": "android", "kt": "android",
+    "anbernic": "mixed", "ayaneo": "mixed", "gpd": "windows",
+    "konkr": "android",
+}
+
+# AYANEO Pocket线=安卓
+ANDROID_AYANEO_WORDS = ["pocket", "pocket s", "pocket dmg", "pocket evo",
+                         "pocket air", "pocket micro", "pocket max", "pocket play"]
+# Anbernic Android线
+ANDROID_ANBERNIC = ["rg556", "rg406", "rg405", "rg505", "rg552",
+                    "rg353", "rg503", "rg arc-d", "rg arc-s"]
+
+
+def classify(brand: str, model: str) -> str:
+    bl = brand.lower().strip()
+    ml = model.lower().strip()
+
+    if bl in ("valve",):
+        return "steam"
+    if bl in ("ayaneo",):
+        for kw in ANDROID_AYANEO_WORDS:
+            if kw in ml:
+                return "android"
+        return "windows"
+    if bl in ("anbernic",):
+        for kw in ANDROID_ANBERNIC:
+            if kw in ml:
+                return "android"
+        return "linux"
+    return BRAND_OS.get(bl, "unknown")
 
 
 def scrape():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto("https://retrocatalog.com", wait_until="networkidle", timeout=30000)
-        page.wait_for_timeout(3000)
+        page = browser.new_page(viewport={"width": 1920, "height": 1080})
 
-        # 从 DOM 提取所有设备卡片/行
-        # 策略：找到所有设备名称，然后从相邻列中提取 OS 信息
-        devices = page.evaluate("""
-            () => {
-                const results = [];
+        all_devices = set()
 
-                // 尝试找到表格或列表
-                const rows = document.querySelectorAll(
-                    'tr, [class*="device"], [class*="item"], [class*="card"], [class*="row"]'
-                );
+        # 按分类抓取
+        for os_filter in ["android", "linux", "windows"]:
+            page.goto(f"https://retrospecgame.com/zh/search?os={os_filter}",
+                      wait_until="networkidle", timeout=30000)
+            page.wait_for_timeout(3000)
 
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    if (!text || text.length < 5 || text.length > 500) return;
+            # 滚动加载更多
+            for _ in range(20):
+                prev = page.evaluate("() => document.querySelectorAll('a').length")
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.wait_for_timeout(800)
+                curr = page.evaluate("() => document.querySelectorAll('a').length")
+                if curr == prev:
+                    break
 
-                    let name = '';
-                    let os = '';
-
-                    // 提取设备名（通常是第一个链接或标题）
-                    const nameEl = row.querySelector('a, h2, h3, h4, [class*="name"], [class*="title"]');
-                    if (nameEl) name = nameEl.textContent.trim();
-
-                    // 判断 OS
-                    const hasAndroid = /android|google play/i.test(text);
-                    const hasLinux = /linux|arkos|amberelec|jelos|minui|muos|garlicos/i.test(text);
-                    const hasWindows = /windows|win 10|win 11|x86/i.test(text);
-
-                    if (hasAndroid) os = 'android';
-                    else if (hasWindows) os = 'windows';
-                    else if (hasLinux) os = 'linux';
-                    else os = 'linux';  // 默认 Linux（大部分 retro handheld）
-
-                    if (name && os) {
-                        results.push({name: name.toLowerCase(), os: os});
-                    }
-                });
-
-                return results;
-            }
-        """)
+            # 提取设备名
+            names = page.evaluate("""
+                () => {
+                    const seen = new Set();
+                    document.querySelectorAll('a[href*="/zh/devices/"], [class*="card"] h2, [class*="card"] h3, [class*="title"]').forEach(el => {
+                        const t = el.textContent.trim();
+                        if (t && t.length > 3 && t.length < 120 && !t.startsWith('~'))
+                            seen.add(t);
+                    });
+                    return [...seen];
+                }
+            """)
+            print(f"  {os_filter}: {len(names)} devices", file=sys.stderr)
+            for n in names:
+                all_devices.add((n, os_filter))
 
         browser.close()
 
-        # 分类输出
-        android = sorted(set(d["name"] for d in devices if d["os"] == "android"))
-        linux = sorted(set(d["name"] for d in devices if d["os"] == "linux"))
-        windows = sorted(set(d["name"] for d in devices if d["os"] == "windows"))
+    # 解析品牌和型号
+    parsed = []
+    for name, site_os in sorted(all_devices):
+        # 尝试提取品牌: "Retroid Pocket Nova" → brand=Retroid, model=Pocket Nova
+        parts = name.split(None, 1)  # split by first whitespace
+        if len(parts) == 2:
+            brand, model = parts[0], parts[1]
+        else:
+            brand, model = name, ""
+        inferred_os = classify(brand, model)
+        parsed.append((brand, model, site_os, inferred_os))
 
-        print(f"# Scraped {len(devices)} devices from retrocatalog.com")
-        print(f"# Android: {len(android)}, Linux: {len(linux)}, Windows: {len(windows)}")
-        print()
-        print("# ============================================================")
-        print("# Android")
-        print("# ============================================================")
-        print("ANDROID_DEVICES = {")
-        for d in android:
-            print(f'    "{d}",')
+    # 输出
+    counts = {"android": [], "linux": [], "windows": [], "steam": [], "unknown": []}
+    for brand, model, site_os, inferred_os in parsed:
+        os_type = inferred_os if inferred_os != "unknown" else site_os
+        name = f"{brand} {model}".strip()
+        counts[os_type].append(name)
+
+    print(f"# Total: {len(parsed)} devices")
+    for label in ["android", "linux", "windows", "steam", "unknown"]:
+        print(f"# {label}: {len(counts[label])}")
+
+    # 输出 Python
+    for label, varname in [
+        ("android", "ANDROID_DEVICES"),
+        ("linux", "LINUX_DEVICES"),
+        ("windows", "WINDOWS_DEVICES"),
+        ("steam", "STEAM_DECK_DEVICES"),
+    ]:
+        dl = sorted(set(counts[label]))
+        if not dl:
+            continue
+        print(f"\n{varname} = {{")
+        for name in dl:
+            print(f'    "{name.lower()}",')
         print("}")
-        print()
-        print("# ============================================================")
-        print("# Linux")
-        print("# ============================================================")
-        print("LINUX_DEVICES = {")
-        for d in linux:
-            print(f'    "{d}",')
-        print("}")
-        print()
-        print("# ============================================================")
-        print("# Windows")
-        print("# ============================================================")
-        print("WINDOWS_DEVICES = {")
-        for d in windows:
-            print(f'    "{d}",')
-        print("}")
+
+    if counts["unknown"]:
+        print(f"\n# === UNKNOWN ===")
+        for name in sorted(set(counts["unknown"])):
+            print(f'    # "{name.lower()}",  # ???')
 
 
 if __name__ == "__main__":
