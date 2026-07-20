@@ -117,10 +117,10 @@ class RSSCollector(BaseCollector):
             summary = ""
             if hasattr(entry, "summary"):
                 from bs4 import BeautifulSoup
-                summary = BeautifulSoup(entry.summary, "html.parser").get_text()[:500]
+                summary = BeautifulSoup(entry.summary, "html.parser").get_text()[:800]
             elif hasattr(entry, "description"):
                 from bs4 import BeautifulSoup
-                summary = BeautifulSoup(entry.description, "html.parser").get_text()[:500]
+                summary = BeautifulSoup(entry.description, "html.parser").get_text()[:800]
 
             # 清理 Reddit 原始格式标记
             if "reddit" in self.feed_url.lower():

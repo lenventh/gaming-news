@@ -233,23 +233,23 @@ class BilibiliArticleCollector(BaseCollector):
             if mtype == "MAJOR_TYPE_OPUS" and major.get("opus"):
                 opus = major["opus"]
                 title = (opus.get("title") or "").strip()[:100]
-                text = (opus.get("summary", {}).get("text") or "").strip()[:500]
+                text = (opus.get("summary", {}).get("text") or "").strip()[:800]
                 pics = opus.get("pics") or []
                 images = [p.get("url", "") for p in pics[:MAX_RECOGNITION_IMAGES] if p.get("url")]
             elif mtype == "MAJOR_TYPE_ARTICLE" and major.get("article"):
                 article = major["article"]
                 title = (article.get("title") or "").strip()[:100]
-                text = (article.get("desc") or "").strip()[:500]
+                text = (article.get("desc") or "").strip()[:800]
             elif mtype == "MAJOR_TYPE_DRAW" and major.get("draw"):
                 draw = major["draw"]
                 title = (draw.get("title") or "").strip()[:100]
-                text = (draw.get("desc") or "").strip()[:500]
+                text = (draw.get("desc") or "").strip()[:800]
                 draw_items = draw.get("items") or []
                 images = [img.get("src", "") for img in draw_items[:MAX_RECOGNITION_IMAGES] if img.get("src")]
             elif mtype == "MAJOR_TYPE_ARCHIVE" and major.get("archive"):
                 archive = major["archive"]
                 title = (archive.get("title") or "").strip()[:100]
-                text = (archive.get("desc") or archive.get("dynamic") or "").strip()[:500]
+                text = (archive.get("desc") or archive.get("dynamic") or "").strip()[:800]
                 cover = archive.get("cover") or ""
                 if cover:
                     images = [cover]
