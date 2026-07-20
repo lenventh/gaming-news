@@ -262,6 +262,12 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
         console.print("\n[yellow]关键词分类:[/yellow]")
         classified = classify_by_keywords(filtered)
 
+    # 3.5 设备映射校正 — 用已知设备型号修正跨品牌分类错误
+    from pipeline.device_os_map import reclassify_items
+    corrected, dev_stats = reclassify_items(classified)
+    if corrected > 0:
+        console.print(f"[dim]  设备映射校正: {corrected} 条 ({dev_stats})[/dim]")
+
     # 过滤掉 LLM 标记为 irrelevant 的条目
     irrelevant = [it for it in classified if it.get("category") == "irrelevant"]
     if irrelevant:
