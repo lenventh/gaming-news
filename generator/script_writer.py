@@ -1,17 +1,22 @@
-"""文稿生成器：按板块分别调用 LLM 生成新闻播报 + 简要分析"""
+"""游戏设备资讯周报脚本生成器 — 按板块生成精炼播报文稿"""
 
+import json
+import os
 import re
-from datetime import datetime
 from difflib import SequenceMatcher
-from rich.console import Console
-from openai import OpenAI
+from datetime import datetime
 
-from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, CATEGORIES
-from .citation import generate_citations_block
+from openai import OpenAI
+from rich.console import Console
+
+from config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, CATEGORIES, OUTPUT_DIR
 
 console = Console()
 
-CROSS_DEDUP_SIMILARITY = 0.72
+CROSS_DEDUP_SIMILARITY = 0.72  # 跨板块去重阈值
+MAX_TOKENS = 1500             # 每个板块最大 token
+FALLBACK_TOTAL_LIMIT = 30     # 模板兜底总条目上限
+COMPRESS_THRESHOLD = 1200     # 正文超此字数用二遍 LLM 压缩
 
 _translate_client = None
 
@@ -25,29 +30,27 @@ def _get_translate_client():
 
 def _translate_title(title: str) -> str:
     """英文标题 → 中文，专有名词保留原文"""
-    # 中文占比 > 30% 跳过
-    chinese = sum(1 for c in title if '一' <= c <= '鿿')
-    if chinese > len(title) * 0.3:
+    if not title:
         return title
-
+    chinese = sum(1 for c in title if '一' <= c <= '鿿')
+    if chinese / max(len(title), 1) > 0.4:
+        return title  # 已有足够中文
     client = _get_translate_client()
     if not client:
         return title
-
     try:
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": (
-                "将以下游戏硬件新闻标题翻译为简体中文。"
-                "品牌/产品/系统名保留原文不译 (Steam Deck/Switch/Xbox/PlayStation/"
-                "ROG/Ally/AYANEO/GPD/MSI/Claw/Legion Go/Valve/Nintendo/Sony/"
-                "AMD/Intel/Quest/PSVR/VR/Proton/BIOS/Retroid/Odin/Anbernic/"
-                "Miyoo/TrimUI/PowKiddy/ONEXPLAYER/Steam Machine/"
-                "Nostlan/HackHash/ROM/PS5/PS4/PS3/PS2/PS1/Wii/Game Boy/NDS/GBA 等)，"
-                "其余英文翻译为中文。只返回译文：\n\n" + title
-            )}],
+            messages=[{
+                "role": "user",
+                "content": (
+                    "将以下游戏硬件新闻标题翻译为简体中文。"
+                    "保留品牌名/产品名/系统名原文(如Steam Deck/Switch/ROG Ally/AYANEO/GPD/PlayStation/Xbox/Proton/Linux)。"
+                    "其余英文翻译为中文。只返回译文：\n\n" + title
+                ),
+            }],
             temperature=0.1,
-            max_tokens=200,
+            max_tokens=100,
         )
         translated = resp.choices[0].message.content.strip()
         if translated and len(translated) > 0:
@@ -65,46 +68,39 @@ def _normalize(title: str) -> str:
 
 
 def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
-    """跨板块去重：同一条 URL 或高相似度标题在不同板块出现时，保留首个，从其余板块移除"""
-    removed = 0
-    cat_keys = list(categorized.keys())
+    """跨板块去重：URL 精确匹配 + 标题相似度"""
     seen_urls: set[str] = set()
-    seen_titles: list[tuple[str, str]] = []  # (normalized_title, cat_key)
-
-    for cat_key in cat_keys:
-        items = categorized.get(cat_key, [])
+    seen_titles: list[tuple[str, str]] = []
+    removed = 0
+    for cat_key in list(categorized.keys()):
+        items = categorized[cat_key]
         keep = []
         for it in items:
-            url = it.get("url", "").strip()
+            url = (it.get("url") or "").strip()
             title = it.get("title", "").strip()
-
-            # URL 精确匹配
             if url and url in seen_urls:
-                removed += 1
                 console.log(f"[yellow]   跨板块去重(URL) [{cat_key}]: {title[:50]}[/yellow]")
+                removed += 1
                 continue
-
-            # 标题相似度匹配
             norm_title = _normalize(title)
             is_dup = False
             for seen_norm, seen_cat in seen_titles:
                 if SequenceMatcher(None, norm_title, seen_norm).ratio() > CROSS_DEDUP_SIMILARITY:
+                    console.log(f"[yellow]   跨板块去重(标题) [{cat_key}←{seen_cat}]: {title[:50]}[/yellow]")
                     removed += 1
                     is_dup = True
-                    console.log(f"[yellow]   跨板块去重(标题) [{cat_key}←{seen_cat}]: {title[:50]}[/yellow]")
                     break
             if is_dup:
                 continue
-
             if url:
                 seen_urls.add(url)
             seen_titles.append((norm_title, cat_key))
             keep.append(it)
         categorized[cat_key] = keep
-
     if removed > 0:
         console.log(f"[green]  跨板块去重完成，移除 {removed} 条重复[/green]")
     return removed
+
 
 SECTION_PROMPT = """你是游戏设备资讯周报的编辑。请根据以下 {cat_name} 板块的新闻条目，生成该板块的新闻播报文稿。
 
@@ -112,8 +108,6 @@ SECTION_PROMPT = """你是游戏设备资讯周报的编辑。请根据以下 {c
 
 1. **格式**：
    ```
-   ## {cat_name}
-
    ### 🔮 新机爆料
    [按条目逐条播报]
 
@@ -160,24 +154,20 @@ class ScriptWriter:
             )
 
     def write(self, categorized_items: dict[str, list[dict]], week_label: str, week_range: str) -> str:
-        """按板块分别生成，合并为完整周报"""
+        """按板块分别生成，合并为完整周报（国内/海外双栏）"""
         if not categorized_items:
             console.log("[red]没有精选条目可生成文稿[/red]")
             return ""
 
-        # 从标签中提取半周标识: '2026-W28-上' → base='2026-W28', half='上'
         if "-" in week_label and week_label.split("-")[-1] in ("上", "下"):
             parts = week_label.rsplit("-", 1)
             base_label, half = parts[0], parts[1]
             title = f"# 游戏设备周报·{half} | {base_label} ({week_range})\n"
         else:
             title = f"# 游戏设备周报 | {week_label} ({week_range})\n"
-        lines = [title]
 
-        # 跨板块去重
         _cross_category_dedup(categorized_items)
 
-        # 拆国内/海外
         cn_source_types = {
             "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
             "bilibili_article", "bilibili_dynamic",
@@ -187,17 +177,16 @@ class ScriptWriter:
         }
 
         def _split(items_list):
-            domestic = [it for it in items_list
-                        if it.get("source_type", "") in cn_source_types]
-            overseas = [it for it in items_list
-                        if it.get("source_type", "") not in cn_source_types]
+            domestic = [it for it in items_list if it.get("source_type", "") in cn_source_types]
+            overseas = [it for it in items_list if it.get("source_type", "") not in cn_source_types]
             return domestic, overseas
 
+        sections = []
         all_items = []
 
         for region_label, region_key in [("🌍 海外资讯", "overseas"), ("🇨🇳 国内资讯", "domestic")]:
-            region_lines = [f"## {region_label}\n"]
-            region_items = []
+            lines = [f"## {region_label}\n"]
+            region_all = []
             item_counter = 0
 
             for cat_key in CATEGORIES:
@@ -208,7 +197,7 @@ class ScriptWriter:
                     continue
 
                 cat_name = CATEGORIES[cat_key]["name"]
-                region_items.extend(region_items_list)
+                region_all.extend(region_items_list)
 
                 if self.client:
                     section = self._generate_section(f"{cat_name} ({region_label})", region_items_list)
@@ -216,23 +205,22 @@ class ScriptWriter:
                     section = self._template_section(cat_name, region_items_list, item_counter)
                     item_counter += len(region_items_list)
 
-                region_lines.append(section)
-                region_lines.append("")
+                lines.append(section)
+                lines.append("")
 
-            region_lines.append(generate_citations_block(region_items))
-            lines.extend(region_lines)
-            lines.append("---")
-            all_items.extend(region_items)
+            lines.append(generate_citations_block(region_all))
+            sections.extend(lines)
+            sections.append("")
+            all_items.extend(region_all)
 
-        report = "\n".join(lines)
+        report = "\n".join([title] + sections)
         console.log(f"[green]周报生成完成: {len(all_items)} 条资讯[/green]")
         return report
 
-    def _generate_section(self, cat_name: str, items: list[dict]) -> str:
+    def _generate_section(self, cat_label: str, items: list[dict]) -> str:
         """调用 LLM 生成一个板块的新闻播报"""
-        import json
+        import json as _json
 
-        # 准备 LLM 输入（英文标题先翻译）
         news_input = []
         for it in items:
             raw_title = it.get("title", "")
@@ -253,48 +241,63 @@ class ScriptWriter:
             news_input.append(entry)
 
         prompt = SECTION_PROMPT.format(
-            cat_name=cat_name,
-            items_json=json.dumps(news_input, ensure_ascii=False, indent=2),
+            cat_name=cat_label,
+            items_json=_json.dumps(news_input, ensure_ascii=False, indent=2),
         )
 
-        console.log(f"[cyan]  LLM 生成 [{cat_name}] 板块... ({len(items)} 条)[/cyan]")
-
         try:
-            response = self.client.chat.completions.create(
+            resp = self.client.chat.completions.create(
                 model=OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": "你是科技新闻编辑。口播稿风格，客观准确有观点，每条新闻内容约150字、分析约80字，内容饱满有细节能顺畅读出，避免套话。保留全部条目不遗漏。"},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.6,
-                max_tokens=5000,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=MAX_TOKENS,
             )
-            return response.choices[0].message.content or ""
+            raw = resp.choices[0].message.content.strip()
+
+            # 压缩过长正文
+            if raw and len(raw) > COMPRESS_THRESHOLD:
+                compress_prompt = (
+                    "将以下新闻播报文稿压缩到1200字以内，保持结构和关键数据不变，去除冗余修饰词：\n\n" + raw
+                )
+                compress_resp = self.client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[{"role": "user", "content": compress_prompt}],
+                    temperature=0.1,
+                    max_tokens=MAX_TOKENS,
+                )
+                raw = compress_resp.choices[0].message.content.strip()
         except Exception as e:
-            console.log(f"[yellow]  LLM [{cat_name}] 失败: {e}，使用模板[/yellow]")
-            return self._template_section(cat_name, items, 0)
+            console.log(f"[red]  LLM 生成 [{cat_label}] 失败: {e}, 回退模板[/red]")
+            raw = self._template_section(cat_label, items, 0)
+
+        prefix = f"## {cat_label}\n"
+        if prefix in raw:
+            raw = raw.replace(prefix, "")
+            raw = raw.strip()
+
+        return raw
 
     def _template_section(self, cat_name: str, items: list[dict], start_num: int) -> str:
         """LLM 不可用时的模板兜底"""
         lines = [f"## {cat_name}\n"]
-
-        leak_items = [it for it in items if it.get("sub_type") == "leak"]
-        release_items = [it for it in items if it.get("sub_type") == "release"]
-        system_items = [it for it in items if it.get("sub_type") == "system"]
-        general_items = [it for it in items if it.get("sub_type") not in ("leak", "release", "system")]
-
-        for sub_title, sub_items in [
-            ("### 🔮 新机爆料", leak_items),
-            ("### 🆕 新机发售", release_items),
-            ("### 📱 系统更新", system_items),
-            ("### 📋 其他资讯", general_items),
-        ]:
+        sections_data = [
+            ("### 🔮 新机爆料", "leak"),
+            ("### 🆕 新机发售", "release"),
+            ("### 📱 系统更新", "system"),
+            ("### 📋 其他资讯", None),
+        ]
+        num = start_num
+        for sub_title, sub_type in sections_data:
+            if sub_type:
+                sub_items = [it for it in items if it.get("sub_type") == sub_type]
+            else:
+                sub_items = [it for it in items if it.get("sub_type") not in ("leak", "release", "system")]
             if not sub_items:
                 continue
             lines.append(sub_title)
             lines.append("")
             for item in sub_items:
-                start_num += 1
+                num += 1
                 title = item.get("title", "无标题")
                 date_str = ""
                 pub_date = item.get("published_at", "")
@@ -306,7 +309,7 @@ class ScriptWriter:
                         pass
                 sources = item.get("merged_sources", [item.get("source_name", "")])
                 sources_str = ", ".join(sources) if sources else item.get("source_name", "")
-                lines.append(f"#### {start_num}. {title}")
+                lines.append(f"#### {num}. {title}")
                 if item.get("image_url"):
                     img = item["image_url"]
                     if img.startswith("//"):
@@ -320,5 +323,21 @@ class ScriptWriter:
                 if item.get("summary"):
                     lines.append(f"> {item['summary'][:300]}")
                 lines.append("")
-
         return "\n".join(lines)
+
+
+def generate_citations_block(items: list[dict]) -> str:
+    """生成参考资料链接列表"""
+    lines = ["## 参考资料链接列表", ""]
+    seen = set()
+    idx = 1
+    for it in items:
+        title = it.get("title", "无标题")
+        url = it.get("url", "")
+        if url and url not in seen:
+            seen.add(url)
+            source = it.get("source_name", "")
+            prefix = f"[{source}] " if source else ""
+            lines.append(f"{idx}. {prefix}{title}: {url}")
+            idx += 1
+    return "\n".join(lines)
