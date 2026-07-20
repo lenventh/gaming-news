@@ -25,7 +25,7 @@ from .bilibili_browser_collector import MANUFACTURER_ACCOUNTS, NEWS_UP_ACCOUNTS
 
 console = Console()
 
-MAX_PER_ACCOUNT = 10          # 每个 UP 主最多拉几条
+MAX_PER_ACCOUNT = 15          # 每个 UP 主最多拉几条
 MAX_ARTICLE_CONTENT_LENGTH = 2000
 MAX_RECOGNITION_IMAGES = 3    # 每条 DRAW 动态最多识别的图片数
 FETCH_DELAY_MIN = 2
