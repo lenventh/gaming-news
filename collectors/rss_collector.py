@@ -78,11 +78,10 @@ class RSSCollector(BaseCollector):
     def fetch(self, retry_on_429: bool = True) -> list[dict]:
         items = []
         is_reddit = "reddit" in self.feed_url.lower()
-        max_retries = 3 if (is_reddit and retry_on_429) else 1
+        max_retries = 4 if (is_reddit and retry_on_429) else 1
 
         for attempt in range(max_retries):
             try:
-                # Reddit RSS 请求前加随机延时，降低 429 概率
                 if is_reddit and attempt == 0:
                     pre_delay = random.uniform(REDDIT_REQUEST_DELAY_MIN, REDDIT_REQUEST_DELAY_MAX)
                     time.sleep(pre_delay)
@@ -91,8 +90,10 @@ class RSSCollector(BaseCollector):
                     "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)"
                 })
                 if resp.status_code == 429 and attempt < max_retries - 1:
-                    wait = (2 ** attempt) * 10 + random.uniform(0, 5)  # 10s, 20s, 40s + jitter
-                    console.log(f"[yellow]Reddit 限流 [{self.name}], {wait:.0f}s 后重试...[/yellow]")
+                    # 连续 429 后加额外冷却
+                    cooldown = 30 if attempt >= 2 else 0
+                    wait = (2 ** attempt) * 10 + random.uniform(0, 5) + cooldown  # 10s, 20s, 70s, 110s
+                    console.log(f"[yellow]Reddit 限流 [{self.name}], {wait:.0f}s 后重试({attempt+1}/{max_retries})...[/yellow]")
                     time.sleep(wait)
                     continue
                 resp.raise_for_status()
@@ -100,7 +101,7 @@ class RSSCollector(BaseCollector):
                 break
             except Exception as e:
                 if attempt < max_retries - 1 and is_reddit:
-                    time.sleep(10)
+                    time.sleep(10 * (attempt + 1))
                     continue
                 console.log(f"[red]RSS 采集失败 [{self.name}]: {e}[/red]")
                 return items
