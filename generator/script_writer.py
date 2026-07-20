@@ -214,7 +214,7 @@ class ScriptWriter:
             display_title = _translate_title(raw_title)
             entry = {
                 "title": display_title,
-                "summary": it.get("summary", "")[:500],
+                "summary": it.get("summary", "")[:800],
                 "sub_type": it.get("sub_type", "general"),
                 "source": it.get("source_name", "") or ", ".join(it.get("merged_sources", [])),
                 "url": it.get("url", ""),
