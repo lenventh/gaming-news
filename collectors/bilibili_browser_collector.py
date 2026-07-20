@@ -29,109 +29,82 @@ from .base import BaseCollector
 console = Console()
 
 # ========== 搜索关键词（按分类组织） ==========
-# 原则：用 B站 用户实际搜索的词，中文口语化，覆盖品牌名+通用词+场景词
+# 原则：品牌+核心词一个，避免中英文重复/评测子词（大词已覆盖）
+# 精简目标：减少 API 调用次数，降低 B站 风控概率
 BILIBILI_SEARCH_KEYWORDS = {
     "steam_deck": [
         "Steam Deck 掌机",
-        "Steam Deck 评测",
         "Steam Deck OLED",
         "SteamOS 更新",
         "Steam Deck 游戏",
-        "Steam Deck 性能",
         "Steam Deck 二代",
     ],
     "windows_handheld": [
-        # 一线品牌
-        "ROG Ally 掌机", "ROG Ally 评测", "ROG Ally 二代",
-        "AYANEO 掌机", "AYANEO 新品", "AYANEO 评测",
-        "GPD 掌机", "GPD Win 新品", "GPD 评测",
-        "OneXPlayer 掌机", "壹号本 掌机",
-        "联想 Legion Go 掌机", "联想 拯救者 掌机",
-        "微星 Claw 掌机", "MSI Claw 掌机",
-        "索泰 ZONE 掌机", "ZOTAC 掌机",
+        # 一线品牌（每品牌1-2词）
+        "ROG Ally 掌机", "ROG Ally 二代",
+        "AYANEO 掌机", "AYANEO 新品",
+        "GPD 掌机", "GPD Win 新品",
+        "OneXPlayer 掌机",
+        "联想 Legion Go 掌机",
+        "MSI Claw 掌机",
+        "索泰 ZONE 掌机",
         # 其他品牌
         "AOKZOE 掌机",
-        "飞行家 掌机", "ONEXFLY 掌机",
+        "ONEXFLY 掌机",
         "攻氪 KONKR 掌机",
-        # 通用
-        "Windows 掌机 新品", "Windows 掌机 推荐",
-        "掌机 新品 发布", "掌机 发布会",
-        "Win 掌机 2024", "Win 掌机 2025", "Win 掌机 2026",
-        "PC 掌机 评测",
-        "掌机 性能 对比",
+        # 通用（有区分度的保留）
+        "Windows 掌机 新品",
+        "掌机 新品 发布",
+        "Win 掌机 2026",
     ],
     "android_handheld": [
-        # 品牌
-        "安卓掌机", "安卓掌机 新品", "安卓掌机 推荐",
-        "Retroid Pocket", "Retroid 掌机", "沙雕 掌机",
-        "AYN Odin 掌机", "奥丁 掌机", "奥丁 安卓",
-        "盖世小鸡 手柄", "盖世小鸡 掌机",
-        "拉伸手柄 安卓",
-        # 通用
-        "安卓 掌上游戏机",
-        "高通 掌机", "骁龙 掌机",
+        "安卓掌机", "安卓掌机 新品",
+        "Retroid Pocket", "沙雕 掌机",
+        "AYN Odin 掌机", "奥丁2 掌机",
+        "盖世小鸡 掌机",
+        "高通 掌机",
+        "Retroid Pocket Mini",
         "安卓 模拟器 掌机",
-        # 小众品牌/型号
-        "沙雕5 掌机", "RP5 掌机", "Retroid Pocket Mini",
-        "奥丁2 掌机", "Odin 2 掌机",
     ],
     "linux_handheld": [
-        # 品牌
-        "开源掌机", "开源掌机 新品", "开源掌机 推荐",
-        "Anbernic 掌机", "安伯尼克", "周哥 掌机", "RG 掌机",
+        # 品牌（中英文合并）
+        "开源掌机", "开源掌机 新品",
+        "Anbernic 掌机", "周哥 掌机", "RG 掌机",
         "Miyoo 掌机", "Miyoo Mini",
         "TrimUI 掌机", "吹米 掌机",
-        "PowKiddy 掌机",
-        "霸王小子 掌机",
-        "泡机堂 掌机",
+        "霸王小子 掌机", "泡机堂 掌机",
         # 通用
-        "复古掌机 新品", "复古掌机 推荐",
-        "Linux 掌机",
-        "怀旧 掌机 游戏",
-        "寨机 推荐", "寨机 评测",
-        # 小众品牌/型号
-        "GKD 掌机", "GKD 小金刚", "GKD Pixel", "GKD Mini",
-        "Game Kiddy 掌机",
-        "RG Cube 掌机", "RG Cube 评测",
+        "复古掌机 新品",
+        "Linux 掌机", "寨机 评测",
+        # 小众品牌
+        "GKD 掌机", "GKD Pixel",
+        "RG Cube 掌机",
         "MagicX 掌机", "Mini Zero 28",
         "吹砖 掌机", "芒米 掌机",
-        "r36s 掌机", "r35s 掌机",
+        "r36s 掌机",
     ],
     "console": [
-        # Switch 系列
-        "Switch 2", "Switch 2 评测", "Switch 2 游戏",
-        "Switch 2 爆料", "Switch 2 新品",
-        "NS2 掌机", "NS2 评测",
-        # PS 系列
-        "PS5 Pro", "PS5 新品",
-        "索尼 掌机", "PSP 新机",
-        "PlayStation 掌机",
-        # Xbox 系列
-        "Xbox 掌机", "Xbox 新品",
-        # 任天堂
+        # Switch 2 核心 + 游戏
+        "Switch 2", "Switch 2 游戏", "Switch 2 爆料",
+        # PS/Xbox/任天堂 掌机传闻
+        "PS5 Pro", "PlayStation 掌机",
+        "Xbox 掌机",
         "任天堂 新机", "任天堂 发布会",
-        "任天堂 掌机 2026",
         # 通用
         "主机 新闻", "次世代 主机",
     ],
     "emulator": [
-        # Switch 模拟器
+        # Switch 模拟器（仅活跃的）
         "Switch 模拟器 安卓", "Switch 模拟器 PC",
-        "Yuzu 模拟器", "Suyu 模拟器", "Sudachi 模拟器",
+        "Yuzu 模拟器", "Sudachi 模拟器",
         "Ryujinx 模拟器",
-        # 其他模拟器
+        # 其他活跃模拟器
         "PS4 模拟器", "PS3 模拟器",
-        "Winlator 安卓", "Winlator 模拟器",
-        "Mobox 模拟器",
-        "Citra 模拟器", "3DS 模拟器",
-        "Cemu 模拟器", "Wii U 模拟器",
-        "Vita3K 模拟器", "PSV 模拟器",
+        "Winlator 模拟器", "Mobox 模拟器",
+        "Citra 模拟器", "Vita3K 模拟器",
         # 通用
-        "模拟器 更新", "模拟器 推荐",
-        "安卓 模拟器 掌机 游戏",
-        # 模拟前端
-        "Batocera 模拟器", "Batocera 系统",
-        "EmulationStation 模拟器",
+        "模拟器 更新",
+        "Batocera 系统",
         "RetroArch 模拟器",
     ],
 }
@@ -168,39 +141,35 @@ NEWS_UP_ACCOUNTS = {
     "游民星空官方": {"mid": 11233223, "category": "console"},
 }
 
-# 按分类组织的官号搜索关键词
+# 按分类组织的官号搜索关键词（精简版：合并同义，去除非活跃品牌）
 MANUFACTURER_SEARCHES = [
     # === Windows 掌机 ===
     ("AYANEO 掌机", "windows_handheld"),
-    ("GPD 掌机 官方", "windows_handheld"),
-    ("壹号本 OneXPlayer 掌机", "windows_handheld"),
+    ("GPD 掌机", "windows_handheld"),
+    ("OneXPlayer 壹号本 掌机", "windows_handheld"),
     ("AOKZOE 掌机", "windows_handheld"),
     ("ROG Ally 掌机", "windows_handheld"),
-    ("联想 拯救者 Legion Go 掌机", "windows_handheld"),
-    ("微星 MSI Claw 掌机", "windows_handheld"),
-    ("索泰 ZOTAC ZONE 掌机", "windows_handheld"),
+    ("联想 Legion Go 掌机", "windows_handheld"),
+    ("MSI Claw 掌机", "windows_handheld"),
+    ("索泰 ZONE 掌机", "windows_handheld"),
     ("ONEXFLY 飞行家 掌机", "windows_handheld"),
     ("攻氪 KONKR 掌机", "windows_handheld"),
     # === 安卓掌机 ===
     ("AYN Odin 奥丁 掌机", "android_handheld"),
     ("Retroid Pocket 沙雕 掌机", "android_handheld"),
-    ("盖世小鸡 掌机 手柄", "android_handheld"),
+    ("盖世小鸡 掌机", "android_handheld"),
     # === Linux / 开源掌机 ===
     ("Anbernic 安伯尼克 掌机", "linux_handheld"),
     ("Miyoo Mini 掌机", "linux_handheld"),
     ("TrimUI 吹米 掌机", "linux_handheld"),
-    ("PowKiddy 掌机", "linux_handheld"),
     ("霸王小子 掌机", "linux_handheld"),
-    ("泡机堂 掌机", "linux_handheld"),
     ("周哥 开源掌机", "linux_handheld"),
-    ("MagicX 掌机", "linux_handheld"),
-    ("GKD 掌机 小金刚", "linux_handheld"),
+    ("GKD 掌机", "linux_handheld"),
     ("RG Cube 掌机", "linux_handheld"),
+    ("MagicX 掌机", "linux_handheld"),
     # === 主机 ===
     ("PlayStation 中国", "console"),
     ("任天堂 Switch 官方", "console"),
-    ("Xbox 中国 官方", "console"),
-    ("腾讯 NintendoSwitch", "console"),
 ]
 
 # 每次采集的上限
