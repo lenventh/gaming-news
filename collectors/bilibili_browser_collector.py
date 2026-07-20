@@ -82,7 +82,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         "ArkOS", "OnionOS", "GarlicOS",
         # 小众品牌
         "GKD 掌机", "GKD Pixel",
-        "RG Cube 掌机",
         "MagicX 掌机",
         "吹砖 掌机", "芒米 掌机",
         "r36s 掌机",
@@ -175,7 +174,6 @@ MANUFACTURER_SEARCHES = [
     ("霸王小子 掌机", "linux_handheld"),
     ("周哥 开源掌机", "linux_handheld"),
     ("GKD 掌机", "linux_handheld"),
-    ("RG Cube 掌机", "linux_handheld"),
     ("MagicX 掌机", "linux_handheld"),
     # === 主机 ===
     ("PlayStation 中国", "console"),
