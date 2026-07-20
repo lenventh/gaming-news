@@ -226,6 +226,9 @@ def _parse_bilibili_date(date_str: str) -> datetime | None:
             return now - timedelta(days=1)
         elif "前天" in date_str:
             return now - timedelta(days=2)
+        elif re.search(r"(\d+)\s*天前", date_str):
+            days = int(re.search(r"(\d+)\s*天前", date_str).group(1))
+            return now - timedelta(days=days)
         elif re.match(r"^\d{1,2}-\d{1,2}$", date_str):
             month, day = date_str.split("-")
             return datetime(now.year, int(month), int(day), tzinfo=timezone.utc)
@@ -398,6 +401,11 @@ class BilibiliBrowserCollector(BaseCollector):
                         const durMatch = text.match(/(\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?)/);
                         if (durMatch) duration = durMatch[0];
 
+                        // 提取发布时间（B站主页/视频页用 MM-DD 或 小时前/昨天）
+                        let dateText = '';
+                        const dm = text.match(/(\\d{{1,2}}-\\d{{1,2}})|(\\d+\\s*(?:小时前|分钟前|天前))|(?:昨天|前天)/);
+                        if (dm) dateText = dm[0];
+
                         let pic = '';
                         const img = card ? card.querySelector('img') : null;
                         if (img) {{
@@ -407,7 +415,8 @@ class BilibiliBrowserCollector(BaseCollector):
 
                         cards.push({{
                             bvid: bvid, title: title.substring(0, 200),
-                            play_text: play, duration: duration, pic: pic, mid: mid
+                            play_text: play, duration: duration, date_text: dateText,
+                            pic: pic, mid: mid
                         }});
                     }});
                     return cards;
@@ -433,7 +442,12 @@ class BilibiliBrowserCollector(BaseCollector):
 
             url = f"https://www.bilibili.com/video/{bvid}"
 
+            date_text = v.get("date_text", "")
+            published_at = _parse_bilibili_date(date_text) if date_text else None
+
             summary_parts = [f"UP主: {name}"]
+            if date_text:
+                summary_parts.append(date_text)
             play_text = v.get("play_text", "")
             if play_text:
                 summary_parts.append(play_text)
@@ -443,13 +457,14 @@ class BilibiliBrowserCollector(BaseCollector):
             results.append({
                 "title": title,
                 "url": url,
-                "published_at": None,  # DOM 中难以提取精确日期
+                "published_at": published_at,
                 "summary": " | ".join(summary_parts),
                 "raw": {
                     "bvid": bvid, "author": name, "mid": v.get("mid", mid),
                     "play_count": 0, "danmaku": "",
                     "duration": duration, "is_official": True,
                     "manufacturer": name, "pic": v.get("pic", ""),
+                    "date_text": date_text,
                 },
                 "category_hint": cat_hint,
             })
