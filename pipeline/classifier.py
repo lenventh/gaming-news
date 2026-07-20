@@ -14,7 +14,7 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 
 类别（只返回标识符）：
 {categories_list}
-- irrelevant: 与游戏硬件/设备完全无关的内容
+- irrelevant: 与游戏硬件/设备无关的内容; **纯游戏软件新闻必须归此类**: 游戏更新/DLC/资料片/新预告/新作发售/游戏折扣(不含硬件); 仅当新闻**主要讨论硬件设备**时才归入其他分类
 
 分类规则：
 - steam_deck: Steam Deck、SteamOS、Proton、Valve掌机、Steam Deck 2/OLED
