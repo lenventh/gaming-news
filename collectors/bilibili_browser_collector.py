@@ -159,6 +159,11 @@ CATEGORY_EXCLUSIONS: dict[str, list[str]] = {
     "android_handheld": [
         "手机壳", "手机膜", "平板",
     ],
+    # 全分类盗版/破解工具排除
+    "_global": [
+        "dlc 解锁", "dlc解锁", "dlc补丁", "解锁补丁",
+        "破解补丁", "steam解锁", "epic解锁",
+    ],
 }
 
 # ========== 厂商官号 B站 UID ==========
@@ -533,6 +538,27 @@ class BilibiliBrowserCollector(BaseCollector):
         if enriched:
             console.log(f"[green]  补全 {enriched}/{len(capped)} 条日期[/green]")
 
+    def _apply_exclusions(self, items: list[dict]) -> list[dict]:
+        """应用分类+全局排除词"""
+        global_exclude = CATEGORY_EXCLUSIONS.get("_global", [])
+        filtered = []
+        excluded = 0
+        for it in items:
+            title = (it.get("title", "") + " " + it.get("summary", "")).lower()
+            if any(kw in title for kw in global_exclude):
+                excluded += 1
+                continue
+            cat = it.get("category_hint", "")
+            if cat:
+                cat_exclude = CATEGORY_EXCLUSIONS.get(cat, [])
+                if any(kw in title for kw in cat_exclude):
+                    excluded += 1
+                    continue
+            filtered.append(it)
+        if excluded > 0:
+            console.log(f"[dim]  排除 {excluded} 条(排除词匹配)[/dim]")
+        return filtered
+
     def _search_keyword(self, keyword: str, cat_hint: str) -> list[dict]:
         """通过 B站搜索 API 搜索关键词，获取精确发布日期和简介"""
         api_url = (
@@ -897,6 +923,7 @@ class BilibiliBrowserCollector(BaseCollector):
             )
         # 批量补全日期（DOM 抓取的无日期条用 API 获取）
         self._enrich_dates(all_items)
+        all_items = self._apply_exclusions(all_items)
 
         console.log(f"[green]B站浏览器总计: {len(all_items)} 条[/green]")
         return all_items
