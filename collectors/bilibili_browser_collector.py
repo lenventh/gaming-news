@@ -129,6 +129,10 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Joy-Con", "Switch Pro 手柄",
         # PlayStation 外设
         "PS Portal", "DualSense Edge",
+        # PC 外设
+        "PC 手柄", "游戏鼠标",
+        "机械键盘 游戏", "Stream Deck",
+        "外接显卡 扩展坞",
         # 模拟外设
         "方向盘 模拟", "飞行摇杆",
     ],
