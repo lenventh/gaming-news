@@ -23,7 +23,7 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 - linux_handheld: Anbernic(RG35XX/RG Cube)、Miyoo(Mini/Flip/A30)、TrimUI(Brick/Smart Pro)、PowKiddy、GKD、MagicX、r36s/r35s等开源/复古掌机
 - console: PS5(Pro)、Xbox、Switch/Switch 2等传统主机; (不含配件/外设)
 - emulator: 模拟器软件(Yuzu/Ryujinx/Cemu/RPCS3/Vita3K、Batocera、Winlator等); (不含模拟驾驶外设)
-- peripherals: VR/AR头显(Quest/PSVR/PICO)、手柄/控制器(DualSense/八位堂/GameSir)、拉伸手柄、模拟驾驶/飞行外设(方向盘/HOTAS)、扩展坞/底座、采集卡、电竞显示器/游戏耳机、键鼠外设、硅胶套/贴膜/收纳包
+- peripherals: **仅游戏专用外设** — VR/AR头显(Quest/PSVR/PICO/Apple Vision)、手柄/控制器(DualSense/Xbox手柄/八位堂/GameSir)、拉伸手柄、模拟驾驶/飞行外设(方向盘/HOTAS)、外接显卡(eGPU)、采集卡、扩展坞; **不包括**普通键盘/鼠标/显示器/耳机/电源/电竞椅(→irrelevant)
 
 注意区分：
 - 中文"掌机"需根据品牌/系统判断: Windows品牌→windows_handheld; Anbernic等→linux_handheld
