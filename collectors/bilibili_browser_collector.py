@@ -108,7 +108,8 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 平台级（平台词天然覆盖所有同平台模拟器）
         "PS4 模拟器", "PS3 模拟器", "PS2 模拟器",
         "PSP 模拟器", "PSV 模拟器",
-        "3DS 模拟器", "Wii U 模拟器",
+        "3DS 模拟器", "NDS 模拟器", "GBA 模拟器",
+        "Wii U 模拟器",
         # Android 转译（掌机热点）
         "Winlator 模拟器", "Mobox 模拟器",
         # 前端/通用
