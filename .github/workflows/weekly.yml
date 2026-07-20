@@ -2,8 +2,8 @@ name: Weekly Gaming News
 
 on:
   schedule:
-    - cron: '0 0 * * 1'   # 周一 → 下（覆盖上周四-日）
-    - cron: '0 0 * * 4'   # 周四 → 上（覆盖本周一-三）
+    - cron: '0 16 * * 0'  # 周一 00:00 北京时间 = 周日 16:00 UTC → 下
+    - cron: '0 16 * * 3'  # 周四 00:00 北京时间 = 周三 16:00 UTC → 上
   workflow_dispatch:
 
 permissions:
