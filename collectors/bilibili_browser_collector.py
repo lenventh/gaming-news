@@ -39,7 +39,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Steam Deck 游戏",
         "Steam Deck 二代",
         "Steam Machine",
-        "Steam Deck 控制器",
+        "Steam 控制器",
         "Steam Controller",
     ],
     "windows_handheld": [
@@ -140,6 +140,14 @@ BILIBILI_SEARCH_KEYWORDS = {
     ],
 }
 
+# 分类排除词 — 防止搜索结果污染
+CATEGORY_EXCLUSIONS: dict[str, list[str]] = {
+    "steam_deck": [
+        "ps5", "ps4", "playstation", "xbox", "joy-con", "joycon",
+        "八位堂", "盖世小鸡", "手机", "安卓手机", "iphone",
+    ],
+}
+
 # ========== 厂商官号 B站 UID ==========
 # 搜索品牌名时，B站搜索结果会自动包含官号内容
 # 这里列出已知的官号 mids，用于识别和优先排序
@@ -184,7 +192,7 @@ MANUFACTURER_SEARCHES = [
     ("MSI Claw 掌机", "windows_handheld"),
     ("索泰 ZONE 掌机", "windows_handheld"),
     ("ONEXFLY 飞行家 掌机", "windows_handheld"),
-    ("攻氪 KONKR 掌机", "windows_handheld"),
+    ("攻氪 KONKR 掌机", "android_handheld"),
     # === 安卓掌机 ===
     ("AYN Odin 奥丁 掌机", "android_handheld"),
     ("Retroid Pocket 沙雕 掌机", "android_handheld"),
