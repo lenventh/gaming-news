@@ -221,7 +221,10 @@ class ScriptWriter:
                 "date": (it.get("published_at") or "")[:10],
             }
             if it.get("image_url"):
-                entry["image_url"] = it["image_url"]
+                img = it["image_url"]
+                if img.startswith("//"):
+                    img = "https:" + img
+                entry["image_url"] = img
             news_input.append(entry)
 
         prompt = SECTION_PROMPT.format(
@@ -280,7 +283,10 @@ class ScriptWriter:
                 sources_str = ", ".join(sources) if sources else item.get("source_name", "")
                 lines.append(f"#### {start_num}. {title}")
                 if item.get("image_url"):
-                    lines.append(f"![配图]({item['image_url']})")
+                    img = item["image_url"]
+                    if img.startswith("//"):
+                        img = "https:" + img
+                    lines.append(f"![配图]({img})")
                     lines.append("")
                 if date_str:
                     lines.append(f"日期: {date_str} | 来源: {sources_str}")
