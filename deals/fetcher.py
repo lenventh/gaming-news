@@ -288,6 +288,41 @@ def fetch_ps_deals() -> list[dict]:
 
 
 # ============================================================
+# PS Plus 会员免费游戏
+# ============================================================
+
+def fetch_psplus_monthly() -> list[dict]:
+    """PS Plus Essential 当月免费游戏（PlayStation Blog）"""
+    try:
+        resp = requests.get(
+            "https://www.playstation.com/en-us/ps-plus/whats-new/",
+            headers={"User-Agent": "Mozilla/5.0 (compatible; GameDealsBot/1.0)"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception:
+        return []
+
+    games = []
+    # 查找游戏名称区域
+    for card in soup.select("[class*='game'], [class*='title'], .monthly-games li, .psw-list-item")[:6]:
+        text = card.text.strip()
+        if text and len(text) > 3 and len(text) < 100:
+            # 过滤掉页眉页脚
+            if any(skip in text.lower() for skip in ("monthly games", "playstation plus", "essential", "extra", "premium", "deluxe")):
+                continue
+            games.append({
+                "game": text[:60],
+                "platform": "PS Plus 月免",
+                "until": "月底",
+                "url": "https://www.playstation.com/ps-plus",
+            })
+
+    return games[:5]
+
+
+# ============================================================
 # 聚合入口
 # ============================================================
 
@@ -324,6 +359,13 @@ def fetch_all() -> dict:
         all_deals.extend(ps)
     except Exception as e:
         errors.append(f"PS: {e}")
+
+    # PS Plus 月免
+    try:
+        psplus = fetch_psplus_monthly()
+        all_freebies.extend(psplus)
+    except Exception as e:
+        errors.append(f"PS Plus: {e}")
 
     return {"deals": all_deals, "freebies": all_freebies, "errors": errors}
 
