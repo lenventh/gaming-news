@@ -146,7 +146,18 @@ BILIBILI_SEARCH_KEYWORDS = {
 CATEGORY_EXCLUSIONS: dict[str, list[str]] = {
     "steam_deck": [
         "ps5", "ps4", "playstation", "xbox", "joy-con", "joycon",
-        "八位堂", "盖世小鸡", "手机", "安卓手机", "iphone",
+        "dualsense", "dualshock", "八位堂", "盖世小鸡",
+        "手机", "安卓手机", "iphone", "ipad",
+    ],
+    "emulator": [
+        "知乎", "zhihu", "deepseek", "论文", "isbn", "arxiv",
+        "ai模型", "大模型", "gpt", "llm",
+    ],
+    "linux_handheld": [
+        "手机", "安卓手机", "iphone",
+    ],
+    "android_handheld": [
+        "手机壳", "手机膜", "平板",
     ],
 }
 

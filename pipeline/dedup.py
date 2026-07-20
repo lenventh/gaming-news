@@ -70,9 +70,12 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
             continue
         date_key = pub.strftime("%Y-%m-%d") if hasattr(pub, 'strftime') else str(pub)[:10]
         title = item.get("title", "").lower()
-        # 提取匹配的产品名
-        for device in DEVICE_CATEGORY_MAP:
-            if device in title and len(device) > 4:  # 忽略太短的（如 "rp5" 误匹配）
+        # 提取匹配的产品名（按长度倒序，优先长名匹配，如 gkd 350h ultra > gkd 350h）
+        sorted_devices = sorted(DEVICE_CATEGORY_MAP.keys(), key=len, reverse=True)
+        for device in sorted_devices:
+            if len(device) <= 4:
+                continue
+            if re.search(r'\b' + re.escape(device) + r'\b', title):  # 忽略太短的（如 "rp5" 误匹配）
                 key = f"{date_key}|{device}"
                 if key not in product_groups:
                     product_groups[key] = []
