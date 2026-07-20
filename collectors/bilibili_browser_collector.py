@@ -39,7 +39,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         "Steam Deck 游戏",
         "Steam Deck 二代",
         "Steam Machine",
-        "Steam 控制器",
+        "Steam Deck 控制器",
         "Steam Controller",
     ],
     "windows_handheld": [
