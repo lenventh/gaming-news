@@ -54,7 +54,6 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 其他品牌
         "AOKZOE 掌机",
         "ONEXFLY 掌机",
-        "攻氪 KONKR 掌机",
         # 通用
         "Windows 掌机", "Win 掌机",
         "Windows 掌机 新品",
@@ -62,6 +61,7 @@ BILIBILI_SEARCH_KEYWORDS = {
     ],
     "android_handheld": [
         "安卓掌机", "安卓掌机 新品",
+        "攻氪 KONKR 掌机",
         "Retroid Pocket", "RP 掌机", "沙雕 掌机",
         "AYN Odin 掌机", "奥丁 掌机",
         "AYANEO Pocket",
