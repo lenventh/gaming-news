@@ -490,7 +490,7 @@ class BilibiliBrowserCollector(BaseCollector):
             return
 
         capped = undated[:max_items]
-        console.log(f"[dim]  补全 {len(capped)} 条无日期 ({max_items}上限, ~{max_items*2.5:.0f}s)...[/dim]")
+        console.log(f"[dim]  补全 {len(capped)} 条无日期 ({max_items}上限, ~{max_items*4:.0f}s)...[/dim]")
         enriched = 0
         for it in capped:
             bvid = it["raw_data"]["bvid"]
@@ -508,7 +508,7 @@ class BilibiliBrowserCollector(BaseCollector):
                     enriched += 1
             except Exception:
                 pass
-            _time.sleep(_random.uniform(2, 3))
+            _time.sleep(_random.uniform(3, 5))
         if enriched:
             console.log(f"[green]  补全 {enriched}/{len(capped)} 条日期[/green]")
 
