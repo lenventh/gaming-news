@@ -279,74 +279,54 @@ class BilibiliBrowserCollector(BaseCollector):
             return ""
 
     def _fetch_video_subtitles(self, bvid: str) -> str:
-        """通过 B站 API 获取视频字幕/CC文字内容"""
+        """通过 B站 API 获取视频字幕/CC文字内容（page.goto 避免 fetch 风控）"""
+        import json as _json
         try:
             # 1. 获取视频 cid
-            result = self._page.evaluate(f"""
-                async () => {{
-                    try {{
-                        const res = await fetch('https://api.bilibili.com/x/web-interface/view?bvid={bvid}');
-                        const json = await res.json();
-                        if (json.code !== 0 || !json.data) return null;
-                        return {{ cid: json.data.cid, aid: json.data.aid }};
-                    }} catch(e) {{ return null; }}
-                }}
-            """)
-            if not result:
+            page = self._page
+            page.goto(f"https://api.bilibili.com/x/web-interface/view?bvid={bvid}",
+                      wait_until="domcontentloaded", timeout=8000)
+            raw = page.evaluate("() => document.body.textContent")
+            data = _json.loads(raw)
+            if data.get("code") != 0 or not data.get("data"):
                 return ""
-
-            cid = result.get("cid", 0)
+            cid = data["data"].get("cid", 0)
             if not cid:
                 return ""
 
             # 2. 获取字幕列表
-            subtitle_result = self._page.evaluate(f"""
-                async () => {{
-                    try {{
-                        const res = await fetch(
-                            'https://api.bilibili.com/x/player/wbi/v2?bvid={bvid}&cid={cid}',
-                            {{ headers: {{ 'Referer': 'https://www.bilibili.com/video/{bvid}' }} }}
-                        );
-                        const json = await res.json();
-                        if (json.code !== 0 || !json.data?.subtitle?.subtitles) return [];
-                        return json.data.subtitle.subtitles.map(s => ({{
-                            lan: s.lan || '',
-                            lan_doc: s.lan_doc || '',
-                            url: s.subtitle_url || '',
-                        }}));
-                    }} catch(e) {{ return []; }}
-                }}
-            """)
-            if not subtitle_result:
+            page.goto(f"https://api.bilibili.com/x/player/wbi/v2?bvid={bvid}&cid={cid}",
+                      wait_until="domcontentloaded", timeout=8000)
+            raw = page.evaluate("() => document.body.textContent")
+            data = _json.loads(raw)
+            subtitles = data.get("data", {}).get("subtitle", {}).get("subtitles", [])
+            if not subtitles:
                 return ""
 
             # 3. 优先选择中文（AI生成 > 人工上传 > 翻译）
             zh_sub = None
-            for s in subtitle_result:
+            for s in subtitles:
                 lan = s.get("lan", "")
                 if lan.startswith("ai-zh") or lan == "zh-Hans":
-                    zh_sub = s
-                    break
+                    zh_sub = s; break
             if not zh_sub:
-                for s in subtitle_result:
+                for s in subtitles:
                     if s.get("lan", "").startswith("zh"):
-                        zh_sub = s
-                        break
-            if not zh_sub and subtitle_result:
-                zh_sub = subtitle_result[0]  # 兜底：取第一个
-
-            if not zh_sub or not zh_sub.get("url"):
+                        zh_sub = s; break
+            if not zh_sub and subtitles:
+                zh_sub = subtitles[0]
+            if not zh_sub or not zh_sub.get("subtitle_url"):
                 return ""
 
-            # 4. 下载字幕 JSON 并提取文字
-            sub_url = zh_sub["url"]
+            # 4. 下载字幕 JSON 并提取文字（CDN URL，page.evaluate fetch 可访问）
+            sub_url = zh_sub["subtitle_url"]
             if sub_url.startswith("//"):
                 sub_url = "https:" + sub_url
 
-            text = self._page.evaluate(f"""
+            text = page.evaluate(f"""
                 async () => {{
                     try {{
-                        const res = await fetch({json.dumps(sub_url)});
+                        const res = await fetch({_json.dumps(sub_url)});
                         const json = await res.json();
                         if (!json.body) return '';
                         return json.body
