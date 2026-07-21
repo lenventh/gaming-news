@@ -129,7 +129,7 @@ CATEGORIES = {
         "name": "开源掌机/Linux掌机",
         "keywords": [
             "anbernic", "miyoo", "trimui", "powkiddy", "开源掌机",
-            "linux 掌机", "arkos", "jelos", "batocera", "onionos",
+            "linux 掌机", "arkos", "jelos", "onionos",
             "garlicos", "minui", "knuli", "rg35xx", "rg40xx",
             "rg cube", "rg556", "rg406", "rg arc",
             "周哥", "霸王小子", "小霸王", "霸王",

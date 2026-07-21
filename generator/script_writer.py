@@ -239,6 +239,93 @@ def _normalize_format(text: str) -> str:
     return text
 
 
+def _inject_report_intro_outro(report: str, all_items: list[dict],
+                                week_label: str, client) -> str:
+    """为整篇周报生成一个开场白和一个结尾（仅一份，非每板块）"""
+    if not report or not all_items:
+        return report
+
+    # 提取本期的关键新闻用作生成素材
+    highlights = []
+    for it in all_items[:15]:
+        title = _translate_title(it.get("title", ""))
+        cat = it.get("category", "")
+        sub = it.get("sub_type", "")
+        if sub == "leak":
+            tag = "爆料"
+        elif sub == "release":
+            tag = "发售"
+        else:
+            tag = ""
+        line = f"- {title}"
+        if tag:
+            line += f" [{tag}]"
+        highlights.append(line)
+
+    hl_text = "\n".join(highlights) if highlights else "（暂无）"
+    total = len(all_items)
+
+    if client:
+        try:
+            # 开场白
+            intro_prompt = (
+                "你是游戏设备资讯周报的编辑。以下是本期({0})的新闻摘要"
+                "（共{1}条）。请写一句简短的开场白（15-30字），"
+                "概括本期重点，引出正文。不要使用主持人口播句式"
+                "（各位观众/欢迎收看/我是编辑等），直接写开场内容。\n\n{2}"
+            ).format(week_label, total, hl_text)
+            intro_resp = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": intro_prompt}],
+                temperature=0.4, max_tokens=80,
+            )
+            intro = intro_resp.choices[0].message.content.strip()
+
+            # 结尾
+            outro_prompt = (
+                "你是游戏设备资讯周报的编辑。本期周报共{0}条新闻。"
+                "请写一句简短的结尾语（15-30字），收尾本期内容。"
+                "不要使用主持人口播句式（感谢收看/下期再见等），直接写结尾。"
+            ).format(total)
+            outro_resp = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": outro_prompt}],
+                temperature=0.4, max_tokens=80,
+            )
+            outro = outro_resp.choices[0].message.content.strip()
+        except Exception as e:
+            console.log(f"[yellow]  开场白/结尾生成失败: {e}, 跳过[/yellow]")
+            return report
+    else:
+        # 模板兜底
+        cats = set(it.get("category", "") for it in all_items)
+        cat_names = [CATEGORIES.get(c, {}).get("name", c) for c in cats if c in CATEGORIES]
+        focus = "、".join(cat_names[:4]) if cat_names else "游戏设备"
+        intro = f"本期周报聚焦{focus}领域，共收录{total}条资讯。"
+        outro = f"以上为本期全部内容，我们下周再见。"
+
+    # 在标题行之后、第一个 ## 之前插入开场白
+    lines = report.split("\n")
+    result = []
+    intro_inserted = False
+    for i, line in enumerate(lines):
+        result.append(line)
+        if not intro_inserted and line.startswith("# ") and intro:
+            result.append("")
+            result.append(f"> {intro}")
+            result.append("")
+            intro_inserted = True
+
+    report = "\n".join(result)
+
+    # 在末尾追加结尾
+    if outro:
+        report += f"\n\n---\n\n> {outro}\n"
+
+    console.log(f"[green]  开场白+结尾已注入[/green]")
+    return report
+
+
 def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
     """跨板块去重：URL 精确匹配 + 标题相似度"""
     seen_urls: set[str] = set()
@@ -390,6 +477,7 @@ class ScriptWriter:
             all_items.extend(region_all)
 
         report = "\n".join([title] + sections)
+        report = _inject_report_intro_outro(report, all_items, week_label, self.client)
         console.log(f"[green]周报生成完成: {len(all_items)} 条资讯[/green]")
         return report
 
