@@ -35,7 +35,8 @@ from storage.db import init_db, insert_news_item, save_weekly_output, get_stats
 from collectors.rss_collector import collect_all_rss
 from collectors.web_search import WebSearchCollector
 from collectors.chinese_web import ChineseWebCollector
-from collectors.chinese_browser_collector import ChineseBrowserCollector
+# ChineseBrowserCollector 已移除：SMZDM 贡献 0%，详见注释
+# from collectors.chinese_browser_collector import ChineseBrowserCollector
 from collectors.tieba_collector import TiebaCollector
 from collectors.tieba_browser_collector import TiebaBrowserCollector
 from collectors.bilibili_collector import BilibiliCollector
@@ -90,9 +91,11 @@ def collect_all() -> list[dict]:
     all_items.extend(cn.fetch())
 
     # 知乎/什么值得买（浏览器直接搜索，覆盖面更全）
-    console.print("\n[yellow]知乎/什么值得买 (浏览器):[/yellow]")
-    cn_browser = ChineseBrowserCollector()
-    all_items.extend(cn_browser.fetch())
+    # 注：SMZDM 对最终周刊贡献 0%（电商比价站，无新闻价值），已移除
+    # 如需恢复：取消下行注释
+    # console.print("\n[yellow]知乎/什么值得买 (浏览器):[/yellow]")
+    # cn_browser = ChineseBrowserCollector()
+    # all_items.extend(cn_browser.fetch())
 
     # B站搜索采集
     console.print("\n[yellow]B站搜索采集:[/yellow]")
