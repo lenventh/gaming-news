@@ -27,7 +27,7 @@ PLACEHOLDER_PATTERNS = [
 ]
 
 # 同一图片 URL 出现在 ≥N 个不同来源时视为占位图
-PLACEHOLDER_DEDUP_THRESHOLD = 3
+PLACEHOLDER_DEDUP_THRESHOLD = 2
 
 
 def _is_placeholder(url: str) -> bool:
