@@ -67,6 +67,178 @@ def _normalize(title: str) -> str:
     return text
 
 
+def _inject_images(raw: str, items: list[dict]) -> str:
+    """后处理：LLM 生成后，强制注入被遗漏的配图
+
+    LLM 经常忽略 prompt 中的配图指令。此函数扫描 LLM 输出中每条新闻的
+    标题行，若对应条目有 image_url 但标题后没有 ![](...) 则强制插入。
+    """
+    if not raw or not items:
+        return raw
+
+    # 构建 title → image_url 映射（每个条目生成后 LLM 用的 title）
+    image_map: dict[str, str] = {}
+    for it in items:
+        img = it.get("image_url")
+        if not img:
+            continue
+        if img.startswith("//"):
+            img = "https:" + img
+        # 用传给 LLM 的 display_title 作为 key
+        raw_title = it.get("title", "")
+        display = _translate_title(raw_title)
+        # 取前 30 个字符做模糊匹配键
+        key = _normalize(display)[:30]
+        if len(key) >= 6:
+            image_map[key] = img
+
+    if not image_map:
+        return raw
+
+    lines = raw.split("\n")
+    result = []
+    i = 0
+    injected = 0
+    title_re = re.compile(r"^(#{2,4}\s+\d+[\.\、\s]|(?:\*\*)?\d+[\.\、]\s*(?:\*\*)?)\s*(.+)")
+
+    while i < len(lines):
+        line = lines[i]
+        result.append(line)
+        m = title_re.match(line)
+        if not m:
+            i += 1
+            continue
+
+        matched_title = m.group(2).strip()
+        # 去掉末尾的 markdown 标记
+        matched_title = re.sub(r"\*+$", "", matched_title).strip()
+        title_key = _normalize(matched_title)[:30]
+
+        # 检查这个标题是否有对应图片
+        img_url = None
+        for key, url in image_map.items():
+            if _title_fuzzy_match(title_key, key):
+                img_url = url
+                break
+
+        if not img_url:
+            i += 1
+            continue
+
+        # 检查下一两行是否已有图片
+        has_image = False
+        for offset in range(1, min(4, len(lines) - i)):
+            next_line = lines[i + offset].strip()
+            if next_line.startswith("!["):
+                has_image = True
+                break
+            if next_line and not next_line.startswith("-") and not next_line.startswith(">"):
+                break
+
+        if not has_image:
+            result.append(f"![配图]({img_url})")
+            result.append("")
+            injected += 1
+
+        i += 1
+
+    if injected:
+        console.log(f"[green]  配图注入: {injected} 张[/green]")
+    return "\n".join(result)
+
+
+def _title_fuzzy_match(a: str, b: str) -> bool:
+    """两个规范化标题是否指向同一新闻"""
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    # 一个是另一个的前缀（LLM 可能截断标题）
+    shorter = min(a, b, key=len)
+    longer = max(a, b, key=len)
+    if len(shorter) >= 8 and longer.startswith(shorter):
+        return True
+    # SequenceMatcher 兜底
+    if len(a) >= 8 and len(b) >= 8:
+        return SequenceMatcher(None, a, b).ratio() > 0.65
+    return False
+
+
+def _strip_opening_phrases(text: str) -> str:
+    """后处理：删除 LLM 生成的废话开场白
+
+    LLM 经常忽略 prompt 中的"禁止废话"指令，生成"各位...欢迎...我是编辑"等
+    主持人口播开场白。此函数按行扫描，删除完全匹配开场白模式的行。
+    """
+    if not text:
+        return text
+
+    # 匹配开场白行：各位[称呼][，,] 欢迎... | 我是[编辑/你们的编辑等]
+    opening_re = re.compile(
+        r"^(?:好的[，,]\s*)?"
+        r"各位(?:读者|听众|观众|玩家)"
+        r"(?:朋友)?[，,]\s*"
+        r"欢迎(?:收看|收听|阅读).*?"
+        r"(?:[。.]\s*(?:我是(?:你们[的]?)?编辑[。.]?\s*)?)?"
+        r"$"
+    )
+    # 独立行："我是你们的编辑。" / "我是编辑。"
+    editor_re = re.compile(r"^我是(?:你们[的]?)?编辑[。.]?\s*$")
+    # 转折语："接下来，让我们..."/"以下[是]..."/"首先[...]"
+    segue_re = re.compile(
+        r"^(?:接下来[，,]?\s*(?:让[我们我]+\s*)?|"
+        r"以下(?:是)?[，,]?\s*|"
+        r"首先[，,]?\s*)"
+        r"(?:聚焦|关注|看看|带来|进入|播报|了解|回顾|"
+        r"将(?:目光|视线)|目光|视线|镜头|视线|为您)"
+    )
+
+    lines = text.split("\n")
+    result = []
+    stripped = 0
+    for line in lines:
+        stripped_line = line.strip()
+        if not stripped_line:
+            result.append(line)
+            continue
+        if opening_re.match(stripped_line) or editor_re.match(stripped_line) or segue_re.match(stripped_line):
+            stripped += 1
+            continue
+        result.append(line)
+
+    if stripped:
+        console.log(f"[green]  开场白清理: {stripped} 行[/green]")
+    return "\n".join(result)
+
+
+def _normalize_format(text: str) -> str:
+    """后处理：归一化 LLM 生成的格式差异
+
+    - `**N. Title**` → `#### N. Title`
+    - 统一来源行格式
+    - 去除残留的无关 ### 标题
+    """
+    if not text:
+        return text
+
+    # 1. `**N. Title**` (加粗数字标题) → `#### N. Title`
+    text = re.sub(r"^\*\*(\d+[\.\、])\s*", r"#### \1 ", text, flags=re.MULTILINE)
+    text = re.sub(r"^(\d+[\.\、])\s+(?=\*\*)", r"#### \1 ", text, flags=re.MULTILINE)
+
+    # 2. 清理双 ** 包裹的标题尾
+    text = re.sub(r"^(####\s+\d+[\.\、]\s+.+?)\*\*\s*$", r"\1", text, flags=re.MULTILINE)
+
+    # 3. 来源行统一: `- 来源: ` 或 `来源：` → `- **来源**: `
+    text = re.sub(r"^-\s*来源[：:]\s*", r"- **来源**: ", text, flags=re.MULTILINE)
+    text = re.sub(r"^\*\*来源[：:]\*\*\s*", r"- **来源**: ", text, flags=re.MULTILINE)
+
+    # 4. 新闻内容/简要分析 标签加粗归一化
+    text = re.sub(r"^-\s*新闻内容[：:]", r"- **新闻内容**：", text, flags=re.MULTILINE)
+    text = re.sub(r"^-\s*简要分析[：:]", r"- **简要分析**：", text, flags=re.MULTILINE)
+
+    return text
+
+
 def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
     """跨板块去重：URL 精确匹配 + 标题相似度"""
     seen_urls: set[str] = set()
@@ -207,6 +379,8 @@ class ScriptWriter:
                     section = self._template_section(cat_name, region_items_list, item_counter)
                     item_counter += len(region_items_list)
 
+                lines.append(f"### {cat_name}")
+                lines.append("")
                 lines.append(section)
                 lines.append("")
 
@@ -277,6 +451,9 @@ class ScriptWriter:
             raw = raw.replace(prefix, "")
             raw = raw.strip()
 
+        raw = _inject_images(raw, items)
+        raw = _strip_opening_phrases(raw)
+        raw = _normalize_format(raw)
         return raw
 
     def _template_section(self, cat_name: str, items: list[dict], start_num: int) -> str:

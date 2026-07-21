@@ -6,7 +6,7 @@ from rich.console import Console
 
 console = Console()
 
-SIMILARITY_THRESHOLD = 0.75
+SIMILARITY_THRESHOLD = 0.65
 
 
 def _normalize(text: str) -> str:

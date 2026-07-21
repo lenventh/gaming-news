@@ -150,11 +150,39 @@ def detect_sub_types(items: list[dict]) -> list[dict]:
             item["sub_type"] = "general"
             continue
 
+        # 3. 软件/游戏排除：如果标题/摘要主要是游戏软件而非硬件，不归入 release/leak
+        software_kws = [
+            "dlc", "资料片", "expansion", "trailer", "预告片",
+            "游戏发售", "游戏发布", "新作", "新游戏", "续作",
+            "重制版", "remaster", "remake", "移植", "port",
+            "更新档", "补丁说明", "patch note",
+            "赛季", "season", "battle pass", "战斗通行证",
+            "皮肤", "skin", "角色", "character",
+            "联动", "collab", "合作", "crossover",
+            "mod", "模组", "创意工坊",
+            "免费", "free to play", "f2p",
+            "demo", "试玩", "beta", "early access",
+        ]
+        hw_kws = [
+            "掌机", "handheld", "主机", "console", "显卡", "gpu",
+            "芯片", "chip", "处理器", "cpu", "内存", "ram",
+            "屏幕", "display", "电池", "battery", "散热",
+            "摇杆", "手柄", "controller", "ssd", "存储",
+            "steam deck", "rog ally", "switch", "ps5",
+        ]
+        sw_score = sum(1 for kw in software_kws if kw.lower() in text)
+        hw_score = sum(1 for kw in hw_kws if kw.lower() in text)
+
+        # 如果软件信号强于硬件信号，降级为 general
+        is_software_only = (sw_score >= 2 and hw_score == 0)
+
         # 3. 检测爆料/发售
         release_score = sum(1 for kw in release_kws if kw.lower() in text)
         leak_score = sum(1 for kw in leak_kws if kw.lower() in text)
 
-        if release_score > 0 and release_score >= leak_score:
+        if is_software_only:
+            item["sub_type"] = "general"
+        elif release_score > 0 and release_score >= leak_score:
             item["sub_type"] = "release"
         elif leak_score > 0:
             item["sub_type"] = "leak"

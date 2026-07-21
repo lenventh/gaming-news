@@ -42,7 +42,7 @@ from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
-from pipeline.filter import filter_by_date, prune_expanded, get_week_label, get_week_range
+from pipeline.filter import filter_by_date, filter_content_quality, prune_expanded, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
@@ -247,6 +247,9 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     # 1. 去重
     console.print("\n[yellow]去重:[/yellow]")
     deduped = deduplicate(all_items)
+
+    # 1.5. 内容质量过滤（微博空条目/截断/占位符）
+    deduped, _quality_removed = filter_content_quality(deduped)
 
     # 2. 日期过滤
     console.print("\n[yellow]日期过滤 (近 {0} 天, leak宽限 {1} 天):[/yellow]".format(NEWS_WINDOW_DAYS, LEAK_WINDOW_DAYS))

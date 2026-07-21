@@ -75,6 +75,55 @@ def prune_expanded(items: list[dict]) -> tuple[list[dict], list[dict]]:
     return kept, pruned
 
 
+def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
+    """过滤空内容/截断/占位符等低质量条目
+
+    Returns:
+        (保留的条目, 剔除的条目)
+    """
+    kept = []
+    removed = []
+    for item in items:
+        title = (item.get("title") or "").strip()
+        summary = (item.get("summary") or "").strip()
+        source_type = (item.get("source_type") or "").lower()
+        combined = (title + " " + summary).strip()
+
+        # 1. 微博/社交媒体占位符 — 标题即无意义标签
+        if title in ("微博", "微博正文", "LISA", "百度贴吧", "贴吧排行榜"):
+            removed.append(item)
+            continue
+
+        # 2. "(原文未完整...)" / "(内容待补充)" — 截断或无内容
+        if "原文未完整" in summary or "内容待补充" in summary or "内容待补充" in title:
+            removed.append(item)
+            continue
+
+        # 3. 完整内容 < 30 字符（标题+摘要），从微博/RSS 抓取的空条目
+        if len(combined) < 30 and source_type in ("weibo", "rss_cn", "chinese_web", "rss"):
+            removed.append(item)
+            continue
+
+        # 4. 仅有图片无实质文字 (B站/B站动态图片帖无描述)
+        if title.startswith("[图片动态]") and len(summary) < 15:
+            removed.append(item)
+            continue
+
+        # 5. summary 为空且标题不含实质产品/品牌名
+        if not summary and len(title) < 10 and source_type in ("weibo", "tieba", "tieba_browser"):
+            removed.append(item)
+            continue
+
+        kept.append(item)
+
+    if removed:
+        console.log(
+            f"[yellow]内容质量过滤: {len(items)} 条 → {len(kept)} 条"
+            f" (剔除 {len(removed)}: {', '.join((it.get('title', '') or '无标题')[:30] for it in removed[:5])})[/yellow]"
+        )
+    return kept, removed
+
+
 def get_week_label() -> str:
     """返回半周标签，如 '2026-W28-上' / '2026-W28-下'
 
