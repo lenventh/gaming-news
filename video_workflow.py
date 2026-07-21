@@ -747,29 +747,58 @@ def parse_weekly(md_text: str) -> list[dict]:
     lines = md_text.split("\n")
     segments = []
     current_cat = ""
+    current_region = ""
     in_ref = False
     i = 0
 
+    # 板块名称映射（### 标题 → 简短分类名）
+    CAT_LABEL_MAP = {
+        "steam deck": "Steam Deck",
+        "windows 掌机": "Windows 掌机",
+        "安卓掌机": "安卓掌机",
+        "开源掌机/linux掌机": "开源掌机/Linux掌机",
+        "传统主机": "传统主机",
+        "模拟器资讯": "模拟器资讯",
+        "游戏外设": "游戏外设",
+    }
+
     while i < len(lines):
         line = lines[i].strip()
-        # 只跳过末尾的"## 参考资料"（不含其他"参考资料链接"子板块）
-        if re.match(r'^##\s+参考资料\s*$', line):
+        # 参考资料块：进入跳过模式（遇到其他 ## 标题如国内资讯则退出）
+        if re.match(r'^##\s+参考资料', line):
             in_ref = True
             i += 1
             continue
+        if re.match(r'^##\s+(.+)', line) and not line.startswith("####"):
+            in_ref = False
         if in_ref:
             i += 1
             continue
 
-        m = re.match(r'^##\s+(.+)', line)
-        if m and not line.startswith("####"):
-            current_cat = m.group(1).strip()
+        # 二级标题：区域（🌍 海外资讯 / 🇨🇳 国内资讯）
+        m2 = re.match(r'^##\s+(.+)', line)
+        if m2 and not line.startswith("####"):
+            current_region = m2.group(1).strip()
             i += 1
             continue
 
-        m = re.match(r'^####\s+\d+\.\s+(.+)', line)
+        # 三级标题：主分类（### Steam Deck 等）或子类型（### 🔮 新机爆料 等）
+        m3 = re.match(r'^###\s+(.+)', line)
+        if m3 and not line.startswith("####"):
+            cat_raw = m3.group(1).strip()
+            cat_lower = cat_raw.lower()
+            if cat_lower in CAT_LABEL_MAP:
+                current_cat = CAT_LABEL_MAP[cat_lower]
+            # else: 子类型标题（带 emoji），保持 current_cat 不变
+            i += 1
+            continue
+
+        # 条目标题：#### N. Title
+        m = re.match(r'^####\s+\d+[\.\、]\s*(.+)', line)
         if m:
             title = m.group(1).strip()
+            # 去除末尾残留的 ** 标记
+            title = re.sub(r'\*+$', '', title).strip()
             image_url = ""
             content = ""
             analysis = ""
@@ -777,24 +806,40 @@ def parse_weekly(md_text: str) -> list[dict]:
             i += 1
             while i < len(lines) and not re.match(r'^(####|###|##|--)', lines[i]):
                 sub = lines[i].strip()
+                # 配图
                 im = re.match(r'!\[配图\]\((.+)\)', sub)
                 if im:
                     image_url = im.group(1)
                     i += 1
                     continue
-                cm = re.match(r'-\s*新闻内容[：:]\s*(.+)', sub)
+                # 新闻内容（兼容有/无 ** 加粗）
+                cm = re.match(r'-\s*(?:\*\*)?新闻内容(?:\*\*)?[：:]\s*(.+)', sub)
                 if cm:
                     content = cm.group(1).strip()
                     i += 1
                     continue
-                am = re.match(r'-\s*简要分析[：:]\s*(.+)', sub)
+                # 简要分析（兼容有/无 ** 加粗）
+                am = re.match(r'-\s*(?:\*\*)?简要分析(?:\*\*)?[：:]\s*(.+)', sub)
                 if am:
                     analysis = am.group(1).strip()
                     i += 1
                     continue
-                sm = re.match(r'-\s*来源[：:]\s*(.+)', sub)
+                # 来源（兼容有/无 ** 加粗）
+                sm = re.match(r'-\s*(?:\*\*)?来源(?:\*\*)?[：:]\s*(.+)', sub)
                 if sm:
                     source = sm.group(1).strip()
+                    i += 1
+                    continue
+                # 模板兜底格式: 日期: YYYY-MM-DD | 来源: xxx
+                dm = re.match(r'^日期[：:]\s*(\S+)\s*\|\s*来源[：:]\s*(.+)', sub)
+                if dm:
+                    source = dm.group(2).strip()
+                    i += 1
+                    continue
+                # 模板兜底格式: > summary (引用块中的摘要)
+                qm = re.match(r'^>\s*(.+)', sub)
+                if qm and not content:
+                    content = qm.group(1).strip()
                     i += 1
                     continue
                 i += 1
@@ -812,7 +857,7 @@ def parse_weekly(md_text: str) -> list[dict]:
                 "content": content,
                 "analysis": analysis,
                 "source": source,
-                "category": current_cat,
+                "category": current_cat or current_region,
                 "speak_text": speak_text,
                 "char_count": len(speak_text),
             })
