@@ -147,6 +147,7 @@ class RSSCollector(BaseCollector):
                 published_at=published_at,
                 summary=summary,
                 raw_data={"feed_title": feed.feed.get("title", "")},
+                image_url=images[0] if images else None,
                 material_links=images,
             )
 
