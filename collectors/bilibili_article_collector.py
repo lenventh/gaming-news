@@ -81,7 +81,8 @@ def _set_bilibili_cookies(context, page=None) -> bool:
             is_login = data.get("data", {}).get("isLogin", False)
             uname = data.get("data", {}).get("uname", "?")
             if is_login:
-                console.log(f"[green]  ✓ SESSDATA 有效 (已登录: {uname})[/green]")
+                masked = uname[0] + "*" * (len(uname) - 1) if len(uname) > 1 else uname
+                console.log(f"[green]  ✓ SESSDATA 有效 (已登录: {masked})[/green]")
             else:
                 console.log(
                     f"[yellow]  ⚠ SESSDATA 可能已过期 (nav isLogin={is_login}), "
