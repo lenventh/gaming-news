@@ -39,6 +39,24 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 返回纯 JSON: {{"0": "playstation", "1": "nintendo", ...}}"""
 
 
+# LLM 过渡期兜底：旧 key "console" → 按标题关键词匹配到新板块
+_CONSOLE_RECLASSIFY = [
+    ("playstation", ["ps5", "ps4", "ps6", "playstation", "索尼"]),
+    ("xbox", ["xbox", "微软 xbox", "xbox series"]),
+    ("nintendo", ["switch", "任天堂", "nintendo", "ns2"]),
+]
+
+
+def _reclassify_console(title: str) -> str | None:
+    """根据标题关键词将旧 'console' 映射到 playstation/xbox/nintendo"""
+    low = title.lower()
+    for cat_key, keywords in _CONSOLE_RECLASSIFY:
+        for kw in keywords:
+            if kw.lower() in low:
+                return cat_key
+    return None  # 无法判断 → 不分配分类，等后续关键词兜底
+
+
 class NewsClassifier:
     def __init__(self):
         self.client = OpenAI(
@@ -101,7 +119,14 @@ class NewsClassifier:
             mapping = json.loads(result_text)
             for i_str, cat in mapping.items():
                 idx = int(i_str)
-                if idx < len(batch) and (cat in CATEGORIES or cat == "irrelevant"):
+                if cat == "console":
+                    # LLM 返回旧 key → 用关键词重新匹配到新板块
+                    title = batch[idx].get("title", "")
+                    console_cat = _reclassify_console(title)
+                    if console_cat:
+                        batch[idx]["category"] = console_cat
+                        console.log(f"[dim]    'console'→{console_cat}: {title[:40]}[/dim]")
+                elif idx < len(batch) and (cat in CATEGORIES or cat == "irrelevant"):
                     batch[idx]["category"] = cat
 
         except json.JSONDecodeError as e:

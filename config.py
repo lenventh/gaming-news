@@ -156,7 +156,7 @@ CATEGORIES = {
             "ps5", "ps5 pro", "playstation 5", "ps portal",
             "playstation portal", "playstation 6", "ps6",
             "sony playstation", "索尼 ps5", "索尼 playstation",
-            "索尼", "playstation",
+            "索尼主机", "索尼掌机", "playstation",
         ],
     },
     "xbox": {
