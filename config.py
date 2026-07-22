@@ -87,8 +87,11 @@ CATEGORIES = {
             "rog ally", "ayaneo", "gpd win", "msi claw", "微星 claw",
             "legion go", "联想 Legion Go", "windows 掌机", "win掌机",
             "onexplayer", "aokzoe", "player one",
-            "掌机", "handheld", "handheld gaming pc",
+            "handheld gaming pc",
             "amd z1", "amd z2", "ryzen z1", "ryzen z2",
+            # Windows 系统/驱动更新（游戏相关）
+            "directx 更新", "windows 游戏模式", "game bar",
+            "amd 驱动 掌机", "intel 驱动 掌机", "windows update gaming",
             "ayaneo 3", "ayaneo next", "gpd win 5", "gpd win mini",
             "飞行家", "壹号本", "aya neo", "奥克",
             "拯救者掌机", "rog掌机",
