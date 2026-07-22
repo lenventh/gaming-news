@@ -91,7 +91,8 @@ CATEGORIES = {
             "amd z1", "amd z2", "ryzen z1", "ryzen z2",
             # Windows 系统/驱动更新（游戏相关）
             "directx 更新", "windows 游戏模式", "game bar",
-            "xbox 模式 掌机", "xbox game bar",
+            "armoury crate", "legion space", "ayaspace",
+            "gpd 助手", "体感助手", "壹号本 控制中心", "msi center 掌机",
             "amd 驱动 掌机", "intel 驱动 掌机", "windows update gaming",
             "ayaneo 3", "ayaneo next", "gpd win 5", "gpd win mini",
             "飞行家", "壹号本", "aya neo", "奥克",

@@ -61,7 +61,10 @@ BILIBILI_SEARCH_KEYWORDS = {
         # Windows 游戏系统更新
         "DirectX 更新", "Windows 游戏模式",
         "AMD 驱动 掌机", "Intel 驱动 掌机",
-        "Xbox Game Bar 掌机", "Windows 掌机 Xbox 模式",
+        # 品牌专属掌机软件
+        "Armoury Crate 掌机", "Legion Space 掌机",
+        "AYASpace 更新", "GPD 助手 更新",
+        "体感助手 掌机", "壹号本 控制中心", "MSI Center 掌机",
     ],
     "android_handheld": [
         "安卓掌机", "安卓掌机 新品",
