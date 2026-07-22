@@ -61,6 +61,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         # Windows 游戏系统更新
         "DirectX 更新", "Windows 游戏模式",
         "AMD 驱动 掌机", "Intel 驱动 掌机",
+        "Xbox Game Bar 掌机", "Windows 掌机 Xbox 模式",
     ],
     "android_handheld": [
         "安卓掌机", "安卓掌机 新品",
