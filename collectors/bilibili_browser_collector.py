@@ -64,7 +64,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 品牌专属掌机软件
         "Armoury Crate 掌机", "Legion Space 掌机",
         "AYASpace 更新", "GPD 助手 更新",
-        "体感助手 掌机", "壹号本 控制中心", "MSI Center 掌机",
+        "GPD 体感助手", "壹号本 控制中心", "MSI Center 掌机",
     ],
     "android_handheld": [
         "安卓掌机", "安卓掌机 新品",
