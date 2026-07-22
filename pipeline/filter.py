@@ -132,8 +132,6 @@ _NON_HARDWARE_SIGNALS: list[str] = [
     # 通用AI/世界模型（非游戏专用）
     "世界模型.*自动驾驶", "VLA.*自动驾驶",
     "omnidreams", "omni dreams",
-    # 非游戏行业
-    "万亿账单", "aws.*账单",
     # 半导体/芯片行业法律/商业新闻（非游戏设备）
     "tsmc", "国家安全法.*起诉", "chipmaking.*china",
     # 模拟经营游戏（标题以"XX模拟器"结尾且前面是纯中文游戏名，非Emulator软件）
@@ -150,12 +148,27 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
     仅在标题+摘要中明确出现非硬件信号时才剔除。
     """
     import re
+
+    # 游戏硬件正面信号 — 命中时不变，跳过过滤
+    _HW_SIGNALS = re.compile(
+        r"steam\s*(deck|machine|controller|os)|显卡|rtx\s*50|gpu|掌机|handheld|"
+        r"手柄|controller|主机|console|switch\s*2|ps5|模拟器|emulator|"
+        r"摇杆|joy.?con|vr.*头显|quest|头显",
+        re.IGNORECASE,
+    )
+
     kept = []
     removed = []
     for item in items:
         title = (item.get("title") or "")
         summary = (item.get("summary") or "")
         combined = (title + " " + summary).lower()
+
+        # 含有游戏硬件正面信号 → 放行（B站杂谈视频可能同时提 AWS/芯片等）
+        if _HW_SIGNALS.search(combined):
+            kept.append(item)
+            continue
+
         matched = False
         for pattern in _NON_HARDWARE_SIGNALS:
             if re.search(pattern, combined, re.IGNORECASE):
