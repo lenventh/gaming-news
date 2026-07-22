@@ -134,6 +134,8 @@ _NON_HARDWARE_SIGNALS: list[str] = [
     "omnidreams", "omni dreams",
     # 非游戏行业
     "万亿账单", "aws.*账单",
+    # 半导体/芯片行业法律/商业新闻（非游戏设备）
+    "tsmc", "国家安全法.*起诉", "chipmaking.*china",
 ]
 
 
