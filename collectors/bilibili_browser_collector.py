@@ -38,7 +38,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         "SteamOS 更新",
         "Steam Deck 游戏",
         "Steam Deck 二代",
-        "Steam Machine",
+        "Steam Machine", "SteamMachine",
         "Steam 控制器",
         "Steam Controller",
     ],

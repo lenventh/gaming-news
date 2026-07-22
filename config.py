@@ -75,7 +75,7 @@ CATEGORIES = {
     "steam_deck": {
         "name": "Steam Deck",
         "keywords": [
-            "steam deck", "steamdeck", "steam machine", "steamos", "proton", "valve", "steam deck oled",
+            "steam deck", "steamdeck", "steam machine", "steammachine", "steamos", "proton", "valve", "steam deck oled",
             "steam deck 2", "steamdeck2", "steam 掌机", "v社掌机", "steam deck lcd",
             "steam deck 评测", "steam deck 开箱", "steam deck 配件",
             "sd oled", "deck掌机", "proton ge", "proton experimental",
