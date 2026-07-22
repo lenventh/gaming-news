@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   generate-news:
@@ -54,6 +55,49 @@ jobs:
           # ENRICH_VIDEO_CONTENT: true  # 开启字幕提取(已验证70/100可用)
           # GAME_DEALS: true   # 取消注释以追加折扣表格
         run: python main.py
+
+      - name: 检测 SESSDATA 过期并创建提醒 Issue
+        if: always()  # 即使管道部分失败也检查
+        run: |
+          if [ -f sessdata_expired.flag ]; then
+            echo "检测到 SESSDATA 已过期，创建提醒 Issue..."
+            gh issue create \
+              --title "⚠️ B站 SESSDATA 已过期 — 请更新 Cookie" \
+              --body "$(cat <<'ISSUEBODY'
+          ## 🔴 B站 SESSDATA Cookie 已过期
+
+          本期周刊的 B站 专栏/动态采集因 Cookie 过期而返回 0 条内容。
+
+          ### 你需要做什么
+
+          1. 本地运行提取脚本：
+             ```
+             python extract_sessdata.py
+             ```
+          2. 在浏览器中登录 B站（扫码/账号密码）
+          3. 脚本会自动提取 SESSDATA 值
+          4. 将新值更新到 GitHub Secrets：
+             → https://github.com/lenventh/gaming-news/settings/secrets/actions
+             → 找到 `BILIBILI_SESSDATA` → 更新
+
+          ### 影响
+
+          - B站 专栏/动态/UP主空间 采集量为 0
+          - 周刊国内资讯中 B站 来源将缺失
+          - 其他采集源（RSS/Google News）不受影响
+
+          > 🤖 此 Issue 由 CI 自动创建
+          ISSUEBODY
+          )" \
+              --label "cookie-过期" \
+              --label "需要操作"
+            rm -f sessdata_expired.flag
+            echo "✅ 提醒 Issue 已创建"
+          else
+            echo "✅ SESSDATA 状态正常"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Commit and push output
         run: |

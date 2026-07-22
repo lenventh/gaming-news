@@ -25,6 +25,20 @@ from .bilibili_browser_collector import MANUFACTURER_ACCOUNTS, NEWS_UP_ACCOUNTS
 
 console = Console()
 
+# SESSDATA 过期标记文件路径（CI 检测后自动创建 Issue 提醒）
+_SESSDATA_EXPIRED_FLAG = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "sessdata_expired.flag")
+
+
+def _mark_sessdata_expired(reason: str = ""):
+    """写标记文件，CI 检测到后会创建 GitHub Issue 提醒更新"""
+    try:
+        with open(_SESSDATA_EXPIRED_FLAG, "w", encoding="utf-8") as f:
+            f.write(f"SESSDATA 已过期\n原因: {reason}\n时间: {datetime.now(timezone.utc).isoformat()}\n")
+        console.log(f"[yellow]  已写入过期标记: {_SESSDATA_EXPIRED_FLAG}[/yellow]")
+    except Exception as e:
+        console.log(f"[yellow]  写入过期标记失败: {e}[/yellow]")
+
 MAX_PER_ACCOUNT = 30          # 每个 UP 主最多拉几条（二柄/游民 ~10条/天）
 MAX_ARTICLE_CONTENT_LENGTH = 2000
 MAX_RECOGNITION_IMAGES = 3    # 每条 DRAW 动态最多识别的图片数
@@ -73,6 +87,7 @@ def _set_bilibili_cookies(context, page=None) -> bool:
                     f"[yellow]  ⚠ SESSDATA 可能已过期 (nav isLogin={is_login}), "
                     "请重新提取: python extract_sessdata.py[/yellow]"
                 )
+                _mark_sessdata_expired(f"nav API isLogin={is_login}")
             return is_login
         except Exception as e:
             console.log(f"[yellow]  ⚠ SESSDATA 验证失败: {e}[/yellow]")
@@ -542,6 +557,7 @@ class BilibiliArticleCollector(BaseCollector):
                     "[yellow]  ⚠ 专栏+动态 0 条 — BILIBILI_SESSDATA 可能已过期, "
                     "请重新提取: python extract_sessdata.py[/yellow]"
                 )
+                _mark_sessdata_expired("专栏+动态采集量为 0")
             else:
                 console.log(
                     "[yellow]  ⚠ 专栏+动态 0 条 — 未设置 BILIBILI_SESSDATA, "

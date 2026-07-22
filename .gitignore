@@ -20,3 +20,4 @@ test_capcut
 test_frame*.jpg
 volc_protocols.py
 volc_protocols_init.py
+sessdata_expired.flag
