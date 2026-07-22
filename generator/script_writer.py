@@ -6,6 +6,8 @@ import re
 from difflib import SequenceMatcher
 from datetime import datetime
 
+import requests
+
 from openai import OpenAI
 from rich.console import Console
 
@@ -312,6 +314,85 @@ def _normalize_format(text: str) -> str:
     text = "\n".join(cleaned)
 
     return text
+
+
+def _download_images(report: str, week_label: str) -> str:
+    """下载 Markdown 中的远程图片到本地，替换为相对路径
+
+    B站 等国内 CDN 图片有 Referer 防盗链，GitHub/本地阅读器无法直接显示。
+    此函数下载所有远程图片到 output/images/ 目录，并将 ![](URL) 替换为相对路径。
+    """
+    if not report:
+        return report
+
+    import os as _os
+    import hashlib
+    from urllib.parse import urlparse
+
+    img_dir = _os.path.join(OUTPUT_DIR, "images")
+    _os.makedirs(img_dir, exist_ok=True)
+
+    img_re = re.compile(r"!\[配图\]\((.+)\)")
+    urls = img_re.findall(report)
+    if not urls:
+        return report
+
+    # 去重
+    unique_urls = list(dict.fromkeys(urls))
+    url_map: dict[str, str] = {}
+    downloaded = 0
+    failed = 0
+
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (compatible; GamingNewsBot/1.0)",
+        "Referer": "https://www.bilibili.com",  # B站 图片需要 Referer
+    })
+
+    for url in unique_urls:
+        try:
+            if url.startswith("//"):
+                url_fetch = "https:" + url
+            else:
+                url_fetch = url
+
+            # 取扩展名
+            parsed = urlparse(url_fetch)
+            ext = _os.path.splitext(parsed.path)[1]
+            if not ext or len(ext) > 5:
+                ext = ".jpg"
+
+            # 文件名: URL MD5 + ext
+            fname = hashlib.md5(url_fetch.encode()).hexdigest()[:12] + ext
+            fpath = _os.path.join(img_dir, fname)
+
+            if _os.path.exists(fpath):
+                url_map[url] = f"images/{fname}"
+                continue
+
+            resp = session.get(url_fetch, timeout=10)
+            if resp.status_code == 200 and len(resp.content) > 100:
+                with open(fpath, "wb") as f:
+                    f.write(resp.content)
+                url_map[url] = f"images/{fname}"
+                downloaded += 1
+            else:
+                failed += 1
+        except Exception:
+            failed += 1
+
+    if url_map:
+        # 替换
+        def _replace(m):
+            u = m.group(1)
+            return f"![配图]({url_map[u]})" if u in url_map else m.group(0)
+        report = img_re.sub(_replace, report)
+
+    if downloaded or failed:
+        console.log(
+            f"[dim]  图片本地化: {downloaded} 张下载, {failed} 张失败[/dim]"
+        )
+    return report
 
 
 def _inject_report_intro_outro(report: str, all_items: list[dict],
@@ -629,6 +710,7 @@ class ScriptWriter:
 
         report = "\n".join([title] + sections)
         report = _inject_report_intro_outro(report, all_items, week_label, self.client)
+        report = _download_images(report, week_label)
         console.log(f"[green]周报生成完成: {len(all_items)} 条资讯[/green]")
         return report
 
