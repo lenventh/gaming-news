@@ -48,6 +48,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          OPENAI_VISION_MODEL: ${{ secrets.OPENAI_VISION_MODEL }}
+          OPENAI_VISION_BASE_URL: ${{ secrets.OPENAI_VISION_BASE_URL }}
+          OPENAI_VISION_API_KEY: ${{ secrets.OPENAI_VISION_API_KEY }}
           PYTHONIOENCODING: utf-8
           NEWS_WINDOW_DAYS: 4
           BILIBILI_BROWSER: true
