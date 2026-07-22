@@ -317,6 +317,7 @@ class BilibiliArticleCollector(BaseCollector):
                 "category_hint": cat_hint,
                 "source_type": "bilibili_dynamic",
                 "source_label": f"B站动态@{account_name}",
+                "image_url": images[0] if images else None,
                 "images": images,
             })
 
