@@ -3,6 +3,7 @@
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -36,6 +37,26 @@ def _is_placeholder(url: str) -> bool:
         if pat.search(url):
             return True
     return False
+
+
+def _normalize_image_url(url: str) -> str:
+    """归一化图片 URL 用于去重比较：补全协议、剥离 query string 和 fragment"""
+    if url.startswith("//"):
+        url = "https:" + url
+    parsed = urlparse(url)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+
+
+def _extract_domain(url: str) -> str:
+    """从 URL 提取域名，用于来源分组"""
+    if not url:
+        return ""
+    if url.startswith("//"):
+        url = "https:" + url
+    try:
+        return urlparse(url).netloc
+    except Exception:
+        return ""
 
 
 def _extract_image_from_page(url: str) -> str | None:
@@ -176,4 +197,31 @@ def fetch_images(selected: dict[str, list[dict]]) -> dict[str, list[dict]]:
         f"  原始: {raw_count} | 占位图: {pattern_rejected} | "
         f"重复占位: {dedup_rejected} | 最终: [green]{fetched}[/green]"
     )
+
+    # 过滤 3：同一来源域名 + 同一板块内，同一图片 URL 只保留首次出现
+    #   GamingOnLinux / PC Gamer 等源的多篇文章常返回相同的站点默认 og:image，
+    #   这些图片实际只属于其中一篇文章，分配给其余条目会造成误导
+    domain_dedup = 0
+    for cat_key in selected:
+        items = selected[cat_key]
+        domain_images: dict[str, set] = {}
+        for it in items:
+            img = it.get("image_url")
+            if not img:
+                continue
+            norm_img = _normalize_image_url(img)
+            domain = _extract_domain(it.get("url", ""))
+            if not domain:
+                continue
+            domain_images.setdefault(domain, set())
+            if norm_img in domain_images[domain]:
+                del it["image_url"]
+                domain_dedup += 1
+                console.log(f"[yellow]    ✗ 同源去重 [{domain}]: {img[:60]}[/yellow]")
+            else:
+                domain_images[domain].add(norm_img)
+
+    if domain_dedup:
+        console.print(f"  [green]同源去重: {domain_dedup} 张[/green]")
+
     return selected

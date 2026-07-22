@@ -124,6 +124,49 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
     return kept, removed
 
 
+# ===== 非游戏硬件信号词 — 用于 filter_topic_relevance =====
+_NON_HARDWARE_SIGNALS: list[str] = [
+    # 自动驾驶/机器人（非游戏）
+    "自动驾驶", "autonomous driving", "self-driving",
+    "世界人工智能大会", "WAIC",
+    # 通用AI/世界模型（非游戏专用）
+    "世界模型.*自动驾驶", "VLA.*自动驾驶",
+    "omnidreams", "omni dreams",
+    # 非游戏行业
+    "万亿账单", "aws.*账单",
+]
+
+
+def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
+    """过滤与游戏硬件无关的内容（机器人/自动驾驶/通用AI等误入条目）
+
+    LLM 分类器的 irrelevant 规则有时被忽略，此函数用关键词做兜底过滤。
+    仅在标题+摘要中明确出现非硬件信号时才剔除。
+    """
+    import re
+    kept = []
+    removed = []
+    for item in items:
+        title = (item.get("title") or "")
+        summary = (item.get("summary") or "")
+        combined = (title + " " + summary).lower()
+        matched = False
+        for pattern in _NON_HARDWARE_SIGNALS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                matched = True
+                break
+        if matched:
+            removed.append(item)
+        else:
+            kept.append(item)
+    if removed:
+        console.log(
+            f"[yellow]话题相关性过滤: 剔除 {len(removed)} 条"
+            f" ({', '.join((it.get('title', '') or '无标题')[:40] for it in removed[:5])})[/yellow]"
+        )
+    return kept, removed
+
+
 def get_week_label() -> str:
     """返回半周标签，如 '2026-W28-上' / '2026-W28-下'
 

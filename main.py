@@ -43,7 +43,7 @@ from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
-from pipeline.filter import filter_by_date, filter_content_quality, prune_expanded, get_week_label, get_week_range
+from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
@@ -279,6 +279,9 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     if irrelevant:
         console.log(f"  丢弃无关条目: {len(irrelevant)} 条")
     classified = [it for it in classified if it.get("category") != "irrelevant"]
+
+    # 4.0. 话题相关性兜底过滤（LLM 标记 irrelevant 之外的漏网之鱼）
+    classified, _topic_removed = filter_topic_relevance(classified)
 
     # 子类型检测：新机爆料 / 新机发售
     console.print("\n[yellow]子类型检测 (爆料/发售):[/yellow]")

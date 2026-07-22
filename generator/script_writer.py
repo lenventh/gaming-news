@@ -147,6 +147,57 @@ def _inject_images(raw: str, items: list[dict]) -> str:
     return "\n".join(result)
 
 
+def _validate_images(raw: str, items: list[dict]) -> str:
+    """后处理：删除输出中不属于本板块条目或超出允许次数的配图
+
+    LLM 常将一个条目的配图复制给同板块其他条目。此函数以 items 的
+    image_url 集合为白名单，统计输出中每张图的出现次数，删除超额的。
+    """
+    if not raw or not items:
+        return raw
+
+    def _strip_query(url: str) -> str:
+        if url.startswith("//"):
+            url = "https:" + url
+        return re.sub(r"[?#].*$", "", url)
+
+    # 白名单：归一化 URL → 允许最大出现次数
+    allowed: dict[str, int] = {}
+    for it in items:
+        img = it.get("image_url")
+        if img:
+            key = _strip_query(img)
+            allowed[key] = allowed.get(key, 0) + 1
+
+    if not allowed:
+        return raw
+
+    img_re = re.compile(r"^!\[配图\]\((.+)\)$")
+    usage: dict[str, int] = {}
+    lines = raw.split("\n")
+    result = []
+    removed = 0
+
+    for line in lines:
+        m = img_re.match(line.strip())
+        if not m:
+            result.append(line)
+            continue
+        key = _strip_query(m.group(1))
+        if key not in allowed:
+            removed += 1
+            continue
+        if usage.get(key, 0) >= allowed[key]:
+            removed += 1
+            continue
+        usage[key] = usage.get(key, 0) + 1
+        result.append(line)
+
+    if removed:
+        console.log(f"[green]  配图校验: 移除 {removed} 张错误配图[/green]")
+    return "\n".join(result)
+
+
 def _title_fuzzy_match(a: str, b: str) -> bool:
     """两个规范化标题是否指向同一新闻"""
     if not a or not b:
@@ -327,20 +378,92 @@ def _inject_report_intro_outro(report: str, all_items: list[dict],
 
 
 def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
-    """跨板块去重：URL 精确匹配 + 标题相似度"""
+    """跨板块去重：URL 精确匹配 + 产品名匹配 + 标题相似度"""
+    from pipeline.device_os_map import DEVICE_CATEGORY_MAP
+
     seen_urls: set[str] = set()
     seen_titles: list[tuple[str, str]] = []
+    seen_products: set[str] = set()  # 产品名 → 首次出现的板块
     removed = 0
+
+    # 按设备名长度倒序，优先长名匹配
+    sorted_devices = sorted(
+        [d for d in DEVICE_CATEGORY_MAP if len(d) > 4],
+        key=len, reverse=True,
+    )
+
+    # 中文品牌名 → 英文名（用于提取后归一化，确保同一产品在去重时被视为同一 key）
+    _CN_BRAND_NORMALIZE = {
+        "芒米": "mangmi",
+        "安伯尼克": "anbernic",
+        "吹米": "trimui",
+        "壹号本": "onexplayer",
+        "周哥": "anbernic",
+        "老张": "gkd",
+    }
+
+    def _normalize_product(name: str) -> str:
+        """将提取到的产品名中的中文品牌替换为英文，确保跨语言去重"""
+        low = name.lower()
+        for cn, en in _CN_BRAND_NORMALIZE.items():
+            if low.startswith(cn):
+                return en + low[len(cn):]
+        return low
+
+    def _extract_product(title: str) -> str | None:
+        low = title.lower()
+        for device in sorted_devices:
+            tokens = device.split()
+            if len(tokens) == 1:
+                tok = tokens[0]
+                if tok.isascii() and tok.isalpha():
+                    if re.search(r"\b" + re.escape(tok) + r"\b", low, re.ASCII):
+                        return device
+                elif tok in low:
+                    return device
+            else:
+                pos = 0
+                ok = True
+                for tok in tokens:
+                    if tok.isascii() and tok.isalpha() and len(tok) > 2:
+                        m = re.search(r"\b" + re.escape(tok) + r"\b", low, re.ASCII)
+                        if not m or m.start() < pos:
+                            ok = False
+                            break
+                        pos = m.end()
+                    else:
+                        idx = low.find(tok, pos)
+                        if idx < 0:
+                            ok = False
+                            break
+                        pos = idx + len(tok)
+                if ok:
+                    return device
+        return None
+
     for cat_key in list(categorized.keys()):
         items = categorized[cat_key]
         keep = []
         for it in items:
             url = (it.get("url") or "").strip()
             title = it.get("title", "").strip()
+
+            # 1. URL 精确去重
             if url and url in seen_urls:
                 console.log(f"[yellow]   跨板块去重(URL) [{cat_key}]: {title[:50]}[/yellow]")
                 removed += 1
                 continue
+
+            # 2. 产品名去重（同产品已在其他板块出现）
+            product = _extract_product(title)
+            if product:
+                product = _normalize_product(product)
+            if product and product in seen_products:
+                console.log(f"[yellow]   跨板块去重(产品名) [{cat_key}←{product}]: {title[:50]}[/yellow]")
+                removed += 1
+                continue
+
+            # 3. 标题相似度去重
             norm_title = _normalize(title)
             is_dup = False
             for seen_norm, seen_cat in seen_titles:
@@ -351,11 +474,15 @@ def _cross_category_dedup(categorized: dict[str, list[dict]]) -> int:
                     break
             if is_dup:
                 continue
+
             if url:
                 seen_urls.add(url)
             seen_titles.append((norm_title, cat_key))
+            if product:
+                seen_products.add(product)
             keep.append(it)
         categorized[cat_key] = keep
+
     if removed > 0:
         console.log(f"[green]  跨板块去重完成，移除 {removed} 条重复[/green]")
     return removed
@@ -542,6 +669,7 @@ class ScriptWriter:
         raw = _inject_images(raw, items)
         raw = _strip_opening_phrases(raw)
         raw = _normalize_format(raw)
+        raw = _validate_images(raw, items)
         return raw
 
     def _template_section(self, cat_name: str, items: list[dict], start_num: int) -> str:

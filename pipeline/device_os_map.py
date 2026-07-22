@@ -121,6 +121,8 @@ LINUX_DEVICES = {
     "magicx zero 28",
     "magicx zero 40",
     "mangmi air x",
+    "mangmi air y",
+    "芒米 air y",
     "mangmi pocket max",
     "miyoo a30",
     "miyoo flip",
