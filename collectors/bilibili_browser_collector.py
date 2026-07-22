@@ -66,7 +66,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         "AYN Odin 掌机", "奥丁 掌机",
         "AYANEO Pocket",
         "Anbernic 安卓", "RG 安卓掌机",
-        "高通 掌机",
+        "高通 掌机", "芒米 掌机", "芒米 AIR Y",
         "安卓 模拟器 掌机",
     ],
     "linux_handheld": [
@@ -83,7 +83,7 @@ BILIBILI_SEARCH_KEYWORDS = {
         # 小众品牌
         "GKD 掌机", "GKD Pixel",
         "MagicX 掌机",
-        "吹砖 掌机", "芒米 掌机",
+        "吹砖 掌机",
     ],
     "playstation": [
         "PS5", "PS5 游戏", "PS5 Pro",
@@ -115,8 +115,13 @@ BILIBILI_SEARCH_KEYWORDS = {
         # Android 转译（掌机热点）
         "Winlator 模拟器", "Mobox 模拟器",
         # 前端/通用
-        "模拟器 更新",
+        "模拟器 更新", "模拟器 汉化",
         "Batocera 系统", "RetroArch 模拟器",
+        # 具体模拟器项目名（泛词搜不到时精准匹配）
+        "melonDS 模拟器", "Drastic 模拟器", "Dolphin 模拟器 更新",
+        "Citra 模拟器 更新", "Cemu 模拟器 更新", "Azahar 模拟器",
+        "RPCS3 更新", "Vita3K 更新", "Xenia 模拟器", "Xemu 模拟器",
+        "PCSX2 更新", "DuckStation 更新", "PPSSPP 更新",
     ],
     "peripherals": [
         # VR/AR
@@ -188,6 +193,7 @@ MANUFACTURER_ACCOUNTS = {
     # === 安卓掌机 ===
     "AYN掌机": {"mid": 2008853645, "category": "android_handheld"},  # AYN Odin
     "Retroid官方": {"mid": 2127886581, "category": "android_handheld"},
+    "芒米科技": {"mid": 3546721894271865, "category": "android_handheld"},  # Mangmi
     "盖世小鸡": {"mid": 429886010, "category": "peripherals"},  # 手柄/外设
     # === Linux / 开源掌机 ===
     "Anbernic官方": {"mid": 678288374, "category": "linux_handheld"},
@@ -222,6 +228,7 @@ MANUFACTURER_SEARCHES = [
     # === 安卓掌机 ===
     ("AYN Odin 奥丁 掌机", "android_handheld"),
     ("Retroid Pocket 沙雕 掌机", "android_handheld"),
+    ("芒米 掌机", "android_handheld"),
     ("盖世小鸡 手柄", "peripherals"),
     # === Linux / 开源掌机 ===
     ("Anbernic 安伯尼克 掌机", "linux_handheld"),

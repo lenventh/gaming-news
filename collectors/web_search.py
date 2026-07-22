@@ -60,7 +60,7 @@ CATEGORY_SEARCH_QUERIES = {
         "Odin 掌机 Retroid 新闻",
         "安卓掌机 评测 推荐",
         "Android gaming handheld 2026",
-        "天玑 骁龙 掌机",
+        "天玑 骁龙 掌机", "芒米 Mangmi 掌机",
         "GAMEMT MagicX GKD 掌机 新品",
         "盖世小鸡 八位堂 手柄 2026",
         "拉伸手柄 新品 2026",
@@ -76,7 +76,7 @@ CATEGORY_SEARCH_QUERIES = {
         "retro handheld emulator device new",
         "开源掌机 评测 推荐",
         "周哥 掌机 新品",
-        "GKD 小金刚 掌机", "吹砖 掌机 TrimUI", "芒米 Mangmi 掌机",
+        "GKD 小金刚 掌机", "吹砖 掌机 TrimUI",
         "r36s r35s 掌机",
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
@@ -107,6 +107,9 @@ CATEGORY_SEARCH_QUERIES = {
         "PS4 模拟器 PS3 模拟器 新闻",
         "emulator release update 2026",
         "模拟器 安卓 PC 最新",
+        "melonDS Drastic 3DS 模拟器 更新",
+        "Cemu Dolphin Wii U 模拟器 更新",
+        "RPCS3 Vita3K Xenia 模拟器 新闻",
         "PPSSPP DuckStation 模拟器 更新",
         # 事件（来自关键词库）
         *get_event_keywords("emulator"),

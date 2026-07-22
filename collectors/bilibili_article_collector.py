@@ -286,13 +286,21 @@ class BilibiliArticleCollector(BaseCollector):
             if published_at and published_at < CUTOFF_DATE:
                 continue
 
-            # DRAW 无文字时尝试多模态识图
-            if mtype == "MAJOR_TYPE_DRAW" and images and not text and not title:
+            # 多模态识图：DRAW 无文字 / 任何类型文字极短(<30字)且带图时触发
+            needs_vision = (
+                (mtype == "MAJOR_TYPE_DRAW" and images and not text and not title)
+                or (images and len((text or "") + (title or "")) < 30)
+            )
+            if needs_vision:
                 recognized = self._recognize_images(images, account_name)
                 if recognized:
-                    text = recognized
-                    title = recognized[:80] + "..." if len(recognized) > 80 else recognized
-                else:
+                    if text:
+                        text = text + "\n" + recognized
+                    else:
+                        text = recognized
+                    if not title or len(title) < 10:
+                        title = recognized[:80] + "..." if len(recognized) > 80 else recognized
+                elif not text and not title:
                     title = f"[图片动态] {account_name} ({len(images)}张图)"
 
             display_title = title if title else (text[:80] + "..." if len(text) > 80 else text)

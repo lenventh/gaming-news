@@ -287,6 +287,30 @@ def _normalize_format(text: str) -> str:
     text = re.sub(r"^-\s*新闻内容[：:]", r"- **新闻内容**：", text, flags=re.MULTILINE)
     text = re.sub(r"^-\s*简要分析[：:]", r"- **简要分析**：", text, flags=re.MULTILINE)
 
+    # 5. 删除空条目（LLM 截断导致的 "#### N. X" 无后续内容）
+    lines = text.split("\n")
+    cleaned = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^(#{2,4}\s+\d+[\.\、]\s*.{1,5})$", line)
+        if m:
+            # 检查后续是否有实质内容
+            j = i + 1
+            has_content = False
+            while j < len(lines) and j < i + 4:
+                stripped = lines[j].strip()
+                if stripped and not stripped.startswith("#") and not stripped.startswith("!["):
+                    has_content = True
+                    break
+                j += 1
+            if not has_content:
+                i = j  # 跳过空条目
+                continue
+        cleaned.append(line)
+        i += 1
+    text = "\n".join(cleaned)
+
     return text
 
 

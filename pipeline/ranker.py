@@ -26,14 +26,20 @@ CN_SOURCE_TYPES = {
 # 来源多样性加分系数（加到 score 上，使其在同类中排名靠前）
 DIVERSITY_BOOST = 50
 
+# B站官方来源加分 — 高于第三方博客/RSS，确保一手信息不被转述挤掉
+OFFICIAL_SOURCE_TYPES = {"bilibili_manufacturer", "bilibili_dynamic"}
+OFFICIAL_BOOST = 120
+
 
 def _sort_key(item: dict) -> tuple:
     """排序键：爆料 > 发售 > 系统更新 > 其他，同类内按时效置信度+热度+日期排"""
     sub_priority = SUBTYPE_PRIORITY.get(item.get("sub_type", "general"), 3)
     score = item.get("raw_data", {}).get("score", 0)
-    # 中文浏览器来源加分
+    # 来源加分：官方 > 中文 > 其他
     source_type = item.get("source_type", "")
-    if source_type in CN_SOURCE_TYPES:
+    if source_type in OFFICIAL_SOURCE_TYPES:
+        score += OFFICIAL_BOOST
+    elif source_type in CN_SOURCE_TYPES:
         score += DIVERSITY_BOOST
     # date_confidence=low 条目严重降权，排在所有有日期条目之后
     date_low = item.get("raw_data", {}).get("date_confidence") == "low"

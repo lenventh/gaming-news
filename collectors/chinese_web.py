@@ -93,6 +93,7 @@ SITE_QUERIES = {
         "Odin 掌机 site:bilibili.com",
         "安卓掌机 新品 site:bilibili.com",
         "盖世小鸡 手柄 site:bilibili.com",
+        "芒米 掌机 site:bilibili.com",
         # 微博
         "Retroid site:weibo.com",
         "AYN Odin 掌机 site:weibo.com",
@@ -143,7 +144,6 @@ SITE_QUERIES = {
         # 小众品牌
         "GKD 小金刚 site:tieba.baidu.com",
         "吹砖 掌机 site:tieba.baidu.com",
-        "芒米 掌机 site:tieba.baidu.com",
         "r36s 掌机 site:tieba.baidu.com",
         # 事件（来自关键词库）
         *get_event_keywords_with_sites("linux_handheld", ["bilibili.com", "tieba.baidu.com"]),

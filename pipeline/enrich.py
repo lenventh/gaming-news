@@ -70,6 +70,19 @@ def _search_bilibili(query: str, sessdata: str = "") -> str | None:
     return None
 
 
+# 搜索词中的事件关键词 — 从动态短文本中提取，防止搜出旧信息
+_EVENT_KWS = re.compile(
+    r"(补货|第二轮|第.\s*轮|开售|预售|官宣|正式发布|现已|开订|"
+    r"上架|新品|限定|联名|新色|降价|调价|售罄|断货|现货)"
+)
+
+
+def _extract_event_kw(text: str) -> str:
+    """从动态文本中提取事件关键词，用于精确搜索"""
+    m = _EVENT_KWS.search(text)
+    return m.group(0) if m else ""
+
+
 def enrich_thin_items(items: list[dict]) -> int:
     """为摘要过短的条目搜索 B站 补全信息
 
@@ -84,11 +97,12 @@ def enrich_thin_items(items: list[dict]) -> int:
         product = _extract_product_name(title)
         if not product:
             continue
-        # 只处理 RSS 来源的条目
+        # RSS + B站官方动态/厂商内容
         src = it.get("source_type", "")
-        if src not in ("rss", "rss_cn", "chinese_web"):
+        if src not in ("rss", "rss_cn", "chinese_web",
+                       "bilibili_manufacturer", "bilibili_dynamic"):
             continue
-        candidates.append((it, product))
+        candidates.append((it, product, src))
 
     if not candidates:
         return 0
@@ -97,8 +111,14 @@ def enrich_thin_items(items: list[dict]) -> int:
     console.log(f"[dim]  交叉补全 {len(capped)} 条短摘要 (B站 搜索)...[/dim]")
     enriched = 0
     from difflib import SequenceMatcher
-    for it, product in capped:
-        extra = _search_bilibili(product)
+    for it, product, src in capped:
+        # 拼搜索词: 产品名 + 事件关键词 → 防止张冠李戴
+        event_kw = _extract_event_kw(
+            (it.get("title") or "") + " " + (it.get("summary") or "")
+        )
+        query = f"{product} {event_kw}" if event_kw else product
+
+        extra = _search_bilibili(query)
         if extra:
             # 防跑偏：B站 结果标题与原标题需有一定相似度
             extra_title = extra.split(" | ")[0] if " | " in extra else extra[:60]
@@ -108,7 +128,8 @@ def enrich_thin_items(items: list[dict]) -> int:
             ).ratio()
             if sim < 0.15:
                 continue
-            it["summary"] = f"{it['summary']} | [B站补全] {extra}"
+            prefix = "[识图补全]" if src in ("bilibili_manufacturer", "bilibili_dynamic") else "[B站补全]"
+            it["summary"] = f"{it['summary']} | {prefix} {extra}"
             enriched += 1
         time.sleep(random.uniform(*SEARCH_DELAY))
 
