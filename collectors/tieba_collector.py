@@ -64,17 +64,18 @@ TIEBA_BOARDS = {
     "rg掌机": "linux_handheld",
     "方律师": "linux_handheld",
     "泡机堂": "linux_handheld",
-    # 主机
-    "switch2": "console",
-    "ns2": "console",
-    "ps5": "console",
-    "ps5pro": "console",
-    "xboxone": "console",
-    "xboxseriesx": "console",
-    "nintendo": "console",
-    "switch": "console",
-    "playstation": "console",
-    "主机游戏": "console",
+    # PlayStation
+    "ps5": "playstation",
+    "ps5pro": "playstation",
+    "playstation": "playstation",
+    # Xbox
+    "xboxone": "xbox",
+    "xboxseriesx": "xbox",
+    # Nintendo
+    "switch2": "nintendo",
+    "ns2": "nintendo",
+    "nintendo": "nintendo",
+    "switch": "nintendo",
     # 模拟器
     "模拟器": "emulator",
     "yuzu": "emulator",
@@ -89,11 +90,11 @@ TIEBA_BOARDS = {
     "ps3模拟器": "emulator",
     "psv模拟器": "emulator",
     # 传闻（归入具体板块）
-    "索尼掌机": "console",
-    "xbox掌机": "console",
+    "索尼掌机": "playstation",
+    "xbox掌机": "xbox",
     "新掌机": "windows_handheld",
-    "steam主机": "console",
-    "任天堂新机": "console",
+    "steam主机": "steam_deck",
+    "任天堂新机": "nintendo",
 }
 
 class TiebaCollector(BaseCollector):

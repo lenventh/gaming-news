@@ -85,20 +85,21 @@ BILIBILI_SEARCH_KEYWORDS = {
         "MagicX 掌机",
         "吹砖 掌机", "芒米 掌机",
     ],
-    "console": [
-        # Switch
-        "Switch 2", "Switch 2 爆料",
-        "Switch 游戏",
-        # PS
-        "PS5", "PS5 游戏",
+    "playstation": [
+        "PS5", "PS5 游戏", "PS5 Pro",
         "PS6", "PS6 游戏",
-        "PlayStation 掌机",
-        # Xbox
-        "Xbox 掌机",
-        # 任天堂
+        "PlayStation 掌机", "PlayStation Portal",
+        "索尼 主机",
+    ],
+    "xbox": [
+        "Xbox Series", "Xbox 掌机",
+        "Xbox Game Pass", "微软 主机",
+    ],
+    "nintendo": [
+        "Switch 2", "Switch 2 爆料",
+        "Switch 游戏", "Switch OLED",
         "任天堂 新机", "任天堂 发布会",
-        # 通用
-        "主机 新闻", "次世代 主机",
+        "Switch 2 传闻",
     ],
     "emulator": [
         # Switch（独立模拟器各有新闻价值）
@@ -198,11 +199,11 @@ MANUFACTURER_ACCOUNTS = {
 
 # 游戏资讯类 UP主（UID 直抓最新视频）
 NEWS_UP_ACCOUNTS = {
-    "二柄APP": {"mid": 90668673, "category": "console"},
+    "二柄APP": {"mid": 90668673, "category": "nintendo"},
     "千夏的铲子": {"mid": 284571458, "category": None},       # 掌机垂类，LLM自由分类
     "董先生的游戏屋": {"mid": 441806315, "category": None},   # 掌机垂类，LLM自由分类
-    "Xigua今天打游戏了吗": {"mid": 609290340, "category": "console"},
-    "游民星空官方": {"mid": 11233223, "category": "console"},
+    "Xigua今天打游戏了吗": {"mid": 609290340, "category": "nintendo"},
+    "游民星空官方": {"mid": 11233223, "category": "nintendo"},
 }
 
 # 按分类组织的官号搜索关键词（精简版：合并同义，去除非活跃品牌）
@@ -231,8 +232,8 @@ MANUFACTURER_SEARCHES = [
     ("GKD 掌机", "linux_handheld"),
     ("MagicX 掌机", "linux_handheld"),
     # === 主机 ===
-    ("PlayStation 中国", "console"),
-    ("任天堂 Switch 官方", "console"),
+    ("PlayStation 中国", "playstation"),
+    ("任天堂 Switch 官方", "nintendo"),
 ]
 
 # 每次采集的上限

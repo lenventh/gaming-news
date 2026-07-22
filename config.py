@@ -150,20 +150,30 @@ CATEGORIES = {
             "寨机", "复古掌机", "怀旧掌机", "复古游戏机",
         ],
     },
-    "console": {
-        "name": "传统主机",
+    "playstation": {
+        "name": "PlayStation",
         "keywords": [
-            "ps5", "playstation 5", "ps5 pro", "xbox series",
+            "ps5", "ps5 pro", "playstation 5", "ps portal",
+            "playstation portal", "playstation 6", "ps6",
+            "sony playstation", "索尼 ps5", "索尼 playstation",
+            "索尼", "playstation",
+        ],
+    },
+    "xbox": {
+        "name": "Xbox",
+        "keywords": [
+            "xbox series", "xbox series x", "xbox series s",
+            "xbox game pass", "微软 xbox", "微软 xbox series",
+            "xbox", "微软",
+        ],
+    },
+    "nintendo": {
+        "name": "任天堂 Switch",
+        "keywords": [
             "switch 2", "switch2", "nintendo switch", "任天堂",
-            "sony playstation", "微软 xbox", "主机",
             "switch oled", "switch lite", "switch pro",
-            "ps portal", "playstation portal", "xbox game pass",
-            "索尼", "次世代主机", "游戏主机",
-            "atari", "雅达利", "atari vcs",
-            "xbox series x", "xbox series s", "playstation 6",
             "switch 2 pro", "switch 2 lite",
-            "索尼 ps5", "微软 xbox series",
-            "主机游戏", "家用机",
+            "nintendo", "任天堂 switch",
         ],
     },
     "emulator": {
@@ -262,12 +272,12 @@ RSS_SOURCES = [
     {
         "name": "Nintendo Life",
         "url": "https://www.nintendolife.com/feeds/latest",
-        "category_hint": "console",
+        "category_hint": "nintendo",
     },
     {
         "name": "Nintendo Everything",
         "url": "https://nintendoeverything.com/feed/",
-        "category_hint": "console",
+        "category_hint": "nintendo",
     },
     {
         "name": "Eurogamer",
@@ -369,7 +379,7 @@ RSS_SOURCES = [
     {
         "name": "Reddit r/NintendoSwitch2",
         "url": "https://old.reddit.com/r/NintendoSwitch2/.rss",
-        "category_hint": "console",
+        "category_hint": "nintendo",
     },
     {
         "name": "Reddit r/emulation",
@@ -394,7 +404,7 @@ RSS_SOURCES = [
     {
         "name": "Reddit r/SwitchPirates",
         "url": "https://old.reddit.com/r/SwitchPirates/.rss",
-        "category_hint": "console",
+        "category_hint": "nintendo",
     },
     # --- 中文游戏/科技媒体 ---
     {
@@ -425,7 +435,7 @@ RSS_SOURCES = [
         "filter_keywords": [
             "handheld", "steam deck", "nintendo switch", "playstation",
             "xbox", "controller", "gaming hardware", "gpu", "pc gaming",
-            "emulator", "console",
+            "emulator", "nintendo", "playstation", "xbox",
         ],
     },
     {

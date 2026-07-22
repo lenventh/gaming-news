@@ -757,7 +757,9 @@ def parse_weekly(md_text: str) -> list[dict]:
         "windows 掌机": "Windows 掌机",
         "安卓掌机": "安卓掌机",
         "开源掌机/linux掌机": "开源掌机/Linux掌机",
-        "传统主机": "传统主机",
+        "playstation": "playstation",
+        "xbox": "xbox",
+        "任天堂 switch": "nintendo",
         "模拟器资讯": "模拟器资讯",
         "游戏外设": "游戏外设",
     }

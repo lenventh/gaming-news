@@ -164,64 +164,74 @@ EVENT_KEYWORDS = {
             "开源掌机 维权", "开源掌机 投诉",
         ],
     },
-    "console": {
+    "playstation": {
         "neutral": [
-            # 主机热点
-            "Switch 2 价格", "Switch 2 发售日", "Switch 2 规格",
-            "Switch 2 游戏", "Switch 2 新功能", "Switch 2 销量",
             "PS5 Pro 销量", "PS5 Pro 评测", "PS5 Pro 游戏",
-            "Xbox 掌机 传闻", "Xbox 掌机 原型",
+            "PS6", "PS6 传闻", "PS6 规格",
             "PlayStation 掌机 传闻", "索尼 新掌机",
-            "任天堂 发布会", "索尼 State of Play",
-            "Switch 2 破解", "Switch 2 越狱",
+            "索尼 State of Play", "PlayStation Portal",
         ],
         "positive": [
-            # 促销/价格
-            "Switch 促销", "Switch 折扣", "PS5 促销", "PS5 折扣",
-            "Xbox 促销", "Xbox 折扣", "主机 限时优惠",
-            "Switch 好价", "PS5 好价",
-            # 销量/热度
-            "Switch 销量", "PS5 销量", "主机 销量", "Switch 热销",
-            # 限定/联名
-            "Switch 限定版", "Switch 联名", "PS5 限定版", "主机 限定版",
-            # 补货/现货
-            "Switch 补货", "PS5 补货", "PS5 现货",
-            # 更新/功能
-            "Switch 更新", "PS5 新功能", "主机 固件更新",
-            # 好评
-            "Switch 好评", "PS5 好评", "主机 推荐",
-            # 获奖
-            "主机 获奖", "年度最佳 主机",
-            # 新游戏发布/大作资讯
-            "Switch 新游戏", "Switch 新作", "Switch 大作",
-            "PS5 新游戏", "PS5 新作", "PS5 大作", "PS5 重磅",
-            "Xbox 新游戏", "Xbox 新作",
-            "Switch 2 新游戏", "Switch 2 游戏", "Switch 2 大作",
-            "主机 独占 发布", "主机 独占 发售",
-            "主机游戏 发售", "主机游戏 发布",
-            "主机 3A 新作", "主机 重磅 公布",
-            "任天堂 新作", "索尼 新作", "微软 新作",
-            # 破解/越狱/自制 — 主机安全事件类资讯
+            "PS5 促销", "PS5 折扣", "PS5 好价",
+            "PS5 销量", "PS5 限定版",
+            "PS5 补货", "PS5 现货",
+            "PS5 新功能", "PS5 新游戏", "PS5 新作", "PS5 大作", "PS5 重磅",
             "PS4 破解", "PS5 破解", "PS5 越狱", "PS4 越狱",
             "PS5 漏洞", "PS4 漏洞", "PS5 hack", "PS4 hack",
             "PS5 jailbreak", "PS4 jailbreak",
-            "Switch 破解", "Switch 越狱", "Switch hack",
+            "PS5 CFW", "PS4 CFW",
+            "索尼 新作",
+        ],
+        "negative": [
+            "PS5 故障", "PS5 品控", "PS5 召回",
+            "PS5 涨价", "索尼 召回",
+            "PS5 破解封号", "PS4 破解封号",
+            "索尼 破解 律师函",
+        ],
+    },
+    "xbox": {
+        "neutral": [
+            "Xbox 掌机 传闻", "Xbox 掌机 原型",
+            "Xbox Series 更新",
+        ],
+        "positive": [
+            "Xbox 促销", "Xbox 折扣",
+            "Xbox 新游戏", "Xbox 新作",
             "Xbox 破解", "Xbox 越狱",
-            "主机 破解", "主机 越狱", "主机 自制系统",
-            "PS5 CFW", "PS4 CFW", "Switch CFW",
+            "微软 新作",
+        ],
+        "negative": [
+            "Xbox 故障", "Xbox 召回",
+            "Xbox 停产",
+        ],
+    },
+    "nintendo": {
+        "neutral": [
+            "Switch 2 价格", "Switch 2 发售日", "Switch 2 规格",
+            "Switch 2 游戏", "Switch 2 新功能", "Switch 2 销量",
+            "任天堂 发布会",
+            "Switch 2 破解", "Switch 2 越狱",
+        ],
+        "positive": [
+            "Switch 促销", "Switch 折扣", "Switch 好价",
+            "Switch 销量", "Switch 热销",
+            "Switch 限定版", "Switch 联名",
+            "Switch 补货",
+            "Switch 更新",
+            "Switch 好评",
+            "Switch 新游戏", "Switch 新作", "Switch 大作",
+            "Switch 2 新游戏", "Switch 2 游戏", "Switch 2 大作",
+            "Switch 破解", "Switch 越狱", "Switch hack",
+            "Switch CFW",
+            "任天堂 新作",
         ],
         "negative": [
             "Switch 故障", "Switch 品控", "Switch 召回",
-            "PS5 故障", "PS5 品控", "PS5 召回",
-            "Xbox 故障", "Xbox 召回",
             "Joy-Con 漂移", "Switch 死机",
-            "主机 翻车", "主机 维权", "主机 投诉",
-            "Switch 停产", "PS5 涨价",
-            "任天堂 诉讼", "索尼 召回",
-            # 破解/自制系统负面（安全风险、封号、法律诉讼）
-            "PS5 破解封号", "PS4 破解封号", "Switch 破解封号",
-            "破解 BAN机", "破解 封禁",
-            "任天堂 破解 诉讼", "索尼 破解 律师函",
+            "Switch 停产",
+            "任天堂 诉讼",
+            "Switch 破解封号",
+            "任天堂 破解 诉讼",
         ],
     },
     "emulator": {

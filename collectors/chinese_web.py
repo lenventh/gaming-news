@@ -148,40 +148,27 @@ SITE_QUERIES = {
         # 事件（来自关键词库）
         *get_event_keywords_with_sites("linux_handheld", ["bilibili.com", "tieba.baidu.com"]),
     ],
-    "console": [
-        # B站
-        "Switch 2 site:bilibili.com",
-        "PS5 Pro site:bilibili.com",
-        "Xbox Series site:bilibili.com",
-        "任天堂 新机 site:bilibili.com",
-        "主机 新闻 发布会 site:bilibili.com",
-        "Switch 2 爆料 site:bilibili.com",
-        "索尼 掌机 传闻 site:bilibili.com",
-        # 微博
-        "Switch 2 site:weibo.com",
-        "PlayStation 中国 site:weibo.com",
-        "任天堂 site:weibo.com",
+    "playstation": [
+        "PS5 Pro site:bilibili.com", "PS5 吧 site:tieba.baidu.com",
+        "PlayStation 中国 site:weibo.com", "索尼 掌机 传闻 site:bilibili.com",
+        "PS5 Pro site:mp.weixin.qq.com", "索尼 掌机 site:mp.weixin.qq.com",
+        "索尼 掌机 site:tieba.baidu.com", "PS5 Pro 新闻 site:gamersky.com",
+        "PS6 site:bilibili.com", "PlayStation Portal site:bilibili.com",
+        *get_event_keywords_with_sites("playstation", ["bilibili.com", "zhihu.com"]),
+    ],
+    "xbox": [
+        "Xbox Series site:bilibili.com", "Xbox 吧 site:tieba.baidu.com",
         "Xbox 中国 site:weibo.com",
-        "Switch 2 传闻 site:weibo.com",
-        # 微信
-        "Switch 2 site:mp.weixin.qq.com",
-        "PS5 Pro site:mp.weixin.qq.com",
-        "任天堂 主机 site:mp.weixin.qq.com",
-        "Switch 2 传闻 site:mp.weixin.qq.com",
-        "索尼 掌机 site:mp.weixin.qq.com",
-        # 贴吧
-        "Switch 2 吧 site:tieba.baidu.com",
-        "PS5 吧 site:tieba.baidu.com",
-        "Xbox 吧 site:tieba.baidu.com",
-        "Switch 2 传闻 site:tieba.baidu.com",
-        "索尼 掌机 site:tieba.baidu.com",
-        # 媒体/社区
-        "Switch 2 评测 site:zhihu.com",
-        "PS5 Pro 新闻 site:gamersky.com",
-        "主机 新闻 site:yystv.cn",
-        "次世代主机 site:3dmgame.com",
-        # 事件（来自关键词库）
-        *get_event_keywords_with_sites("console", ["bilibili.com", "zhihu.com"]),
+        *get_event_keywords_with_sites("xbox", ["bilibili.com", "zhihu.com"]),
+    ],
+    "nintendo": [
+        "Switch 2 site:bilibili.com", "任天堂 新机 site:bilibili.com",
+        "Switch 2 爆料 site:bilibili.com", "Switch 2 site:weibo.com",
+        "任天堂 site:weibo.com", "Switch 2 传闻 site:weibo.com",
+        "Switch 2 site:mp.weixin.qq.com", "任天堂 主机 site:mp.weixin.qq.com",
+        "Switch 2 传闻 site:mp.weixin.qq.com", "Switch 2 吧 site:tieba.baidu.com",
+        "Switch 2 传闻 site:tieba.baidu.com", "Switch 2 评测 site:zhihu.com",
+        *get_event_keywords_with_sites("nintendo", ["bilibili.com", "zhihu.com"]),
     ],
     "emulator": [
         # B站

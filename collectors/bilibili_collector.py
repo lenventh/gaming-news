@@ -59,16 +59,23 @@ BILIBILI_SEARCH_QUERIES = {
         # 事件（来自关键词库）
         *get_event_keywords_with_sites("linux_handheld", ["bilibili.com"]),
     ],
-    "console": [
-        "Switch 2 site:bilibili.com",
+    "playstation": [
         "PS5 Pro site:bilibili.com",
+        "PS6 site:bilibili.com",
+        "PlayStation Portal site:bilibili.com",
+        *get_event_keywords_with_sites("playstation", ["bilibili.com"]),
+    ],
+    "xbox": [
+        "Xbox Series site:bilibili.com",
+        "Xbox 掌机 site:bilibili.com",
+        *get_event_keywords_with_sites("xbox", ["bilibili.com"]),
+    ],
+    "nintendo": [
+        "Switch 2 site:bilibili.com",
         "任天堂 新机 site:bilibili.com",
         "Switch 2 新消息 site:bilibili.com",
         "Switch 2 传闻 site:bilibili.com",
-        "掌机 发布会 直播 site:bilibili.com",
-        "新掌机 官宣 site:bilibili.com",
-        # 事件（来自关键词库）
-        *get_event_keywords_with_sites("console", ["bilibili.com"]),
+        *get_event_keywords_with_sites("nintendo", ["bilibili.com"]),
     ],
     "emulator": [
         "模拟器 更新 site:bilibili.com",

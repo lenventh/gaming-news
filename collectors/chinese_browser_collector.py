@@ -52,12 +52,17 @@ SMZDM_SEARCH_KEYWORDS = {
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
     ],
-    "console": [
-        "Switch 2",
-        "PS5 Pro",
-        "Xbox Series",
-        # 事件（来自关键词库）
-        *get_event_keywords("console"),
+    "playstation": [
+        "PS5 Pro", "PS6", "PlayStation Portal",
+        *get_event_keywords("playstation"),
+    ],
+    "xbox": [
+        "Xbox Series", "Xbox 掌机",
+        *get_event_keywords("xbox"),
+    ],
+    "nintendo": [
+        "Switch 2", "Switch 2 爆料",
+        *get_event_keywords("nintendo"),
     ],
     "emulator": [
         "模拟器 掌机",

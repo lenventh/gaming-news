@@ -22,7 +22,10 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 - windows_handheld: ROG Ally(X)、AYANEO、GPD(Win)、微星Claw、Legion Go、AOKZOE、ONEXFLY、KONKR等Windows掌机; (不含纯笔记本/台式机)
 - android_handheld: Odin(Odin2)、Retroid Pocket、安卓掌机、高通/骁龙掌机; (拉伸手柄→peripherals)
 - linux_handheld: Anbernic(RG35XX/RG Cube)、Miyoo(Mini/Flip/A30)、TrimUI(Brick/Smart Pro)、PowKiddy、GKD、MagicX、r36s/r35s等开源/复古掌机
-- console: PS5(Pro)、Xbox、Switch/Switch 2等传统主机; (不含配件/外设)
+- playstation: PS5(Pro)、PS Portal、索尼 PlayStation 系列主机; (不含配件/外设)
+- xbox: Xbox Series X|S、微软 Xbox 系列主机; (不含配件/外设)
+- nintendo: Switch/Switch 2、任天堂主机; (不含配件/外设)
+- 非三大厂主机(Atari/雅达利等)→irrelevant
 - emulator: 模拟器软件(Yuzu/Ryujinx/Cemu/RPCS3/Vita3K、Batocera、Winlator等); (不含模拟驾驶外设)
 - peripherals: **仅游戏专用外设** — VR/AR头显(Quest/PSVR/PICO)、手柄/控制器(DualSense/Xbox/八位堂/GameSir)、拉伸手柄、模拟驾驶/飞行外设(方向盘/HOTAS)、外接显卡(eGPU)、采集卡; **不包括**键盘/鼠标/显示器/耳机/电源/电竞椅/相机/稳定器/云台(→irrelevant)
 
@@ -33,7 +36,7 @@ CLASSIFIER_PROMPT = """你是游戏硬件新闻分类助手。将以下新闻分
 
 {items}
 
-返回纯 JSON: {{"0": "console", "1": "irrelevant", ...}}"""
+返回纯 JSON: {{"0": "playstation", "1": "nintendo", ...}}"""
 
 
 class NewsClassifier:
@@ -165,7 +168,7 @@ def detect_sub_types(items: list[dict]) -> list[dict]:
             "demo", "试玩", "beta", "early access",
         ]
         hw_kws = [
-            "掌机", "handheld", "主机", "console", "显卡", "gpu",
+            "掌机", "handheld", "主机", "console", "playstation", "xbox", "nintendo", "显卡", "gpu",
             "芯片", "chip", "处理器", "cpu", "内存", "ram",
             "屏幕", "display", "电池", "battery", "散热",
             "摇杆", "手柄", "controller", "ssd", "存储",

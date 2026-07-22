@@ -38,10 +38,17 @@ SMZDM_QUERIES = {
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
     ],
-    "console": [
-        "PS5", "Switch 2", "Xbox Series",
-        # 事件（来自关键词库）
-        *get_event_keywords("console"),
+    "playstation": [
+        "PS5", "PS5 Pro",
+        *get_event_keywords("playstation"),
+    ],
+    "xbox": [
+        "Xbox Series", "Xbox",
+        *get_event_keywords("xbox"),
+    ],
+    "nintendo": [
+        "Switch 2", "Switch OLED",
+        *get_event_keywords("nintendo"),
     ],
     "emulator": [
         "模拟器 掌机", "Switch 模拟器",

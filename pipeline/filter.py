@@ -152,7 +152,7 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
     # 游戏硬件正面信号 — 命中时不变，跳过过滤
     _HW_SIGNALS = re.compile(
         r"steam\s*(deck|machine|controller|os)|显卡|rtx\s*50|gpu|掌机|handheld|"
-        r"手柄|controller|主机|console|switch\s*2|ps5|模拟器|emulator|"
+        r"手柄|controller|主机|console|playstation|xbox|nintendo|switch\s*2|ps5|模拟器|emulator|"
         r"摇杆|joy.?con|vr.*头显|quest|头显",
         re.IGNORECASE,
     )

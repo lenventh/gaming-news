@@ -81,20 +81,24 @@ CATEGORY_SEARCH_QUERIES = {
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
     ],
-    "console": [
-        "PS5 Switch 2 Xbox 最新 新闻",
-        "任天堂 Switch 2 新闻 2026",
+    "playstation": [
         "PS5 Pro 新闻 评测",
-        "Xbox 主机 新闻 2026",
-        "console gaming hardware news 2026",
-        "次世代主机 新闻",
         "Sony 掌机 传闻 爆料",
-        "Xbox 掌机 传闻 专利",
-        "Switch 2 爆料 规格 价格",
         "索尼 新掌机 专利",
+        "PlayStation 新闻 2026",
+        *get_event_keywords("playstation"),
+    ],
+    "xbox": [
+        "Xbox 主机 新闻 2026",
+        "Xbox 掌机 传闻 专利",
+        *get_event_keywords("xbox"),
+    ],
+    "nintendo": [
+        "任天堂 Switch 2 新闻 2026",
+        "Switch 2 爆料 规格 价格",
         "任天堂 新机 爆料",
-        # 事件（来自关键词库）
-        *get_event_keywords("console"),
+        "Nintendo Switch 2 新闻",
+        *get_event_keywords("nintendo"),
     ],
     "emulator": [
         "模拟器 更新 2026",
