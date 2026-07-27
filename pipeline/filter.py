@@ -122,11 +122,19 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
             removed.append(item)
             continue
 
-        # 3. 完整内容 < 30 字符（标题+摘要），从微博/RSS 抓取的空条目
-        if len(combined) < 30 and source_type in ("weibo", "rss_cn", "chinese_web", "rss"):
-            item["raw_data"]["_filter_reason"] = "too_short"
-            removed.append(item)
-            continue
+        # 3. 完整内容过短的空条目，分源设置阈值
+        #    英文 RSS（Reddit）标题天然短，阈值 20 字符
+        #    中文源（微博/RSS/浏览器直抓）保持 30 字符
+        if source_type == "rss":
+            if len(combined) < 20 and not _has_hardware_signal(combined):
+                item["raw_data"]["_filter_reason"] = "too_short"
+                removed.append(item)
+                continue
+        elif source_type in ("weibo", "rss_cn", "chinese_web"):
+            if len(combined) < 30:
+                item["raw_data"]["_filter_reason"] = "too_short"
+                removed.append(item)
+                continue
 
         # 4. 仅有图片无实质文字 (B站/B站动态图片帖无描述)
         if title.startswith("[图片动态]") and len(summary) < 15:
@@ -149,6 +157,24 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
         )
         _save_filtered_items(removed, "content_quality")
     return kept, removed
+
+
+# 游戏硬件品牌/关键词 — 短标题命中时跳过长度过滤
+_HARDWARE_BRANDS = re.compile(
+    r"ayn\b|odin|retroid|pocket\b.*(?:handheld|gaming|console|fit|air|flip|mini|evo|dmc|s\b)|"
+    r"anbernic|miyoo|trimui|powkiddy|gpd|ayaneo|onexplayer|legion\s*go|rog\s*ally|"
+    r"msi\s*claw|steam\s*deck|switch\s*2|ps5|ps6|xbox|"
+    r"rg\d{2,4}|rg\b|rk\d{4}|snapdragon\s*g\d|"
+    r"handheld|掌机|开源机|寨机|"
+    r"emulator|模拟器|proton\b|wine\b|batocera|garlicos|onionos|"
+    r"hall\s*(?:effect|sensor|joystick)|joystick|dpad|d-pad",
+    re.IGNORECASE,
+)
+
+
+def _has_hardware_signal(text: str) -> bool:
+    """检测文本是否含游戏硬件品牌/关键词，用于短标题白名单放行。"""
+    return bool(_HARDWARE_BRANDS.search(text))
 
 
 def _is_url_encoded_garbage(title: str, combined: str) -> bool:
