@@ -373,7 +373,8 @@ class FloatingWidget:
     def _rotate_ticker(self):
         if self._ticker:
             self._ticker = self._ticker[1:] + [self._ticker[0]]
-            self.info_text.config(text=self._ticker[0])
+            self.info_text.config(text=">>> " + self._ticker[0])
+            self.root.after(3500, self._rotate_ticker)  # keep cycling
 
     def _update_action(self, s, done):
         sch = self._schedule

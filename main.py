@@ -138,29 +138,39 @@ def collect_ci(status=None) -> list[dict]:
     """CI 专属采集：RSS + Google News + B站搜索 + 贴吧RSS（无需浏览器）"""
     items = []
 
-    if status: status.sub_stage("RSS sources")
+    if status: status.sub_stage("RSS + Reddit sources")
     console.print("\n[yellow]RSS 源:[/yellow]")
-    items.extend(collect_all_rss(RSS_SOURCES))
+    rss = collect_all_rss(RSS_SOURCES)
+    items.extend(rss)
+    if status: status.add_samples([it.get("title", "")[:60] for it in rss[-4:]])
 
     if status: status.sub_stage("Google News search")
     console.print("\n[yellow]Google News 搜索:[/yellow]")
     searcher = WebSearchCollector()
-    items.extend(searcher.fetch())
+    gn = searcher.fetch()
+    items.extend(gn)
+    if status: status.add_samples([it.get("title", "")[:60] for it in gn[-4:]])
 
     if status: status.sub_stage("Chinese web (B站/Zhihu)")
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
-    items.extend(cn.fetch())
+    cw = cn.fetch()
+    items.extend(cw)
+    if status: status.add_samples([it.get("title", "")[:60] for it in cw[-4:]])
 
     if status: status.sub_stage("Bilibili search")
     console.print("\n[yellow]B站搜索采集:[/yellow]")
     bilibili = BilibiliCollector()
-    items.extend(bilibili.fetch())
+    bl = bilibili.fetch()
+    items.extend(bl)
+    if status: status.add_samples([it.get("title", "")[:60] for it in bl[-4:]])
 
     if status: status.sub_stage("Tieba RSS")
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
     tieba = TiebaCollector()
-    items.extend(tieba.fetch())
+    tb = tieba.fetch()
+    items.extend(tb)
+    if status: status.add_samples([it.get("title", "")[:60] for it in tb[-4:]])
 
     return items
 
