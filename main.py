@@ -559,9 +559,10 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
         # 先跑 CI 覆盖的部分
         ci_items = collect_ci()
-        # 导出 CI 数据供后续 --from-ci 复用
-        _save_ci_raw_items(ci_items)
-        console.print(f"[dim]已导出 CI 数据: {len(ci_items)} 条[/dim]")
+        # 导出 CI 数据供后续 --from-ci 复用（仅 CI 环境，避免本地污染 git）
+        if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
+            _save_ci_raw_items(ci_items)
+            console.print(f"[dim]已导出 CI 数据: {len(ci_items)} 条[/dim]")
 
         # 再跑本地浏览器部分
         browser_items = collect_browsers()
