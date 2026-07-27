@@ -140,7 +140,7 @@ def collect_ci(status=None) -> list[dict]:
 
     if status: status.sub_stage("RSS + Reddit sources")
     console.print("\n[yellow]RSS 源:[/yellow]")
-    rss = collect_all_rss(RSS_SOURCES)
+    rss = collect_all_rss(RSS_SOURCES, status=status)
     items.extend(rss)
     if status: status.add_samples([it.get("title", "")[:60] for it in rss[-4:]])
 

@@ -160,7 +160,7 @@ class RSSCollector(BaseCollector):
         return items
 
 
-def collect_all_rss(sources: list[dict]) -> list[dict]:
+def collect_all_rss(sources: list[dict], status=None) -> list[dict]:
     """从所有 RSS 源采集新闻。每个源之间加延迟避免限流"""
     all_items = []
     for src in sources:
@@ -170,7 +170,11 @@ def collect_all_rss(sources: list[dict]) -> list[dict]:
             category_hint=src.get("category_hint"),
             filter_keywords=src.get("filter_keywords"),
         )
-        all_items.extend(collector.fetch())
+        batch = collector.fetch()
+        all_items.extend(batch)
+        if status and batch:
+            status.sub_stage(f"RSS: {src['name']}")
+            status.add_samples([it.get("title", "")[:60] for it in batch[-2:]])
 
         # 源之间加延迟：Reddit 源用较长延迟，其他源用通用礼貌延迟
         is_reddit = "reddit" in src.get("url", "").lower()
