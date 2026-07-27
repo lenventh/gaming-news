@@ -33,15 +33,14 @@ class WidgetHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path == "/status":
+        if self.path == "/" or self.path == "/index":
+            self._serve_html(self._review_page())
+        elif self.path == "/status":
             self._serve_json(STATUS_FILE, {"stage":"init","stage_label":"idle","elapsed_seconds":0,"items_so_far":0,"done":False})
         elif self.path == "/schedule":
             self._serve_schedule()
         elif self.path == "/filtered":
             self._serve_filtered()
-        elif self.path == "/open-dashboard":
-            webbrowser.open("http://127.0.0.1:8766")
-            self._json({"ok":True})
         else:
             self.send_error(404)
 
@@ -161,6 +160,65 @@ class WidgetHandler(BaseHTTPRequestHandler):
                 capture_output=True, text=True, timeout=600)
             self._json({"ok":result.returncode==0})
         except: self.send_error(500)
+
+
+    def _serve_html(self, html):
+        self.send_response(200); self.send_header("Content-Type","text/html; charset=utf-8"); self.end_headers()
+        self.wfile.write(html.encode("utf-8"))
+
+    def _review_page(self):
+        """Generate simple review HTML page with checkboxes"""
+        import json as _json
+        items = []
+        try:
+            if os.path.exists(_FILTERED_LOG_PATH):
+                with open(_FILTERED_LOG_PATH,"r",encoding="utf-8") as f:
+                    log = _json.load(f)
+                for run in log.get("runs",[]):
+                    for it in run.get("items",[]):
+                        items.append(it)
+        except: pass
+
+        items_json = _json.dumps(items, ensure_ascii=False)
+        total = len(items)
+
+        return f"""<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>Review</title>
+<style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:"Microsoft YaHei",sans-serif;background:#0d1117;color:#c9d1d9;padding:20px}}
+h1{{color:#58a6ff;margin-bottom:4px}}.sub{{color:#8b949e;font-size:13px;margin-bottom:16px}}
+.chips{{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}}
+.chip{{padding:3px 10px;border-radius:10px;font-size:11px;cursor:pointer;border:1px solid #30363d;background:#161b22;color:#8b949e}}.chip.on{{border-color:#58a6ff;color:#58a6ff}}
+.item{{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:6px;border:1px solid #21262d;background:#161b22;margin-bottom:4px;cursor:pointer;font-size:12px}}
+.item:hover{{border-color:#30363d}}.item.sel{{border-color:#238636;background:#0d1f14}}
+.item input[type=checkbox]{{margin-top:2px;accent-color:#238636}}
+.item .b{{flex:1;min-width:0}}.item .b .t{{color:#f0f6fc;word-break:break-all}}.item .b .m{{font-size:10px;color:#8b949e;margin-top:2px}}
+.btn{{padding:8px 18px;border-radius:7px;border:none;font-size:13px;font-weight:600;cursor:pointer}}
+.btn-g{{background:#238636;color:#fff}}.btn-g:hover{{background:#2ea043}}.btn-o{{background:transparent;color:#8b949e;border:1px solid #30363d}}
+.toast{{position:fixed;top:12px;right:12px;padding:10px 18px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.3s;background:#238636}}.toast.show{{opacity:1}}
+</style></head><body>
+<h1>Filter Review ({total} items)</h1><div class="sub">Check items to recover, then Save</div>
+<div class="chips" id="chips"></div><div id="list"></div>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-o" onclick="selAll()">Select All</button>
+<button class="btn btn-o" onclick="clrAll()">Clear</button>
+<button class="btn btn-g" onclick="save()">Save & Recover</button>
+</div><div class="toast" id="toast"></div>
+<script>
+const DATA={items_json};
+const sel=new Set();
+function esc(s){{return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}}
+function build(){{const active=document.querySelector('.chip.on');const f=active?active.dataset.r:'';const ff=f?DATA.filter(i=>i.filter_reason===f):DATA;
+document.getElementById('list').innerHTML=ff.map(i=>'<div class="item'+(sel.has(i.title)?' sel':'')+'" onclick="tog(\''+i.title.replace(/'/g,"\\\\'")+'\',this)"><input type="checkbox" '+(sel.has(i.title)?'checked':'')+' onclick="event.stopPropagation();tog(\''+i.title.replace(/'/g,"\\\\'")+'\',this.parentElement)"><div class="b"><div class="t">'+esc(i.title||'no title')+'</div><div class="m"><span>'+esc(i.source_type||'')+'</span><span>'+esc(i.filter_reason||'')+'</span></div></div></div>').join('')}}
+function tog(t,el){{sel.has(t)?(sel.delete(t),el.classList.remove('sel')):(sel.add(t),el.classList.add('sel'))}}
+function selAll(){{DATA.forEach(i=>sel.add(i.title));build()}}
+function clrAll(){{sel.clear();build()}}
+function filter(r,chip){{document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));if(chip)chip.classList.add('on');build()}}
+async function save(){{try{{const r=await fetch('/save-review',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{titles:[...sel]}})}});if(r.ok){{const e=document.getElementById('toast');e.textContent='Saved '+sel.size+' items';e.className='toast show';setTimeout(()=>e.className='toast',2500)}}}}catch(e){{}}}}
+// Build chips
+const rc={{}};DATA.forEach(i=>{{const r=i.filter_reason||'?';rc[r]=(rc[r]||0)+1}});
+let chips='<span class="chip on" data-r="" onclick="filter(\'\',this)">all '+DATA.length+'</span>';
+Object.entries(rc).sort((a,b)=>b[1]-a[1]).forEach(([r,c])=>chips+='<span class="chip" data-r="'+r+'" onclick="filter(\''+r+'\',this)">'+r+' '+c+'</span>');
+document.getElementById('chips').innerHTML=chips;build();
+</script></body></html>"""
 
 
 def start_server(port=DEFAULT_PORT):
