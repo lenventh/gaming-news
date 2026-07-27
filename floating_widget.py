@@ -227,10 +227,10 @@ class FloatingWidget:
                            highlightbackground="#21262d", highlightthickness=1)
             card.pack(fill=tk.X, padx=PADX, pady=(0,4))
             clr = self.fg if i == 0 else self.dim
-            lbl = tk.Label(card, text="", fg=clr, bg="#161b22", anchor="center",
+            lbl = tk.Label(card, text="", fg=clr, bg="#161b22", anchor="w",
                            justify=tk.LEFT, font=("Microsoft YaHei", 9),
-                           wraplength=self.WIDTH-44, height=3)
-            lbl.pack(fill=tk.BOTH, expand=True, ipadx=10, ipady=4)
+                           wraplength=self.WIDTH-52, height=3)
+            lbl.pack(fill=tk.BOTH, expand=True, ipadx=14, ipady=4)
             self.ticker_lines.append(lbl)
 
         # -- Sub-stage / item count --
