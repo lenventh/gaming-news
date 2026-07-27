@@ -174,8 +174,8 @@ def start_server(port=DEFAULT_PORT):
 class FloatingWidget:
     """半透明悬浮窗"""
 
-    WIDTH = 280
-    HEIGHT = 230
+    WIDTH = 380
+    HEIGHT = 240
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
@@ -361,7 +361,7 @@ class FloatingWidget:
             for t in samples:
                 if t and t not in self._seen:
                     self._seen.add(t)
-                    self._ticker.insert(0, t[:55])
+                    self._ticker.insert(0, t[:80])
                     if len(self._ticker) > 30:
                         self._ticker.pop()
 
