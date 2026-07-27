@@ -428,7 +428,6 @@ if __name__ == "__main__":
 
     # Start background server
     server = start_server(port)
-    print(f"Floating widget started. Server on port {port}")
 
     # Start widget
     widget = FloatingWidget(run_pipeline=run_pipeline)

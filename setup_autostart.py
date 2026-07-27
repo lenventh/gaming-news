@@ -25,9 +25,10 @@ def install(auto_run=True):
 
     run_flag = "--run" if auto_run else ""
 
+    pythonw = python.replace("python.exe", "pythonw.exe")
     bat_content = f'''@echo off
 cd /d "{project_dir}"
-start /min {python} {widget_script} {run_flag}
+start "" {pythonw} {widget_script} {run_flag}
 '''
 
     bat_path = os.path.join(project_dir, "_startup_dashboard.bat")
