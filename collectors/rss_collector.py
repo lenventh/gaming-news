@@ -174,7 +174,10 @@ def collect_all_rss(sources: list[dict], status=None) -> list[dict]:
         all_items.extend(batch)
         if status and batch:
             status.sub_stage(f"RSS: {src['name']}")
-            status.add_samples([it.get("title", "") for it in batch[-2:]])
+            status.add_samples([
+                f"{it.get('title', '')}  {it.get('summary', '')}"
+                for it in batch[-2:]
+            ])
 
         # 源之间加延迟：Reddit 源用较长延迟，其他源用通用礼貌延迟
         is_reddit = "reddit" in src.get("url", "").lower()

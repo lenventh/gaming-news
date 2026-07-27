@@ -142,35 +142,35 @@ def collect_ci(status=None) -> list[dict]:
     console.print("\n[yellow]RSS 源:[/yellow]")
     rss = collect_all_rss(RSS_SOURCES, status=status)
     items.extend(rss)
-    if status: status.add_samples([it.get("title", "") for it in rss[-4:]])
+    if status: status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in rss[-4:]])
 
     if status: status.sub_stage("Google News search")
     console.print("\n[yellow]Google News 搜索:[/yellow]")
     searcher = WebSearchCollector()
     gn = searcher.fetch()
     items.extend(gn)
-    if status: status.add_samples([it.get("title", "") for it in gn[-4:]])
+    if status: status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in gn[-4:]])
 
     if status: status.sub_stage("Chinese web (B站/Zhihu)")
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
     cw = cn.fetch()
     items.extend(cw)
-    if status: status.add_samples([it.get("title", "") for it in cw[-4:]])
+    if status: status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in cw[-4:]])
 
     if status: status.sub_stage("Bilibili search")
     console.print("\n[yellow]B站搜索采集:[/yellow]")
     bilibili = BilibiliCollector()
     bl = bilibili.fetch()
     items.extend(bl)
-    if status: status.add_samples([it.get("title", "") for it in bl[-4:]])
+    if status: status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in bl[-4:]])
 
     if status: status.sub_stage("Tieba RSS")
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
     tieba = TiebaCollector()
     tb = tieba.fetch()
     items.extend(tb)
-    if status: status.add_samples([it.get("title", "") for it in tb[-4:]])
+    if status: status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in tb[-4:]])
 
     return items
 
@@ -585,8 +585,8 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
         all_items = ci_items + browser_items
         _print_source_stats(all_items)
-        status.add_samples([it.get("title", "") for it in ci_items[-3:]] +
-                          [it.get("title", "") for it in browser_items[:3]])
+        status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in ci_items[-3:]] +
+                          [f"{it.get('title','')}  {it.get('summary','')}" for it in browser_items[:3]])
         status.update("collected", "采集完成",
                       items_so_far=len(all_items),
                       sources=_build_source_counts(all_items))
@@ -610,14 +610,14 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
             _save_ci_raw_items(ci_items)
             console.print(f"[dim]已导出 CI 数据: {len(ci_items)} 条[/dim]")
-        status.add_samples([it.get("title", "") for it in ci_items[-5:]])
+        status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in ci_items[-5:]])
 
         # 再跑本地浏览器部分
         status.update("browsers", "浏览器采集 (B站/贴吧)")
         browser_items = collect_browsers(status=status)
         all_items = ci_items + browser_items
         _print_source_stats(all_items)
-        status.add_samples([it.get("title", "") for it in browser_items[:5]])
+        status.add_samples([f"{it.get('title','')}  {it.get('summary','')}" for it in browser_items[:5]])
         status.update("collected", "采集完成",
                       items_so_far=len(all_items),
                       sources=_build_source_counts(all_items))
