@@ -805,6 +805,7 @@ def parse_weekly(md_text: str) -> list[dict]:
             content = ""
             analysis = ""
             source = ""
+            raw_body = ""
             i += 1
             while i < len(lines) and not re.match(r'^(####|###|##|--)', lines[i]):
                 sub = lines[i].strip()
@@ -844,7 +845,31 @@ def parse_weekly(md_text: str) -> list[dict]:
                     content = qm.group(1).strip()
                     i += 1
                     continue
+                # 无标签纯文本兜底: LLM 有时不遵守结构化输出格式，直接写自然段落
+                if sub and not sub.startswith('!['):
+                    raw_body += sub + " "
                 i += 1
+
+            # 无结构化字段时，从自然段落中拆分内容/分析/来源
+            if not content and raw_body.strip():
+                body = raw_body.strip()
+                # 匹配多种"分析"表达: 分析：/ 分析认为，/ 分析指出，/ 分析称，
+                am = re.search(r'[。\s]分析(?:认为|指出|称)?[：:，,]\s*(.+)', body)
+                if am:
+                    analysis = am.group(1).strip()
+                    # 从 analysis 中进一步拆分来源（支持中英文括号）
+                    sm = re.search(r'[。\s][（(]?来源[：:]\s*(.+)', analysis)
+                    if sm:
+                        source = sm.group(1).strip().rstrip('）)')
+                        analysis = analysis[:sm.start()].strip()
+                    content = body[:am.start()].strip()
+                else:
+                    sm = re.search(r'[。\s][（(]?来源[：:]\s*(.+)', body)
+                    if sm:
+                        source = sm.group(1).strip().rstrip('）)')
+                        content = body[:sm.start()].strip()
+                    else:
+                        content = body
 
             content = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', content).strip()
             analysis = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', analysis).strip()
