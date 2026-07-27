@@ -649,7 +649,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         console.print(f"[dim]📋 过滤统计: {total_filtered} 条被过滤")
         top_reasons = sorted(stats.items(), key=lambda x: -x[1])[:3]
         console.print(f"[dim]   TOP3: {' | '.join(f'{r}:{c}' for r,c in top_reasons)}[/dim]")
-        console.print(f"[dim]   审核: python review_filtered.py --open[/dim]")
+        console.print(f"[dim]   审核: python review_filtered.py[/dim]")
         console.print(f"[dim]   回捞: python main.py --recover-reviewed[/dim]")
 
     # 交互式审核（非 CI 非回捞模式时提示）
@@ -661,12 +661,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         except (EOFError, KeyboardInterrupt):
             ans = ""
         if ans in ("y", "yes"):
-            from review_filtered import generate_review, open_file
-            path = generate_review()
-            if path:
-                open_file(path)
-                console.print(f"[green]审核清单已打开: {path}[/green]")
-                console.print("[dim]审核后运行: python main.py --recover-reviewed[/dim]")
+            console.print("[green]审核后运行: python main.py --recover-reviewed[/green]")
 
     # 清理 checkpoint
     clear_checkpoints()
