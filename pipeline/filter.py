@@ -1,5 +1,6 @@
 """日期过滤 + 泄漏条目回捞"""
 
+import re
 from datetime import datetime, timezone, timedelta
 from rich.console import Console
 
@@ -89,8 +90,18 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
         source_type = (item.get("source_type") or "").lower()
         combined = (title + " " + summary).strip()
 
+        # 0. URL 编码标题 — Google News RSS 未解码的贴吧/社区条目
+        if _is_url_encoded_garbage(title, combined):
+            removed.append(item)
+            continue
+
         # 1. 微博/社交媒体占位符 — 标题即无意义标签
         if title in ("微博", "微博正文", "LISA", "百度贴吧", "贴吧排行榜"):
+            removed.append(item)
+            continue
+
+        # 1.5 贴吧用户动态（"XXX的关注"/"XXX的粉丝"）— 非新闻内容
+        if re.search(r"的(?:关注|粉丝|动态|主页|个人中心)$", title) and len(title) < 20:
             removed.append(item)
             continue
 
@@ -122,6 +133,47 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
             f" (剔除 {len(removed)}: {', '.join((it.get('title', '') or '无标题')[:30] for it in removed[:5])})[/yellow]"
         )
     return kept, removed
+
+
+def _is_url_encoded_garbage(title: str, combined: str) -> bool:
+    """检测 URL 编码的垃圾标题（Google News RSS 未解码的贴吧用户动态等）
+
+    特征：
+    - 标题含 URL 编码（%XX 模式）
+    - 解码后是"XXX的关注"/"XXX的粉丝"等非新闻内容
+    - 标题长度异常短但 URL 编码占比高
+    """
+    from urllib.parse import unquote
+
+    # 标题含 URL 编码（至少 2 个 %XX 模式）
+    pct_matches = re.findall(r"%[0-9A-Fa-f]{2}", title)
+    if len(pct_matches) < 2:
+        return False
+
+    # URL 编码字符占比 > 30%
+    pct_chars = len(pct_matches) * 3  # 每个 %XX 占 3 字符
+    if pct_chars / max(len(title), 1) < 0.3:
+        return False
+
+    # 尝试解码
+    try:
+        decoded = unquote(title)
+    except Exception:
+        return True
+
+    # 解码后仍含大量非 ASCII 乱码特征的过滤
+    if re.search(r"的(?:关注|粉丝|动态|主页)$", decoded) and len(decoded) < 20:
+        return True
+
+    # 解码后标题仍以 % 开头或含不可打印字符
+    if decoded.startswith("%") or any(ord(c) < 32 for c in decoded):
+        return True
+
+    # 解码前后长度比异常（URL 编码的另一个信号）
+    if len(title) > 20 and len(decoded) < len(title) * 0.4:
+        return True
+
+    return False
 
 
 # ===== 非游戏硬件信号词 — 用于 filter_topic_relevance =====

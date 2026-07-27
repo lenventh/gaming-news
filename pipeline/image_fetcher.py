@@ -9,6 +9,16 @@ import requests
 from bs4 import BeautifulSoup
 from rich.console import Console
 
+# B站动态 API（无需登录）
+BILIBILI_DYNAMIC_API = "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail?id={dynamic_id}"
+BILIBILI_DYNAMIC_RE = re.compile(r"t\.bilibili\.com/(\d+)")
+
+# B站动态类型 → 图片字段路径
+# DYNAMIC_TYPE_DRAW: 带图动态，图片在 major.draw.items[].src
+# DYNAMIC_TYPE_AV: 视频动态，封面在 major.archive.cover
+# DYNAMIC_TYPE_WORD: 纯文字动态，无图
+# DYNAMIC_TYPE_FORWARD: 转发动态，图片在 orig.modules.module_dynamic.major.draw.items
+
 console = Console()
 
 FETCH_TIMEOUT = 5
@@ -59,8 +69,62 @@ def _extract_domain(url: str) -> str:
         return ""
 
 
+def _extract_image_from_bilibili_dynamic(dynamic_id: str) -> str | None:
+    """从 B站 动态 API 提取主图（无需登录）"""
+    try:
+        api_url = BILIBILI_DYNAMIC_API.format(dynamic_id=dynamic_id)
+        resp = requests.get(api_url, timeout=FETCH_TIMEOUT, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": f"https://t.bilibili.com/{dynamic_id}",
+        })
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 0:
+            return None
+
+        item = data.get("data", {}).get("item", {})
+        if not item:
+            return None
+
+        dyn_type = item.get("type", "")
+        modules = item.get("modules", {})
+
+        # DYNAMIC_TYPE_DRAW: 带图动态
+        if dyn_type == "DYNAMIC_TYPE_DRAW":
+            draw = modules.get("module_dynamic", {}).get("major", {}).get("draw", {})
+            items = draw.get("items", [])
+            if items:
+                return items[0].get("src")
+
+        # DYNAMIC_TYPE_AV: 视频动态 → 封面
+        if dyn_type == "DYNAMIC_TYPE_AV":
+            archive = modules.get("module_dynamic", {}).get("major", {}).get("archive", {})
+            cover = archive.get("cover")
+            if cover:
+                return cover
+
+        # DYNAMIC_TYPE_FORWARD: 转发动态 → 原动态图片
+        if dyn_type == "DYNAMIC_TYPE_FORWARD":
+            orig = item.get("orig", {})
+            orig_draw = orig.get("modules", {}).get("module_dynamic", {}).get("major", {}).get("draw", {})
+            orig_items = orig_draw.get("items", [])
+            if orig_items:
+                return orig_items[0].get("src")
+
+        return None
+    except Exception:
+        return None
+
+
 def _extract_image_from_page(url: str) -> str | None:
     """从目标页面提取主图 URL（og:image → twitter:image → schema.org → 首张大图）"""
+    # B站动态页面：走 API 获取图片
+    bili_match = BILIBILI_DYNAMIC_RE.search(url)
+    if bili_match:
+        img = _extract_image_from_bilibili_dynamic(bili_match.group(1))
+        if img:
+            return img
+
     try:
         resp = requests.get(url, timeout=FETCH_TIMEOUT, headers={
             "User-Agent": (
