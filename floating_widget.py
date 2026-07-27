@@ -175,7 +175,7 @@ class FloatingWidget:
     """半透明悬浮窗"""
 
     WIDTH = 280
-    HEIGHT = 245
+    HEIGHT = 280
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
@@ -227,8 +227,8 @@ class FloatingWidget:
         for i in range(2):
             clr = self.fg if i == 0 else self.dim
             lbl = tk.Label(ticker_frame, text="", fg=clr, bg="#161b22", anchor="w",
-                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-50,
-                           height=3)
+                           justify=tk.LEFT, font=("Arial", 10), wraplength=self.WIDTH-40,
+                           height=4)
             lbl.pack(fill=tk.X, ipadx=10, ipady=6)
             self.ticker_lines.append(lbl)
 
