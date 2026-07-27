@@ -134,25 +134,30 @@ def _load_ci_raw_items() -> list[dict]:
         return json.load(f)
 
 
-def collect_ci() -> list[dict]:
+def collect_ci(status=None) -> list[dict]:
     """CI 专属采集：RSS + Google News + B站搜索 + 贴吧RSS（无需浏览器）"""
     items = []
 
+    if status: status.sub_stage("RSS sources")
     console.print("\n[yellow]RSS 源:[/yellow]")
     items.extend(collect_all_rss(RSS_SOURCES))
 
+    if status: status.sub_stage("Google News search")
     console.print("\n[yellow]Google News 搜索:[/yellow]")
     searcher = WebSearchCollector()
     items.extend(searcher.fetch())
 
+    if status: status.sub_stage("Chinese web (B站/Zhihu)")
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
     items.extend(cn.fetch())
 
+    if status: status.sub_stage("Bilibili search")
     console.print("\n[yellow]B站搜索采集:[/yellow]")
     bilibili = BilibiliCollector()
     items.extend(bilibili.fetch())
 
+    if status: status.sub_stage("Tieba RSS")
     console.print("\n[yellow]贴吧 (Google News):[/yellow]")
     tieba = TiebaCollector()
     items.extend(tieba.fetch())
@@ -160,7 +165,7 @@ def collect_ci() -> list[dict]:
     return items
 
 
-def collect_browsers() -> list[dict]:
+def collect_browsers(status=None) -> list[dict]:
     """本地专属采集：B站浏览器 + 贴吧浏览器（需要真实浏览器环境）"""
     items = []
 
@@ -565,7 +570,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
         console.print("[yellow]仅本地浏览器采集:[/yellow]")
         status.update("browsers", "浏览器采集 (B站/贴吧)")
-        browser_items = collect_browsers()
+        browser_items = collect_browsers(status=status)
         console.print(f"[dim]本地浏览器: {len(browser_items)} 条[/dim]")
 
         all_items = ci_items + browser_items
@@ -590,7 +595,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
         # 先跑 CI 覆盖的部分
         status.update("rss_google", "RSS + Google News 采集")
-        ci_items = collect_ci()
+        ci_items = collect_ci(status=status)
         # 导出 CI 数据供后续 --from-ci 复用（仅 CI 环境，避免本地污染 git）
         if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
             _save_ci_raw_items(ci_items)
@@ -599,7 +604,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
         # 再跑本地浏览器部分
         status.update("browsers", "浏览器采集 (B站/贴吧)")
-        browser_items = collect_browsers()
+        browser_items = collect_browsers(status=status)
         all_items = ci_items + browser_items
         _print_source_stats(all_items)
         status.add_samples([it.get("title", "")[:80] for it in browser_items[:5]])
