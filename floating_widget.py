@@ -224,11 +224,12 @@ class FloatingWidget:
         ticker_frame = tk.Frame(self.root, bg="#161b22", bd=0, highlightbackground="#21262d", highlightthickness=1)
         ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
         self.ticker_lines = []
-        for i in range(3):
+        for i in range(2):
             clr = self.fg if i == 0 else self.dim
             lbl = tk.Label(ticker_frame, text="", fg=clr, bg="#161b22", anchor="w",
-                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-36)
-            lbl.pack(fill=tk.X, ipadx=10, ipady=8)
+                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-36,
+                           height=3)
+            lbl.pack(fill=tk.X, ipadx=10, ipady=6)
             self.ticker_lines.append(lbl)
 
         # -- Sub-stage / item count --
@@ -371,17 +372,15 @@ class FloatingWidget:
         self._update_action(s, done)
 
     def _next_tick(self):
-        """Rotate ticker: 3-line shift-up, new item enters at bottom"""
+        """Rotate ticker: line1 shifts up, new item enters at bottom"""
         if not self._ticker:
             self._ticker_job = None
             return
         item = self._ticker[self._ticker_idx % len(self._ticker)]
         self._ticker_idx += 1
-        # Shift up: L2→L1, L3→L2, new→L3
         self.ticker_lines[0].config(text=self.ticker_lines[1].cget("text") or "")
-        self.ticker_lines[1].config(text=self.ticker_lines[2].cget("text") or "")
-        self.ticker_lines[2].config(text=item)
-        self._ticker_job = self.root.after(6000, self._next_tick)  # ~6s per cycle
+        self.ticker_lines[1].config(text=item)
+        self._ticker_job = self.root.after(8000, self._next_tick)
 
     def _update_action(self, s, done):
         sch = self._schedule
