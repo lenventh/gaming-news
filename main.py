@@ -639,9 +639,36 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         conn.commit()
         conn.close()
 
-    console.print(f"\n[bold cyan]🎮 完成！共精选 {sum(len(v) for v in selected.values())} 条资讯[/bold cyan]")
+    total_selected = sum(len(v) for v in selected.values())
+    console.print(f"\n[bold cyan]🎮 完成！共精选 {total_selected} 条资讯[/bold cyan]")
 
-    # 清理 checkpoint（管道完整运行成功）
+    # 过滤统计速览
+    stats = show_filter_stats()
+    if stats:
+        total_filtered = sum(stats.values())
+        console.print(f"[dim]📋 过滤统计: {total_filtered} 条被过滤")
+        top_reasons = sorted(stats.items(), key=lambda x: -x[1])[:3]
+        console.print(f"[dim]   TOP3: {' | '.join(f'{r}:{c}' for r,c in top_reasons)}[/dim]")
+        console.print(f"[dim]   审核: python review_filtered.py --open[/dim]")
+        console.print(f"[dim]   回捞: python main.py --recover-reviewed[/dim]")
+
+    # 交互式审核（非 CI 非回捞模式时提示）
+    is_interactive = sys.stdout.isatty() and not os.getenv("CI")
+    if is_interactive and not recover_reasons and recover_items is None:
+        console.print()
+        try:
+            ans = input("📝 打开过滤审核清单？(y/n, 默认 n): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans in ("y", "yes"):
+            from review_filtered import generate_review, open_file
+            path = generate_review()
+            if path:
+                open_file(path)
+                console.print(f"[green]审核清单已打开: {path}[/green]")
+                console.print("[dim]审核后运行: python main.py --recover-reviewed[/dim]")
+
+    # 清理 checkpoint
     clear_checkpoints()
 
 
