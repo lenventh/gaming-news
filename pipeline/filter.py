@@ -1,10 +1,18 @@
-"""日期过滤 + 泄漏条目回捞"""
+"""日期过滤 + 泄漏条目回捞 + 过滤日志与误踢回捞"""
 
+import json
+import os
 import re
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from rich.console import Console
 
+from config import OUTPUT_DIR
+
 console = Console()
+
+_FILTERED_LOG_PATH = os.path.join(OUTPUT_DIR, ".filtered_items.json")
+_MAX_RUNS = 10  # 最多保留最近 N 次运行的过滤记录
 
 
 def filter_by_date(items: list[dict], cutoff_date: datetime,
@@ -92,36 +100,43 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
 
         # 0. URL 编码标题 — Google News RSS 未解码的贴吧/社区条目
         if _is_url_encoded_garbage(title, combined):
+            item["raw_data"]["_filter_reason"] = "url_encoded_garbage"
             removed.append(item)
             continue
 
         # 1. 微博/社交媒体占位符 — 标题即无意义标签
         if title in ("微博", "微博正文", "LISA", "百度贴吧", "贴吧排行榜"):
+            item["raw_data"]["_filter_reason"] = "social_placeholder"
             removed.append(item)
             continue
 
         # 1.5 贴吧用户动态（"XXX的关注"/"XXX的粉丝"）— 非新闻内容
         if re.search(r"的(?:关注|粉丝|动态|主页|个人中心)$", title) and len(title) < 20:
+            item["raw_data"]["_filter_reason"] = "tieba_user_page"
             removed.append(item)
             continue
 
         # 2. "(原文未完整...)" / "(内容待补充)" — 截断或无内容
         if "原文未完整" in summary or "内容待补充" in summary or "内容待补充" in title:
+            item["raw_data"]["_filter_reason"] = "incomplete_content"
             removed.append(item)
             continue
 
         # 3. 完整内容 < 30 字符（标题+摘要），从微博/RSS 抓取的空条目
         if len(combined) < 30 and source_type in ("weibo", "rss_cn", "chinese_web", "rss"):
+            item["raw_data"]["_filter_reason"] = "too_short"
             removed.append(item)
             continue
 
         # 4. 仅有图片无实质文字 (B站/B站动态图片帖无描述)
         if title.startswith("[图片动态]") and len(summary) < 15:
+            item["raw_data"]["_filter_reason"] = "image_only_no_text"
             removed.append(item)
             continue
 
         # 5. summary 为空且标题不含实质产品/品牌名
         if not summary and len(title) < 10 and source_type in ("weibo", "tieba", "tieba_browser"):
+            item["raw_data"]["_filter_reason"] = "no_summary_short_title"
             removed.append(item)
             continue
 
@@ -132,6 +147,7 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
             f"[yellow]内容质量过滤: {len(items)} 条 → {len(kept)} 条"
             f" (剔除 {len(removed)}: {', '.join((it.get('title', '') or '无标题')[:30] for it in removed[:5])})[/yellow]"
         )
+        _save_filtered_items(removed, "content_quality")
     return kept, removed
 
 
@@ -227,6 +243,7 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
                 matched = True
                 break
         if matched:
+            item["raw_data"]["_filter_reason"] = "topic_irrelevant"
             removed.append(item)
         else:
             kept.append(item)
@@ -235,6 +252,7 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
             f"[yellow]话题相关性过滤: 剔除 {len(removed)} 条"
             f" ({', '.join((it.get('title', '') or '无标题')[:40] for it in removed[:5])})[/yellow]"
         )
+        _save_filtered_items(removed, "topic_relevance")
     return kept, removed
 
 
@@ -262,3 +280,159 @@ def get_week_range(cutoff_date: datetime) -> str:
     now = datetime.now(timezone.utc)
     start = cutoff_date
     return f"{start.month}.{start.day} - {now.month}.{now.day}"
+
+
+# ===== 过滤日志与误踢回捞 =====
+
+def _save_filtered_items(removed: list[dict], filter_name: str) -> None:
+    """将本轮被过滤的条目追加写入 output/.filtered_items.json。
+
+    保留最近 _MAX_RUNS 次运行的记录，旧记录自动清理。
+    """
+    if not removed:
+        return
+
+    label = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    entry = {
+        "filtered_at": label,
+        "filter_name": filter_name,
+        "count": len(removed),
+        "items": [
+            {
+                "title": (it.get("title") or "").strip(),
+                "url": (it.get("url") or "").strip(),
+                "summary": (it.get("summary") or "")[:200],
+                "source_type": it.get("source_type", ""),
+                "filter_reason": it.get("raw_data", {}).get("_filter_reason", "unknown"),
+            }
+            for it in removed
+        ],
+    }
+
+    # 读取现有日志
+    log_data = _read_filter_log()
+
+    # 追加新记录
+    if "runs" not in log_data:
+        log_data["runs"] = []
+    log_data["runs"].append(entry)
+
+    # 只保留最近 _MAX_RUNS 次
+    if len(log_data["runs"]) > _MAX_RUNS:
+        log_data["runs"] = log_data["runs"][-_MAX_RUNS:]
+
+    _write_filter_log(log_data)
+
+
+def _read_filter_log() -> dict:
+    """读取过滤日志文件，文件不存在或损坏时返回空 dict。"""
+    try:
+        with open(_FILTERED_LOG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _write_filter_log(data: dict) -> None:
+    """写入过滤日志文件，确保输出目录存在。"""
+    Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+    with open(_FILTERED_LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def load_filtered_items(
+    filter_name: str | None = None,
+    reason: str | None = None,
+    filepath: str | None = None,
+) -> list[dict]:
+    """加载过滤日志中被剔除的条目，可按过滤器和原因筛选。
+
+    Args:
+        filter_name: 过滤器名筛选 ("content_quality" / "topic_relevance")，None=全部
+        reason: 过滤原因筛选 (如 "too_short", "topic_irrelevant")，None=全部
+        filepath: 自定义日志文件路径，None=默认 output/.filtered_items.json
+
+    Returns:
+        被过滤条目列表，每条含 title/url/summary/source_type/filter_reason/filtered_at/filter_name
+    """
+    path = filepath or _FILTERED_LOG_PATH
+    log_data = _read_filter_log() if filepath is None else {}
+    if filepath:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                log_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+    result = []
+    for run in log_data.get("runs", []):
+        if filter_name and run.get("filter_name") != filter_name:
+            continue
+        for it in run.get("items", []):
+            if reason and it.get("filter_reason") != reason:
+                continue
+            # 附加运行级元数据
+            it["_filtered_at"] = run.get("filtered_at", "")
+            it["_filter_name"] = run.get("filter_name", "")
+            result.append(it)
+    return result
+
+
+def recover_filtered_items(
+    reasons: list[str] | None = None,
+    filter_names: list[str] | None = None,
+    filepath: str | None = None,
+) -> list[dict]:
+    """回捞被误踢的条目，返回可重新注入管道的条目 dict 列表。
+
+    典型用法:
+        # 回捞所有因"内容太短"被过滤的条目，人工复查后重新并入
+        recovered = recover_filtered_items(reasons=["too_short"])
+
+        # 回捞内容质量过滤器的所有条目
+        recovered = recover_filtered_items(filter_names=["content_quality"])
+
+    Args:
+        reasons: 要回捞的过滤原因列表，None=不限原因
+        filter_names: 要回捞的过滤器列表，None=不限过滤器
+        filepath: 自定义日志文件路径
+
+    Returns:
+        可重新注入管道的条目列表（保留了原始 title/url/summary/source_type）
+    """
+    path = filepath or _FILTERED_LOG_PATH
+    all_filtered = load_filtered_items(filepath=path)
+
+    recovered = []
+    for it in all_filtered:
+        if reasons and it.get("filter_reason") not in reasons:
+            continue
+        if filter_names and it.get("_filter_name") not in filter_names:
+            continue
+        # 构造成管道兼容的条目格式
+        recovered.append({
+            "title": it.get("title", ""),
+            "url": it.get("url", ""),
+            "summary": it.get("summary", ""),
+            "source_type": it.get("source_type", ""),
+            "raw_data": {
+                "_recovered_from": it.get("_filter_name", ""),
+                "_original_filter_reason": it.get("filter_reason", ""),
+                "_filtered_at": it.get("_filtered_at", ""),
+            },
+        })
+    return recovered
+
+
+def show_filter_stats(filepath: str | None = None) -> dict[str, int]:
+    """展示过滤统计：各类原因分别剔除了多少条。
+
+    Returns:
+        {"too_short": 12, "topic_irrelevant": 8, ...}
+    """
+    all_filtered = load_filtered_items(filepath=filepath)
+    stats: dict[str, int] = {}
+    for it in all_filtered:
+        reason = it.get("filter_reason", "unknown")
+        stats[reason] = stats.get(reason, 0) + 1
+    return stats
