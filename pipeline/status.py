@@ -65,6 +65,7 @@ class PipelineStatus:
         with self._lock:
             self._data["stage"] = stage
             self._data["stage_label"] = label
+            self._data["sub_stage"] = ""  # 阶段切换时清除子阶段
             self._data["items_so_far"] = items_so_far
             self._data["elapsed_seconds"] = int(time.time() - self._start_time)
             self._data["samples"] = self._samples[-8:]
