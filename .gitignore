@@ -5,6 +5,7 @@ storage/gaming_news.db
 storage/leak_signals.db
 storage/video_cache/
 output/.checkpoints/
+output/.filtered_items.json
 output/~$*
 temp/
 .weekly_cache/
