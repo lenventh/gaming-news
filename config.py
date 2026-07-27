@@ -263,6 +263,29 @@ RSS_SOURCES = [
             "手柄", "电竞", "esports", "模拟器", "vr", "ar", "quest",
         ],
     },
+    {
+        "name": "快科技",
+        "url": "https://rss.mydrivers.com/rss.aspx?cid=13",
+        "category_hint": None,
+        "filter_keywords": [
+            "游戏", "掌机", "主机", "switch", "playstation", "xbox",
+            "steam", "任天堂", "索尼", "微软", "显卡", "rtx", "gtx", "gpu",
+            "amd", "intel", "芯片", "cpu", "ssd", "存储",
+            "手柄", "电竞", "模拟器", "vr", "ar", "quest",
+            "笔记本", "游戏本", "显示器", "键盘", "鼠标",
+            "rog", "alienware", "拯救者", "暗影精灵", "天选",
+        ],
+    },
+    {
+        "name": "触乐",
+        "url": "https://www.chuapp.com/feed",
+        "category_hint": None,
+        "filter_keywords": [
+            "掌机", "主机", "switch", "playstation", "xbox", "steam",
+            "任天堂", "索尼", "微软", "硬件", "手柄", "评测", "开箱",
+            "显卡", "gpu", "芯片", "模拟器", "vr", "头显",
+        ],
+    },
     # --- 英文源 ---
     {
         "name": "The Verge",

@@ -36,6 +36,10 @@ CATEGORY_SEARCH_QUERIES = {
         "Steam Deck 评测 开箱",
         # 事件（来自关键词库）
         *get_event_keywords("steam_deck"),
+        # 国内渠道
+        "site:ithome.com Steam Deck",
+        "site:zhihu.com Steam Deck 评测",
+        "site:gcores.com Steam Deck",
     ],
     "windows_handheld": [
         "ROG Ally 掌机 新闻 2026",
@@ -54,6 +58,18 @@ CATEGORY_SEARCH_QUERIES = {
         "gaming handheld rumor leak 2026",
         # 事件（来自关键词库）
         *get_event_keywords("windows_handheld"),
+        # 国内渠道: 品牌官方 + 科技媒体
+        "site:ithome.com ROG Ally 掌机",
+        "site:ithome.com AYANEO 掌机",
+        "site:ithome.com Windows 掌机",
+        "site:ithome.com 掌机 新品",
+        "site:zhihu.com ROG Ally 评测",
+        "site:zhihu.com 掌机 推荐 2026",
+        "site:bilibili.com ROG 掌机 官方",
+        "site:bilibili.com AYANEO 官方",
+        "site:bilibili.com GPD 掌机 官方",
+        "site:bilibili.com 壹号本 掌机",
+        "site:bilibili.com 联想 掌机",
     ],
     "android_handheld": [
         "安卓掌机 新品 2026",
@@ -68,6 +84,10 @@ CATEGORY_SEARCH_QUERIES = {
         "AYN Odin 2 奥丁2",
         # 事件（来自关键词库）
         *get_event_keywords("android_handheld"),
+        # 国内渠道
+        "site:ithome.com 安卓掌机",
+        "site:zhihu.com 安卓掌机 推荐",
+        "site:bilibili.com 安卓掌机 评测",
     ],
     "linux_handheld": [
         "开源掌机 新品 2026",
@@ -80,6 +100,11 @@ CATEGORY_SEARCH_QUERIES = {
         "r36s r35s 掌机",
         # 事件（来自关键词库）
         *get_event_keywords("linux_handheld"),
+        # 国内渠道
+        "site:ithome.com 开源掌机",
+        "site:zhihu.com 开源掌机 推荐",
+        "site:bilibili.com 开源掌机 新品",
+        "site:bilibili.com Anbernic 官方",
     ],
     "playstation": [
         "PS5 Pro 新闻 评测",
@@ -87,11 +112,18 @@ CATEGORY_SEARCH_QUERIES = {
         "索尼 新掌机 专利",
         "PlayStation 新闻 2026",
         *get_event_keywords("playstation"),
+        # 国内渠道
+        "site:ithome.com PS5 Pro",
+        "site:zhihu.com PS5 Pro 评测",
+        "site:bilibili.com PS5 国行",
     ],
     "xbox": [
         "Xbox 主机 新闻 2026",
         "Xbox 掌机 传闻 专利",
         *get_event_keywords("xbox"),
+        # 国内渠道
+        "site:ithome.com Xbox 掌机",
+        "site:zhihu.com Xbox 掌机",
     ],
     "nintendo": [
         "任天堂 Switch 2 新闻 2026",
@@ -99,6 +131,11 @@ CATEGORY_SEARCH_QUERIES = {
         "任天堂 新机 爆料",
         "Nintendo Switch 2 新闻",
         *get_event_keywords("nintendo"),
+        # 国内渠道
+        "site:ithome.com Switch 2",
+        "site:ithome.com 任天堂",
+        "site:zhihu.com Switch 2 评测",
+        "site:bilibili.com Switch 2 国行",
     ],
     "emulator": [
         "模拟器 更新 2026",
@@ -113,6 +150,10 @@ CATEGORY_SEARCH_QUERIES = {
         "PPSSPP DuckStation 模拟器 更新",
         # 事件（来自关键词库）
         *get_event_keywords("emulator"),
+        # 国内渠道
+        "site:ithome.com 模拟器 更新",
+        "site:zhihu.com 模拟器 教程",
+        "site:bilibili.com 模拟器 更新",
     ],
 }
 
