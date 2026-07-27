@@ -381,7 +381,7 @@ class FloatingWidget:
         self._ticker_idx += 1
         # Shift up: line1 text fades to dim, line2 text moves to line1, new text to line2
         self.ticker_line1.config(text=self.ticker_line2.cget("text") or "")
-        self.ticker_line2.config(text=">>> " + item)
+        self.ticker_line2.config(text=item)
         self._ticker_job = self.root.after(8000, self._next_tick)  # ~8s per cycle
 
     def _update_action(self, s, done):
