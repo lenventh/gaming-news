@@ -175,7 +175,7 @@ class FloatingWidget:
     """半透明悬浮窗"""
 
     WIDTH = 280
-    HEIGHT = 260
+    HEIGHT = 215
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
