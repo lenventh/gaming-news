@@ -206,7 +206,7 @@ class FloatingWidget:
         PADX = 16
         # -- Top bar: stage label + elapsed time --
         top = tk.Frame(self.root, bg=self.bg)
-        top.pack(fill=tk.X, padx=PADX, pady=(12, 0))
+        top.pack(fill=tk.X, padx=PADX, pady=(12,0))
         self.stage_label = tk.Label(top, text="IDLE", font=("Segoe UI", 13, "bold"),
                                      fg=self.accent, bg=self.bg, anchor="w")
         self.stage_label.pack(side=tk.LEFT)
@@ -217,20 +217,20 @@ class FloatingWidget:
         # -- Progress bar --
         self.progress_canvas = tk.Canvas(self.root, width=self.WIDTH-2*PADX, height=4,
                                           bg="#21262d", highlightthickness=0, bd=0)
-        self.progress_canvas.pack(pady=(6, 10), padx=PADX)
+        self.progress_canvas.pack(pady=(6,10), padx=PADX)
         self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 4, fill=self.accent, width=0)
 
         # -- 2-line ticker for sample headlines --
         ticker_frame = tk.Frame(self.root, bg="#161b22", bd=0, highlightbackground="#21262d", highlightthickness=1)
-        ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0, 6))
-        self.ticker_line1 = tk.Label(ticker_frame, text="", font=("Segoe UI", 9),
+        ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
+        self.ticker_line1 = tk.Label(ticker_frame, text="",
                                       fg=self.fg, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      padx=10, pady=(8, 0))
-        self.ticker_line1.pack(fill=tk.X)
-        self.ticker_line2 = tk.Label(ticker_frame, text="", font=("Segoe UI", 9),
+                                      font=("Arial", 9))
+        self.ticker_line1.pack(fill=tk.X, ipadx=10, ipady=8)
+        self.ticker_line2 = tk.Label(ticker_frame, text="",
                                       fg=self.dim, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      padx=10, pady=(0, 8))
-        self.ticker_line2.pack(fill=tk.X)
+                                      font=("Arial", 9))
+        self.ticker_line2.pack(fill=tk.X, ipadx=10)
 
         # -- Sub-stage / item count --
         info_frame = tk.Frame(self.root, bg=self.bg)
@@ -250,7 +250,7 @@ class FloatingWidget:
 
         # -- Bottom controls --
         bottom_bar = tk.Frame(self.root, bg=self.bg)
-        bottom_bar.pack(fill=tk.X, padx=PADX, pady=(0, 6))
+        bottom_bar.pack(fill=tk.X, padx=PADX, pady=(0,6))
         tk.Label(bottom_bar, text="-  hide    o  min    x  close", font=("Segoe UI", 7),
                  fg=self.dim, bg=self.bg, cursor="hand2").pack(side=tk.LEFT)
         bottom_bar.bind("<Button-1>", self._title_click)
