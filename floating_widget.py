@@ -339,7 +339,11 @@ class FloatingWidget:
         # Stage display
         st_info = self.STAGES.get(stage, self.STAGES["init"])
         self.stage_label.config(text=st_info[0], fg=st_info[1])
-        if label:
+        # Show sub_stage (more granular), fall back to stage label
+        sub = s.get("sub_stage", "")
+        if sub:
+            self.info_text.config(text=sub)
+        elif label:
             self.info_text.config(text=label)
 
         # Progress bar
