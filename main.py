@@ -46,6 +46,7 @@ from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
 from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range, recover_filtered_items, show_filter_stats, load_filtered_items
 from pipeline.ranker import select_top_items
+from pipeline.status import PipelineStatus, clear_status
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
 from generator.script_writer import ScriptWriter
@@ -68,6 +69,23 @@ def print_stats(stats: dict):
         table.add_row(k, str(v))
     console.print(table)
     console.print()
+
+
+def _build_source_counts(all_items: list[dict]) -> dict[str, int]:
+    """构建来源统计，供状态追踪使用"""
+    from collections import Counter
+    src = Counter()
+    for it in all_items:
+        st = it.get("source_type", "unknown")
+        if st.startswith("bilibili_"):
+            src["bilibili"] += 1
+        elif st.startswith("tieba_"):
+            src["tieba"] += 1
+        elif "reddit" in st.lower():
+            src["reddit"] += 1
+        else:
+            src[st] += 1
+    return dict(src)
 
 
 def _print_source_stats(all_items: list[dict]):
@@ -486,6 +504,10 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
     week_range = get_week_range(CUTOFF_DATE)
     console.print(f"[bold]本周标签: {week_label} ({week_range})[/bold]\n")
 
+    # 初始化进度追踪
+    clear_status()
+    status = PipelineStatus()
+
     if recover_items is not None:
         # === 审核回捞模式：直接使用传入的条目 ===
         recovered = recover_items
@@ -532,18 +554,27 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         console.print("[bold]📡 阶段 1：CI 增量模式[/bold]")
         console.print("[dim]跳过 RSS / Google News，加载 CI 已采集数据[/dim]")
 
+        status.update("load_ci", "加载 CI 数据")
         ci_items = _load_ci_raw_items()
         if not ci_items:
             console.print("[red]未加载到 CI 数据，退出。请先 git pull 拉取最新 CI 产出。[/red]")
+            status.error("CI 数据未找到")
             return
         console.print(f"[dim]加载 CI 数据: {len(ci_items)} 条[/dim]")
+        status.update("load_ci", "CI 数据已加载", items_so_far=len(ci_items))
 
         console.print("[yellow]仅本地浏览器采集:[/yellow]")
+        status.update("browsers", "浏览器采集 (B站/贴吧)")
         browser_items = collect_browsers()
         console.print(f"[dim]本地浏览器: {len(browser_items)} 条[/dim]")
 
         all_items = ci_items + browser_items
         _print_source_stats(all_items)
+        status.add_samples([it.get("title", "")[:80] for it in ci_items[-3:]] +
+                          [it.get("title", "")[:80] for it in browser_items[:3]])
+        status.update("collected", "采集完成",
+                      items_so_far=len(all_items),
+                      sources=_build_source_counts(all_items))
 
         if not all_items:
             console.print("[red]未采集到任何新闻，退出[/red]")
@@ -558,16 +589,23 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         console.print("[bold]📡 阶段 1：数据采集[/bold]")
 
         # 先跑 CI 覆盖的部分
+        status.update("rss_google", "RSS + Google News 采集")
         ci_items = collect_ci()
         # 导出 CI 数据供后续 --from-ci 复用（仅 CI 环境，避免本地污染 git）
         if os.getenv("CI") or os.getenv("GITHUB_ACTIONS"):
             _save_ci_raw_items(ci_items)
             console.print(f"[dim]已导出 CI 数据: {len(ci_items)} 条[/dim]")
+        status.add_samples([it.get("title", "")[:80] for it in ci_items[-5:]])
 
         # 再跑本地浏览器部分
+        status.update("browsers", "浏览器采集 (B站/贴吧)")
         browser_items = collect_browsers()
         all_items = ci_items + browser_items
         _print_source_stats(all_items)
+        status.add_samples([it.get("title", "")[:80] for it in browser_items[:5]])
+        status.update("collected", "采集完成",
+                      items_so_far=len(all_items),
+                      sources=_build_source_counts(all_items))
 
         if not all_items:
             console.print("[red]未采集到任何新闻，退出[/red]")
@@ -592,6 +630,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         console.print(f"[dim]新入库: {saved} 条[/dim]")
 
     # 阶段 2：处理
+    status.update("processing", "去重+过滤+分类")
     selected = process(all_items)
 
     # 保存精选 checkpoint
@@ -608,6 +647,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
     selected = fetch_images(selected)
 
     # 阶段 3：生成
+    status.update("generating", "文稿生成 + 配图")
     markdown = generate(selected, week_label, week_range)
 
     # 可选：追加游戏折扣
@@ -641,6 +681,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
     total_selected = sum(len(v) for v in selected.values())
     console.print(f"\n[bold cyan]🎮 完成！共精选 {total_selected} 条资讯[/bold cyan]")
+    status.done()
 
     # 过滤统计速览
     stats = show_filter_stats()
