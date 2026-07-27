@@ -645,7 +645,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         console.print(f"[dim]新入库: {saved} 条[/dim]")
 
     # 阶段 2：处理
-    status.update("processing", "去重+过滤+分类")
+    status.update("processing", "去重+过滤+分类", items_so_far=len(all_items))
     selected = process(all_items)
 
     # 保存精选 checkpoint
@@ -662,7 +662,8 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
     selected = fetch_images(selected)
 
     # 阶段 3：生成
-    status.update("generating", "文稿生成 + 配图")
+    total_selected = sum(len(v) for v in selected.values())
+    status.update("generating", "文稿生成 + 配图", items_so_far=total_selected)
     markdown = generate(selected, week_label, week_range)
 
     # 可选：追加游戏折扣
