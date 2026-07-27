@@ -227,7 +227,7 @@ class FloatingWidget:
         for i in range(2):
             clr = self.fg if i == 0 else self.dim
             lbl = tk.Label(ticker_frame, text="", fg=clr, bg="#161b22", anchor="w",
-                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-36,
+                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-50,
                            height=3)
             lbl.pack(fill=tk.X, ipadx=10, ipady=6)
             self.ticker_lines.append(lbl)
