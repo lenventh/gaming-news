@@ -220,16 +220,17 @@ class FloatingWidget:
         self.progress_canvas.pack(pady=(6,10), padx=PADX)
         self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 4, fill=self.accent, width=0)
 
-        # -- 3-line ticker for sample headlines --
-        ticker_frame = tk.Frame(self.root, bg="#161b22", bd=0, highlightbackground="#21262d", highlightthickness=1)
-        ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
+        # -- Two separate ticker cards with transparent gap --
         self.ticker_lines = []
         for i in range(2):
+            card = tk.Frame(self.root, bg="#161b22", bd=0,
+                           highlightbackground="#21262d", highlightthickness=1)
+            card.pack(fill=tk.X, padx=PADX, pady=(0,4))
             clr = self.fg if i == 0 else self.dim
-            lbl = tk.Label(ticker_frame, text="", fg=clr, bg="#161b22", anchor="w",
-                           justify=tk.LEFT, font=("Microsoft YaHei", 9), wraplength=self.WIDTH-44,
-                           height=3)
-            lbl.pack(fill=tk.X, ipadx=10, ipady=6)
+            lbl = tk.Label(card, text="", fg=clr, bg="#161b22", anchor="center",
+                           justify=tk.LEFT, font=("Microsoft YaHei", 9),
+                           wraplength=self.WIDTH-44, height=3)
+            lbl.pack(fill=tk.BOTH, expand=True, ipadx=10, ipady=4)
             self.ticker_lines.append(lbl)
 
         # -- Sub-stage / item count --
