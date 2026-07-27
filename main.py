@@ -70,38 +70,81 @@ def print_stats(stats: dict):
     console.print()
 
 
-def collect_all() -> list[dict]:
-    """采集所有来源的新闻"""
-    console.print("[bold]📡 阶段 1：数据采集[/bold]")
-    all_items = []
+def _print_source_stats(all_items: list[dict]):
+    """打印来源统计面板"""
+    from collections import Counter
+    src_counter = Counter()
+    for it in all_items:
+        st = it.get("source_type", "unknown")
+        if st.startswith("bilibili_"):
+            src_counter["bilibili_*"] += 1
+        elif st.startswith("tieba_"):
+            src_counter["tieba_*"] += 1
+        elif "reddit" in st.lower():
+            src_counter["reddit_rss"] += 1
+        elif st in ("rss", "web_search", "chinese_web", "zhihu_browser", "smzdm_browser"):
+            src_counter[st] += 1
+        else:
+            src_counter[st] += 1
 
-    # RSS 源（包含 Reddit RSS）
+    console.print(f"\n[bold]共采集 {len(all_items)} 条原始新闻[/bold]")
+    if src_counter:
+        parts = []
+        for src, cnt in src_counter.most_common(8):
+            parts.append(f"{src}:{cnt}")
+        console.print(f"[dim]  {' | '.join(parts)}[/dim]")
+
+
+def _save_ci_raw_items(items: list[dict]):
+    """保存 CI 原始采集数据，供本地 --from-ci 模式复用"""
+    import json
+    ci_path = os.path.join(OUTPUT_DIR, ".ci_raw_items.json")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(ci_path, "w", encoding="utf-8") as f:
+        json.dump(items, f, ensure_ascii=False, indent=2)
+
+
+def _load_ci_raw_items() -> list[dict]:
+    """加载 CI 原始采集数据"""
+    import json
+    ci_path = os.path.join(OUTPUT_DIR, ".ci_raw_items.json")
+    if not os.path.exists(ci_path):
+        console.print(f"[red]未找到 CI 数据文件: {ci_path}[/red]")
+        console.print("[dim]请先 git pull 拉取 CI 最新产出[/dim]")
+        return []
+    with open(ci_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def collect_ci() -> list[dict]:
+    """CI 专属采集：RSS + Google News + B站搜索 + 贴吧RSS（无需浏览器）"""
+    items = []
+
     console.print("\n[yellow]RSS 源:[/yellow]")
-    rss_items = collect_all_rss(RSS_SOURCES)
-    all_items.extend(rss_items)
+    items.extend(collect_all_rss(RSS_SOURCES))
 
-    # AI 联网搜索补充
     console.print("\n[yellow]Google News 搜索:[/yellow]")
     searcher = WebSearchCollector()
-    search_items = searcher.fetch()
-    all_items.extend(search_items)
+    items.extend(searcher.fetch())
 
-    # 中文源补充（B站/知乎/什么值得买 等 via Google）
     console.print("\n[yellow]中文源补充 (B站/知乎/SMZDM):[/yellow]")
     cn = ChineseWebCollector()
-    all_items.extend(cn.fetch())
+    items.extend(cn.fetch())
 
-    # 知乎/什么值得买（浏览器直接搜索，覆盖面更全）
-    # 注：SMZDM 对最终周刊贡献 0%（电商比价站，无新闻价值），已移除
-    # 如需恢复：取消下行注释
-    # console.print("\n[yellow]知乎/什么值得买 (浏览器):[/yellow]")
-    # cn_browser = ChineseBrowserCollector()
-    # all_items.extend(cn_browser.fetch())
-
-    # B站搜索采集
     console.print("\n[yellow]B站搜索采集:[/yellow]")
     bilibili = BilibiliCollector()
-    all_items.extend(bilibili.fetch())
+    items.extend(bilibili.fetch())
+
+    console.print("\n[yellow]贴吧 (Google News):[/yellow]")
+    tieba = TiebaCollector()
+    items.extend(tieba.fetch())
+
+    return items
+
+
+def collect_browsers() -> list[dict]:
+    """本地专属采集：B站浏览器 + 贴吧浏览器（需要真实浏览器环境）"""
+    items = []
 
     # B站（浏览器视频+文章，共享浏览器实例）
     if os.getenv("BILIBILI_BROWSER", "").lower() in ("1", "true", "yes"):
@@ -135,14 +178,12 @@ def collect_all() -> list[dict]:
                     Object.defineProperty(navigator, 'webdriver', { get: () => false });
                 """)
 
-                # 预热（先获取游客 Cookie）
                 try:
                     page.goto("https://www.bilibili.com", wait_until="domcontentloaded", timeout=15000)
                     page.wait_for_timeout(2000)
                 except Exception:
                     pass
 
-                # B站 Cookie 注入（动态 API 需要登录态，warmup 后注入避免被覆盖）
                 sessdata = os.getenv("BILIBILI_SESSDATA", "").strip()
                 if sessdata:
                     context.add_cookies([{
@@ -152,19 +193,17 @@ def collect_all() -> list[dict]:
                         "path": "/",
                     }])
 
-                # 视频采集
                 console.print("[dim]  — 视频搜索 + 字幕提取 —[/dim]")
                 try:
                     bilibili_browser.set_page(page)
-                    all_items.extend(bilibili_browser.fetch())
+                    items.extend(bilibili_browser.fetch())
                 except Exception as e:
                     console.log(f"[yellow]⚠ B站浏览器视频采集失败: {e}, 降级跳过[/yellow]")
 
-                # 文章采集
                 console.print("[dim]  — 专栏文章采集 —[/dim]")
                 try:
                     bilibili_article.set_page(page)
-                    all_items.extend(bilibili_article.fetch())
+                    items.extend(bilibili_article.fetch())
                 except Exception as e:
                     console.log(f"[yellow]⚠ B站浏览器文章采集失败: {e}, 降级跳过[/yellow]")
 
@@ -174,45 +213,27 @@ def collect_all() -> list[dict]:
         except ImportError:
             console.log("[red]playwright 未安装，跳过 B站浏览器采集[/red]")
         except Exception as e:
-            console.log(f"[yellow]⚠ B站浏览器采集不可用 ({e}), 自动降级，管道继续运行[/yellow]")
+            console.log(f"[yellow]⚠ B站浏览器采集不可用 ({e}), 自动降级[/yellow]")
 
         if not browser_ok:
-            console.print("[dim]  B站浏览器降级: Google News RSS 基线数据已就位, 周刊正常生成[/dim]")
-
-    # 贴吧（Google News RSS 中转）
-    console.print("\n[yellow]贴吧 (Google News):[/yellow]")
-    tieba = TiebaCollector()
-    all_items.extend(tieba.fetch())
+            console.print("[dim]  B站浏览器降级: Google News RSS 基线数据已就位[/dim]")
+    else:
+        console.print("[dim]  BILIBILI_BROWSER 未开启，跳过 B站浏览器采集[/dim]")
 
     # 贴吧（浏览器直接抓取，覆盖面更全）
     console.print("\n[yellow]贴吧 (浏览器):[/yellow]")
     tieba_browser = TiebaBrowserCollector()
-    all_items.extend(tieba_browser.fetch())
+    items.extend(tieba_browser.fetch())
 
-    # 来源统计面板
-    from collections import Counter
-    src_counter = Counter()
-    for it in all_items:
-        st = it.get("source_type", "unknown")
-        # 合并同类源便于阅读
-        if st.startswith("bilibili_"):
-            src_counter["bilibili_*"] += 1
-        elif st.startswith("tieba_"):
-            src_counter["tieba_*"] += 1
-        elif "reddit" in st.lower():
-            src_counter["reddit_rss"] += 1
-        elif st in ("rss", "web_search", "chinese_web", "zhihu_browser", "smzdm_browser"):
-            src_counter[st] += 1
-        else:
-            src_counter[st] += 1
+    return items
 
-    console.print(f"\n[bold]共采集 {len(all_items)} 条原始新闻[/bold]")
-    if src_counter:
-        parts = []
-        for src, cnt in src_counter.most_common(8):
-            parts.append(f"{src}:{cnt}")
-        console.print(f"[dim]  {' | '.join(parts)}[/dim]")
 
+def collect_all() -> list[dict]:
+    """采集所有来源的新闻（CI + 本地浏览器）"""
+    console.print("[bold]📡 阶段 1：数据采集[/bold]")
+    all_items = collect_ci()
+    all_items.extend(collect_browsers())
+    _print_source_stats(all_items)
     return all_items
 
 
@@ -446,14 +467,14 @@ def save_output(markdown: str, week_label: str, selected: dict[str, list[dict]])
     save_weekly_output(week_label, markdown, total_items, stats)
 
 
-def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | None = None):
+def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | None = None,
+        from_ci: bool = False):
     """完整运行一次管道。
 
     Args:
-        recover_reasons: 过滤原因列表（如 ["too_short"]），跳过采集阶段，
-                        从日志回捞被误踢条目后重新处理。
-        recover_items: 直接指定要回捞的条目列表（--recover-reviewed 模式），
-                       跳过采集阶段。
+        recover_reasons: 过滤原因列表（如 ["too_short"]），跳过采集阶段回捞。
+        recover_items: 直接指定要回捞的条目列表（--recover-reviewed 模式）。
+        from_ci: CI 增量模式 — 跳过 RSS/Google News，加载 CI 数据 + 仅采集浏览器源。
     """
     print_banner()
 
@@ -506,9 +527,46 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
         # 合并回捞条目
         all_items = raw_items + recovered
         console.print(f"[dim]合并后: {len(all_items)} 条 (原始 {len(raw_items)} + 回捞 {len(recovered)})[/dim]")
+    elif from_ci:
+        # === CI 增量模式：加载 CI 数据 + 仅采集浏览器源 ===
+        console.print("[bold]📡 阶段 1：CI 增量模式[/bold]")
+        console.print("[dim]跳过 RSS / Google News，加载 CI 已采集数据[/dim]")
+
+        ci_items = _load_ci_raw_items()
+        if not ci_items:
+            console.print("[red]未加载到 CI 数据，退出。请先 git pull 拉取最新 CI 产出。[/red]")
+            return
+        console.print(f"[dim]加载 CI 数据: {len(ci_items)} 条[/dim]")
+
+        console.print("[yellow]仅本地浏览器采集:[/yellow]")
+        browser_items = collect_browsers()
+        console.print(f"[dim]本地浏览器: {len(browser_items)} 条[/dim]")
+
+        all_items = ci_items + browser_items
+        _print_source_stats(all_items)
+
+        if not all_items:
+            console.print("[red]未采集到任何新闻，退出[/red]")
+            return
+
+        # 保存 checkpoint（供后续 --recover 使用）
+        save_raw_checkpoint(all_items)
+        console.print(f"[dim]已保存 checkpoint: {len(all_items)} 条[/dim]")
+
     else:
         # === 正常模式：完整采集 + 处理 ===
-        all_items = collect_all()
+        console.print("[bold]📡 阶段 1：数据采集[/bold]")
+
+        # 先跑 CI 覆盖的部分
+        ci_items = collect_ci()
+        # 导出 CI 数据供后续 --from-ci 复用
+        _save_ci_raw_items(ci_items)
+        console.print(f"[dim]已导出 CI 数据: {len(ci_items)} 条[/dim]")
+
+        # 再跑本地浏览器部分
+        browser_items = collect_browsers()
+        all_items = ci_items + browser_items
+        _print_source_stats(all_items)
 
         if not all_items:
             console.print("[red]未采集到任何新闻，退出[/red]")
@@ -602,9 +660,18 @@ if __name__ == "__main__":
         help="根据审核清单 output/.filtered_review.md 中勾选的条目回捞。"
              "先用 python review_filtered.py --open 审核并勾选误踢条目。",
     )
+    parser.add_argument(
+        "--from-ci",
+        action="store_true",
+        default=False,
+        help="CI 增量模式 — 跳过 RSS/Google News，加载 CI 已采集数据，仅运行本地浏览器采集。"
+             "本地先 git pull，再 python main.py --from-ci。",
+    )
     args = parser.parse_args()
 
-    if args.recover_reviewed:
+    if args.from_ci:
+        run(from_ci=True)
+    elif args.recover_reviewed:
         from review_filtered import load_checked_items
         checked_titles = load_checked_items()
         if not checked_titles:
