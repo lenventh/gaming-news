@@ -203,7 +203,7 @@ class FloatingWidget:
         self.root.bind("<B1-Motion>", self._drag)
         self.root.bind("<Button-3>", self._right_click)
 
-        PADX = 16
+        PADX = 12
         # -- Top bar: stage label + elapsed time --
         top = tk.Frame(self.root, bg=self.bg)
         top.pack(fill=tk.X, padx=PADX, pady=(12,0))
@@ -225,11 +225,11 @@ class FloatingWidget:
         ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
         self.ticker_line1 = tk.Label(ticker_frame, text="",
                                       fg=self.fg, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9), wraplength=self.WIDTH-44)
+                                      font=("Arial", 9), wraplength=self.WIDTH-36)
         self.ticker_line1.pack(fill=tk.X, ipadx=10, ipady=10)
         self.ticker_line2 = tk.Label(ticker_frame, text="",
                                       fg=self.dim, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9), wraplength=self.WIDTH-44)
+                                      font=("Arial", 9), wraplength=self.WIDTH-36)
         self.ticker_line2.pack(fill=tk.X, ipadx=10, ipady=10)
 
         # -- Sub-stage / item count --
