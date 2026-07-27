@@ -44,7 +44,7 @@ from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
-from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range, recover_filtered_items, show_filter_stats
+from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range, recover_filtered_items, show_filter_stats, load_filtered_items
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
@@ -446,12 +446,14 @@ def save_output(markdown: str, week_label: str, selected: dict[str, list[dict]])
     save_weekly_output(week_label, markdown, total_items, stats)
 
 
-def run(recover_reasons: list[str] | None = None):
+def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | None = None):
     """完整运行一次管道。
 
     Args:
         recover_reasons: 过滤原因列表（如 ["too_short"]），跳过采集阶段，
                         从日志回捞被误踢条目后重新处理。
+        recover_items: 直接指定要回捞的条目列表（--recover-reviewed 模式），
+                       跳过采集阶段。
     """
     print_banner()
 
@@ -463,9 +465,13 @@ def run(recover_reasons: list[str] | None = None):
     week_range = get_week_range(CUTOFF_DATE)
     console.print(f"[bold]本周标签: {week_label} ({week_range})[/bold]\n")
 
-    if recover_reasons:
-        # === 回捞模式：跳过采集，从日志恢复 + 重新处理 ===
-        console.print(f"[bold yellow]🔁 回捞模式: {', '.join(recover_reasons)}[/bold yellow]\n")
+    if recover_items is not None:
+        # === 审核回捞模式：直接使用传入的条目 ===
+        recovered = recover_items
+        recover_mode_label = "审核勾选"
+    elif recover_reasons:
+        # === 批量回捞模式：按原因从日志恢复 ===
+        recover_mode_label = ", ".join(recover_reasons)
 
         # 显示当前过滤统计
         stats = show_filter_stats()
@@ -474,12 +480,15 @@ def run(recover_reasons: list[str] | None = None):
             for reason, count in sorted(stats.items(), key=lambda x: -x[1]):
                 console.print(f"  [dim]{reason}: {count} 条[/dim]")
 
-        # 回捞指定原因的条目
         recovered = recover_filtered_items(reasons=recover_reasons)
         if not recovered:
             console.print(f"[yellow]没有匹配 '{recover_reasons}' 的过滤条目，退出[/yellow]")
             return
+    else:
+        recovered = None
 
+    if recovered:
+        console.print(f"[bold yellow]🔁 回捞模式: {recover_mode_label}[/bold yellow]\n")
         console.print(f"[green]回捞 {len(recovered)} 条被过滤条目[/green]")
         for it in recovered[:10]:
             console.print(f"  [dim]+ {it.get('title', '')[:60]}[/dim]")
@@ -583,14 +592,69 @@ if __name__ == "__main__":
         "--recover",
         type=str,
         default=None,
-        help="回捞被过滤条目，跳过采集直接重新处理。"
+        help="回捞被过滤条目，跳过采集直接重新处理（按原因批量回捞）。"
              "用法: --recover too_short | --recover too_short,topic_irrelevant | --recover all",
+    )
+    parser.add_argument(
+        "--recover-reviewed",
+        action="store_true",
+        default=False,
+        help="根据审核清单 output/.filtered_review.md 中勾选的条目回捞。"
+             "先用 python review_filtered.py --open 审核并勾选误踢条目。",
     )
     args = parser.parse_args()
 
-    if args.recover:
+    if args.recover_reviewed:
+        from review_filtered import load_checked_items
+        checked_titles = load_checked_items()
+        if not checked_titles:
+            console.print("[yellow]审核清单中未勾选任何条目（- [x]），退出[/yellow]")
+            sys.exit(0)
+
+        console.print(f"[green]审核清单中勾选了 {len(checked_titles)} 条[/green]")
+
+        # 从过滤日志中匹配勾选的标题 → 获取完整条目数据回捞
+        all_filtered = load_filtered_items()
+        title_to_item = {}
+        for it in all_filtered:
+            t = (it.get("title") or "").strip()
+            title_to_item[t] = it
+
+        matched = []
+        not_found = []
+        for title in checked_titles:
+            if title in title_to_item:
+                matched.append(title_to_item[title])
+            else:
+                not_found.append(title)
+
+        if not_found:
+            console.print(f"[yellow]有 {len(not_found)} 条在过滤日志中未找到，跳过[/yellow]")
+
+        if not matched:
+            console.print("[yellow]没有匹配到可回捞的条目，退出[/yellow]")
+            sys.exit(0)
+
+        # 构造成管道兼容格式
+        recovered = []
+        for it in matched:
+            recovered.append({
+                "title": it.get("title", ""),
+                "url": it.get("url", ""),
+                "summary": it.get("summary", ""),
+                "source_type": it.get("source_type", ""),
+                "raw_data": {
+                    "_recovered_from": it.get("_filter_name", ""),
+                    "_original_filter_reason": it.get("filter_reason", ""),
+                    "_filtered_at": it.get("_filtered_at", ""),
+                },
+            })
+
+        console.print(f"[green]成功回捞 {len(recovered)} 条审核通过的条目[/green]")
+        run(recover_items=recovered)
+    elif args.recover:
         if args.recover.lower() == "all":
-            reasons = None  # recover_filtered_items(None) = 全部
+            reasons = None
         else:
             reasons = [r.strip() for r in args.recover.split(",") if r.strip()]
         run(recover_reasons=reasons)
