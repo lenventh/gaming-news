@@ -175,7 +175,7 @@ class FloatingWidget:
     """半透明悬浮窗"""
 
     WIDTH = 280
-    HEIGHT = 230
+    HEIGHT = 260
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
@@ -225,12 +225,12 @@ class FloatingWidget:
         ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
         self.ticker_line1 = tk.Label(ticker_frame, text="",
                                       fg=self.fg, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9))
-        self.ticker_line1.pack(fill=tk.X, ipadx=10, ipady=8)
+                                      font=("Arial", 9), wraplength=self.WIDTH-44)
+        self.ticker_line1.pack(fill=tk.X, ipadx=10, ipady=10)
         self.ticker_line2 = tk.Label(ticker_frame, text="",
                                       fg=self.dim, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9))
-        self.ticker_line2.pack(fill=tk.X, ipadx=10)
+                                      font=("Arial", 9), wraplength=self.WIDTH-44)
+        self.ticker_line2.pack(fill=tk.X, ipadx=10, ipady=10)
 
         # -- Sub-stage / item count --
         info_frame = tk.Frame(self.root, bg=self.bg)
@@ -361,7 +361,7 @@ class FloatingWidget:
             for t in samples:
                 if t and t not in self._seen:
                     self._seen.add(t)
-                    self._ticker.insert(0, t[:55])
+                    self._ticker.insert(0, t)
                     if len(self._ticker) > 30:
                         self._ticker.pop()
 
