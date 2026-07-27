@@ -175,7 +175,7 @@ class FloatingWidget:
     """半透明悬浮窗"""
 
     WIDTH = 280
-    HEIGHT = 210
+    HEIGHT = 230
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
@@ -190,77 +190,77 @@ class FloatingWidget:
     def __init__(self, run_pipeline=False):
         self.root = tk.Tk()
         self.root.title("Gaming News")
-        self.root.geometry(f"{self.WIDTH}x{self.HEIGHT}+{self.root.winfo_screenwidth()-self.WIDTH-20}+40")
-        self.root.overrideredirect(True)  # no title bar
+        sw = self.root.winfo_screenwidth()
+        self.root.geometry(f"{self.WIDTH}x{self.HEIGHT}+{sw-self.WIDTH-20}+40")
+        self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.root.attributes("-alpha", 0.88)
 
-        # Colors
-        self.bg = "#0d1117"
-        self.fg = "#c9d1d9"
-        self.accent = "#58a6ff"
-        self.dim = "#8b949e"
-        self.green = "#238636"
-
+        self.bg = "#0d1117"; self.fg = "#c9d1d9"; self.accent = "#58a6ff"
+        self.dim = "#8b949e"; self.green = "#238636"; self.yellow = "#d2991d"
         self.root.configure(bg=self.bg)
         self.root.bind("<Button-1>", self._start_drag)
         self.root.bind("<B1-Motion>", self._drag)
         self.root.bind("<Button-3>", self._right_click)
 
-        # --- Build UI ---
-        # Stage indicator
-        self.stage_label = tk.Label(self.root, text="IDLE", font=("Segoe UI", 11, "bold"),
-                                     fg=self.accent, bg=self.bg)
-        self.stage_label.pack(pady=(14, 0))
-
-        # Progress bar
-        self.progress_canvas = tk.Canvas(self.root, width=240, height=6, bg="#21262d",
-                                          highlightthickness=0, bd=0)
-        self.progress_canvas.pack(pady=(8, 10))
-        self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 6, fill=self.accent, width=0)
-
-        # Info text
-        self.info_text = tk.Label(self.root, text="", font=("Segoe UI", 9),
-                                   fg=self.dim, bg=self.bg, justify=tk.LEFT, wraplength=240)
-        self.info_text.pack(pady=(0, 8))
-
-        # Action button
-        self.action_frame = tk.Frame(self.root, bg=self.bg)
-        self.action_frame.pack(pady=(0, 6))
-        self.action_btn = tk.Label(self.action_frame, text="", font=("Segoe UI", 10, "bold"),
-                                    fg="#0d1117", bg=self.accent, padx=14, pady=4,
-                                    cursor="hand2")
-        self.action_btn.pack()
-
-        # Bottom row
-        bottom = tk.Frame(self.root, bg=self.bg)
-        bottom.pack(fill=tk.X, padx=14, pady=(2, 8))
-        self.elapsed_label = tk.Label(bottom, text="00:00", font=("Segoe UI", 8),
+        PADX = 16
+        # -- Top bar: stage label + elapsed time --
+        top = tk.Frame(self.root, bg=self.bg)
+        top.pack(fill=tk.X, padx=PADX, pady=(12, 0))
+        self.stage_label = tk.Label(top, text="IDLE", font=("Segoe UI", 13, "bold"),
+                                     fg=self.accent, bg=self.bg, anchor="w")
+        self.stage_label.pack(side=tk.LEFT)
+        self.elapsed_label = tk.Label(top, text="00:00", font=("Segoe UI", 10),
                                        fg=self.dim, bg=self.bg)
-        self.elapsed_label.pack(side=tk.LEFT)
-        self.count_label = tk.Label(bottom, text="0 items", font=("Segoe UI", 8),
-                                     fg=self.dim, bg=self.bg)
+        self.elapsed_label.pack(side=tk.RIGHT)
+
+        # -- Progress bar --
+        self.progress_canvas = tk.Canvas(self.root, width=self.WIDTH-2*PADX, height=4,
+                                          bg="#21262d", highlightthickness=0, bd=0)
+        self.progress_canvas.pack(pady=(6, 10), padx=PADX)
+        self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 4, fill=self.accent, width=0)
+
+        # -- 2-line ticker for sample headlines --
+        ticker_frame = tk.Frame(self.root, bg="#161b22", bd=0, highlightbackground="#21262d", highlightthickness=1)
+        ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0, 6))
+        self.ticker_line1 = tk.Label(ticker_frame, text="", font=("Segoe UI", 9),
+                                      fg=self.fg, bg="#161b22", anchor="w", justify=tk.LEFT,
+                                      padx=10, pady=(8, 0))
+        self.ticker_line1.pack(fill=tk.X)
+        self.ticker_line2 = tk.Label(ticker_frame, text="", font=("Segoe UI", 9),
+                                      fg=self.dim, bg="#161b22", anchor="w", justify=tk.LEFT,
+                                      padx=10, pady=(0, 8))
+        self.ticker_line2.pack(fill=tk.X)
+
+        # -- Sub-stage / item count --
+        info_frame = tk.Frame(self.root, bg=self.bg)
+        info_frame.pack(fill=tk.X, padx=PADX, pady=(0, 4))
+        self.sub_label = tk.Label(info_frame, text="", font=("Segoe UI", 8),
+                                   fg=self.dim, bg=self.bg, anchor="w")
+        self.sub_label.pack(side=tk.LEFT)
+        self.count_label = tk.Label(info_frame, text="", font=("Segoe UI", 8),
+                                     fg=self.dim, bg=self.bg, anchor="e")
         self.count_label.pack(side=tk.RIGHT)
 
-        # Minimize button
-        close_frame = tk.Frame(self.root, bg=self.bg)
-        close_frame.pack(pady=(0, 4))
-        tk.Label(close_frame, text="— □ ×", font=("Segoe UI", 7), fg=self.dim,
-                 bg=self.bg, cursor="hand2").pack()
-        close_frame.bind("<Button-1>", self._title_click)
+        # -- Action button --
+        self.action_btn = tk.Label(self.root, text="", font=("Segoe UI", 10, "bold"),
+                                    fg="#0d1117", bg=self.accent, padx=14, pady=5,
+                                    cursor="hand2")
+        self.action_btn.pack(pady=(4, 2))
+
+        # -- Bottom controls --
+        bottom_bar = tk.Frame(self.root, bg=self.bg)
+        bottom_bar.pack(fill=tk.X, padx=PADX, pady=(0, 6))
+        tk.Label(bottom_bar, text="-  hide    o  min    x  close", font=("Segoe UI", 7),
+                 fg=self.dim, bg=self.bg, cursor="hand2").pack(side=tk.LEFT)
+        bottom_bar.bind("<Button-1>", self._title_click)
 
         # Drag state
-        self._drag_x = 0
-        self._drag_y = 0
+        self._drag_x = 0; self._drag_y = 0
+        self._ticker = []; self._ticker_idx = 0
+        self._seen = set(); self._schedule = {}
+        self._ticker_job = None
 
-        # Data
-        self._last_stage = ""
-        self._ticker = []
-        self._seen = set()
-        self._action = None
-        self._schedule = {}
-
-        # Start polling
         self.poll()
         if run_pipeline:
             self.root.after(1000, self._auto_run)
@@ -330,55 +330,59 @@ class FloatingWidget:
 
     def _update(self, s: dict):
         stage = s.get("stage", "init")
-        label = s.get("stage_label", "")
         elapsed = s.get("elapsed_seconds", 0)
         items = s.get("items_so_far", 0)
         done = s.get("done", False)
         samples = s.get("samples", [])
-
-        # Stage display
-        st_info = self.STAGES.get(stage, self.STAGES["init"])
-        self.stage_label.config(text=st_info[0], fg=st_info[1])
-        # Show sub_stage (more granular), fall back to stage label
         sub = s.get("sub_stage", "")
-        if sub:
-            self.info_text.config(text=sub)
-        elif label:
-            self.info_text.config(text=label)
+
+        # Stage label (top-left)
+        st_info = self.STAGES.get(stage, self.STAGES["init"])
+        m, sec = divmod(elapsed, 60)
+        self.stage_label.config(text=st_info[0], fg=st_info[1])
+
+        # Elapsed (top-right)
+        self.elapsed_label.config(text=f"{m:02d}:{sec:02d}")
 
         # Progress bar
         stages_order = ["init","load_ci","rss_google","browsers","collected","processing","generating","done"]
         idx = stages_order.index(stage) if stage in stages_order else 0
+        pw = self.WIDTH - 32
         pct = 1.0 if done else max(0.05, min(0.95, idx / (len(stages_order)-1)))
-        self.progress_canvas.coords(self.progress_bar, 0, 0, 240 * pct, 6)
+        self.progress_canvas.coords(self.progress_bar, 0, 0, pw * pct, 4)
         self.progress_canvas.itemconfig(self.progress_bar, fill=st_info[1] if pct < 1 else self.green)
 
-        # Elapsed + count
-        m, sec = divmod(elapsed, 60)
-        self.elapsed_label.config(text=f"{m:02d}:{sec:02d}")
-        self.count_label.config(text=f"{items} items")
+        # Sub-stage + count
+        self.sub_label.config(text=sub or "")
+        self.count_label.config(text=f"{items} items" if items else "")
 
-        # Ticker
+        # Collect new samples
         if samples:
             for t in samples:
                 if t and t not in self._seen:
                     self._seen.add(t)
-                    self._ticker.insert(0, t[:50])
-                    if len(self._ticker) > 20:
+                    self._ticker.insert(0, t[:55])
+                    if len(self._ticker) > 30:
                         self._ticker.pop()
 
-        # Determine action
+        # Start ticker rotation if not already
+        if self._ticker and self._ticker_job is None:
+            self._next_tick()
+
         self._update_action(s, done)
 
-        # Rotate ticker text
-        if self._ticker:
-            self.root.after(3000, self._rotate_ticker)
-
-    def _rotate_ticker(self):
-        if self._ticker:
-            self._ticker = self._ticker[1:] + [self._ticker[0]]
-            self.info_text.config(text=">>> " + self._ticker[0])
-            self.root.after(3500, self._rotate_ticker)  # keep cycling
+    def _next_tick(self):
+        """Rotate ticker: line2 moves up to line1, new line appears on line2"""
+        if not self._ticker:
+            self._ticker_job = None
+            return
+        # Cycle: take next item
+        item = self._ticker[self._ticker_idx % len(self._ticker)]
+        self._ticker_idx += 1
+        # Shift up: line1 text fades to dim, line2 text moves to line1, new text to line2
+        self.ticker_line1.config(text=self.ticker_line2.cget("text") or "")
+        self.ticker_line2.config(text=">>> " + item)
+        self._ticker_job = self.root.after(8000, self._next_tick)  # ~8s per cycle
 
     def _update_action(self, s, done):
         sch = self._schedule
