@@ -7,6 +7,7 @@
 
 import os
 import sys
+import argparse
 from datetime import datetime, timezone
 
 # 修复 Windows 控制台 emoji 编码问题
@@ -43,7 +44,7 @@ from collectors.bilibili_collector import BilibiliCollector
 from collectors.bilibili_browser_collector import BilibiliBrowserCollector
 from collectors.bilibili_article_collector import BilibiliArticleCollector
 from pipeline.dedup import deduplicate
-from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range
+from pipeline.filter import filter_by_date, filter_content_quality, filter_topic_relevance, prune_expanded, get_week_label, get_week_range, recover_filtered_items, show_filter_stats
 from pipeline.ranker import select_top_items
 from pipeline.validator import validate
 from pipeline.image_fetcher import fetch_images
@@ -445,8 +446,13 @@ def save_output(markdown: str, week_label: str, selected: dict[str, list[dict]])
     save_weekly_output(week_label, markdown, total_items, stats)
 
 
-def run():
-    """完整运行一次管道"""
+def run(recover_reasons: list[str] | None = None):
+    """完整运行一次管道。
+
+    Args:
+        recover_reasons: 过滤原因列表（如 ["too_short"]），跳过采集阶段，
+                        从日志回捞被误踢条目后重新处理。
+    """
     print_banner()
 
     # 初始化数据库
@@ -457,30 +463,65 @@ def run():
     week_range = get_week_range(CUTOFF_DATE)
     console.print(f"[bold]本周标签: {week_label} ({week_range})[/bold]\n")
 
-    # 阶段 1：采集
-    all_items = collect_all()
+    if recover_reasons:
+        # === 回捞模式：跳过采集，从日志恢复 + 重新处理 ===
+        console.print(f"[bold yellow]🔁 回捞模式: {', '.join(recover_reasons)}[/bold yellow]\n")
 
-    if not all_items:
-        console.print("[red]未采集到任何新闻，退出[/red]")
-        return
+        # 显示当前过滤统计
+        stats = show_filter_stats()
+        if stats:
+            console.print("[dim]当前过滤日志统计:[/dim]")
+            for reason, count in sorted(stats.items(), key=lambda x: -x[1]):
+                console.print(f"  [dim]{reason}: {count} 条[/dim]")
 
-    # 交叉来源补全（短摘要 RSS → B站 搜索）
-    try:
-        from pipeline.enrich import enrich_thin_items
-        enriched = enrich_thin_items(all_items)
-    except Exception as e:
-        console.print(f"[yellow]交叉补全失败(非致命): {e}[/yellow]")
+        # 回捞指定原因的条目
+        recovered = recover_filtered_items(reasons=recover_reasons)
+        if not recovered:
+            console.print(f"[yellow]没有匹配 '{recover_reasons}' 的过滤条目，退出[/yellow]")
+            return
 
-    # 保存原始采集 checkpoint（防中途崩溃）
-    save_raw_checkpoint(all_items)
-    console.print(f"[dim]已保存采集 checkpoint: {len(all_items)} 条[/dim]")
+        console.print(f"[green]回捞 {len(recovered)} 条被过滤条目[/green]")
+        for it in recovered[:10]:
+            console.print(f"  [dim]+ {it.get('title', '')[:60]}[/dim]")
+        if len(recovered) > 10:
+            console.print(f"  [dim]... 及其他 {len(recovered) - 10} 条[/dim]")
 
-    # 保存到数据库
-    saved = 0
-    for item in all_items:
-        if insert_news_item(item):
-            saved += 1
-    console.print(f"[dim]新入库: {saved} 条[/dim]")
+        # 加载上次采集的原始数据
+        raw_items = load_raw_checkpoint()
+        if not raw_items:
+            console.print("[red]未找到上次采集的 checkpoint，无法回捞。请先完整运行一次管道。[/red]")
+            return
+
+        console.print(f"[dim]已加载采集 checkpoint: {len(raw_items)} 条[/dim]")
+
+        # 合并回捞条目
+        all_items = raw_items + recovered
+        console.print(f"[dim]合并后: {len(all_items)} 条 (原始 {len(raw_items)} + 回捞 {len(recovered)})[/dim]")
+    else:
+        # === 正常模式：完整采集 + 处理 ===
+        all_items = collect_all()
+
+        if not all_items:
+            console.print("[red]未采集到任何新闻，退出[/red]")
+            return
+
+        # 交叉来源补全（短摘要 RSS → B站 搜索）
+        try:
+            from pipeline.enrich import enrich_thin_items
+            enriched = enrich_thin_items(all_items)
+        except Exception as e:
+            console.print(f"[yellow]交叉补全失败(非致命): {e}[/yellow]")
+
+        # 保存原始采集 checkpoint（防中途崩溃 + 供回捞模式使用）
+        save_raw_checkpoint(all_items)
+        console.print(f"[dim]已保存采集 checkpoint: {len(all_items)} 条[/dim]")
+
+        # 保存到数据库
+        saved = 0
+        for item in all_items:
+            if insert_news_item(item):
+                saved += 1
+        console.print(f"[dim]新入库: {saved} 条[/dim]")
 
     # 阶段 2：处理
     selected = process(all_items)
@@ -537,4 +578,21 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="游戏设备资讯周刊 - Gaming News Weekly")
+    parser.add_argument(
+        "--recover",
+        type=str,
+        default=None,
+        help="回捞被过滤条目，跳过采集直接重新处理。"
+             "用法: --recover too_short | --recover too_short,topic_irrelevant | --recover all",
+    )
+    args = parser.parse_args()
+
+    if args.recover:
+        if args.recover.lower() == "all":
+            reasons = None  # recover_filtered_items(None) = 全部
+        else:
+            reasons = [r.strip() for r in args.recover.split(",") if r.strip()]
+        run(recover_reasons=reasons)
+    else:
+        run()

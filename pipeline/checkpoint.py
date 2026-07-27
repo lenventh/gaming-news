@@ -112,7 +112,7 @@ def load_selected_checkpoint() -> dict[str, list[dict]] | None:
 # ---- 清理 ----
 
 def clear_checkpoints():
-    """清理所有 checkpoint"""
-    for f in (RAW_FILE, SELECTED_FILE, META_FILE):
+    """清理精选和元数据 checkpoint（保留原始采集供 --recover 回捞）"""
+    for f in (SELECTED_FILE, META_FILE):
         if f.exists():
             f.unlink()
