@@ -1,5 +1,7 @@
 """排序精选：按 sub_type 优先级 + 热度 + 来源多样性排序，每分类取 Top N"""
 
+import re
+
 from rich.console import Console
 
 console = Console()
@@ -9,17 +11,17 @@ TOP_PER_CATEGORY = 8
 # sub_type 优先级：数字越小越靠前
 SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
 
-# 中文浏览器采集来源 — 给予多样性加分，避免被英文 RSS/Reddit 淹没
+# 中文来源类型 — 给予多样性加分，避免被英文 RSS/Reddit 淹没
 CN_SOURCE_TYPES = {
-    # B站 全系
-    "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
-    "bilibili_article", "bilibili_dynamic",
+    # B站 全系（CI 模式的 Google News RSS + 本地浏览器采集）
+    "bilibili", "bilibili_browser", "bilibili_manufacturer", "bilibili_space",
+    "bilibili_article", "bilibili_dynamic", "bilibili_news_up",
     # 贴吧 / 知乎 / 什么值得买
     "tieba", "tieba_browser",
-    "zhihu_browser", "smzdm_browser",
-    # Google News 中文关键词搜索
-    "chinese_web",
-    # 中文 RSS (IT之家/机核/IGN中国等)
+    "zhihu_browser", "smzdm_browser", "smzdm",
+    # Google News 中文关键词搜索（CI 模式主力）
+    "chinese_web", "web_search",
+    # 中文 RSS (IT之家/机核/IGN中国/快科技/触乐等)
     "rss_cn",
 }
 
@@ -30,6 +32,21 @@ DIVERSITY_BOOST = 50
 OFFICIAL_SOURCE_TYPES = {"bilibili_manufacturer", "bilibili_dynamic"}
 OFFICIAL_BOOST = 120
 
+# B站动态 URL 模式（t.bilibili.com/{id}）— CI 模式下也能识别为官方来源
+_BILIBILI_DYNAMIC_URL_RE = re.compile(r"t\.bilibili\.com/\d+")
+
+
+def _is_official_source(item: dict) -> bool:
+    """判断条目是否来自官方渠道（品牌官方号动态/视频）"""
+    source_type = item.get("source_type", "")
+    if source_type in OFFICIAL_SOURCE_TYPES:
+        return True
+    # CI 模式：B站动态 URL 即 t.bilibili.com/* — 来自品牌官号/UP主动态
+    url = item.get("url", "")
+    if source_type in ("bilibili", "web_search") and _BILIBILI_DYNAMIC_URL_RE.search(url):
+        return True
+    return False
+
 
 def _sort_key(item: dict) -> tuple:
     """排序键：爆料 > 发售 > 系统更新 > 其他，同类内按时效置信度+热度+日期排"""
@@ -37,7 +54,7 @@ def _sort_key(item: dict) -> tuple:
     score = item.get("raw_data", {}).get("score", 0)
     # 来源加分：官方 > 中文 > 其他
     source_type = item.get("source_type", "")
-    if source_type in OFFICIAL_SOURCE_TYPES:
+    if _is_official_source(item):
         score += OFFICIAL_BOOST
     elif source_type in CN_SOURCE_TYPES:
         score += DIVERSITY_BOOST
