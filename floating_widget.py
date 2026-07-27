@@ -359,20 +359,31 @@ class FloatingWidget:
         self.sub_label.config(text=sub or "")
         self.count_label.config(text=f"{items} items" if items else "")
 
-        # Collect new samples
-        if samples:
-            for t in samples:
-                if t and t not in self._seen:
-                    self._seen.add(t)
-                    self._ticker.insert(0, t)
-                    if len(self._ticker) > 30:
-                        self._ticker.pop()
-
-        # Start ticker rotation if not already
-        if self._ticker and self._ticker_job is None:
-            self._next_tick()
+        if done:
+            # Stop ticker, show completion
+            self._stop_ticker()
+            m, sec = divmod(elapsed, 60)
+            self.ticker_lines[0].config(text="Pipeline complete", fg=self.green)
+            self.ticker_lines[1].config(text=f"Total time: {m:02d}:{sec:02d}  |  {items} items  |  {len(self._ticker)} headlines", fg=self.dim)
+        else:
+            # Collect new samples while running
+            if samples:
+                for t in samples:
+                    if t and t not in self._seen:
+                        self._seen.add(t)
+                        self._ticker.insert(0, t)
+                        if len(self._ticker) > 30:
+                            self._ticker.pop()
+            # Start ticker rotation
+            if self._ticker and self._ticker_job is None:
+                self._next_tick()
 
         self._update_action(s, done)
+
+    def _stop_ticker(self):
+        if self._ticker_job:
+            self.root.after_cancel(self._ticker_job)
+            self._ticker_job = None
 
     def _next_tick(self):
         """Rotate ticker: line1 shifts up, new item enters at bottom"""
