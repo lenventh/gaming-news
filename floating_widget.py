@@ -33,8 +33,8 @@ class WidgetHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path == "/" or self.path == "/index":
-            self._serve_html(self._review_page())
+        if self.path == "/":
+            self.send_response(302); self.send_header("Location","http://127.0.0.1:8765"); self.end_headers()
         elif self.path == "/status":
             self._serve_json(STATUS_FILE, {"stage":"init","stage_label":"idle","elapsed_seconds":0,"items_so_far":0,"done":False})
         elif self.path == "/schedule":
@@ -487,11 +487,18 @@ class FloatingWidget:
         self.action_btn.config(text="Starting...", bg=self.accent)
 
     def _do_review(self):
-        webbrowser.open("http://127.0.0.1:8766")
-        self.action_btn.config(text="Review in browser...", bg="#d2991d")
+        import subprocess
+        proj = os.path.dirname(os.path.abspath(__file__))
+        subprocess.Popen([sys.executable, "review_filtered.py"], cwd=proj,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.root.after(800, lambda: webbrowser.open("http://127.0.0.1:8765"))
 
     def _do_open_report(self):
-        webbrowser.open("http://127.0.0.1:8766")
+        import subprocess
+        proj = os.path.dirname(os.path.abspath(__file__))
+        subprocess.Popen([sys.executable, "review_filtered.py"], cwd=proj,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.root.after(800, lambda: webbrowser.open("http://127.0.0.1:8765"))
 
     def run(self):
         self.root.mainloop()
