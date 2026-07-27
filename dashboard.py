@@ -582,7 +582,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         weekly_out = False
         try:
             for f in os.listdir(OUTPUT_DIR):
-                if f.startswith(week_label) and f.endswith(".md"):
+                if f.endswith(".md") and (f.startswith(week_label) or f.startswith("2026-W")):
                     weekly_out = True
                     break
         except Exception:

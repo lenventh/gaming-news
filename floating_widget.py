@@ -105,7 +105,7 @@ class WidgetHandler(BaseHTTPRequestHandler):
         weekly_out = False
         try:
             for f in os.listdir(OUTPUT_DIR):
-                if f.startswith(week_label) and f.endswith(".md"):
+                if f.endswith(".md") and (f.startswith(week_label) or f.startswith("2026-W")):
                     weekly_out = True; break
         except: pass
 
@@ -360,11 +360,11 @@ class FloatingWidget:
         self.count_label.config(text=f"{items} items" if items else "")
 
         if done:
-            # Stop ticker, show completion
+            # Stop ticker, show completion summary
             self._stop_ticker()
             m, sec = divmod(elapsed, 60)
             self.ticker_lines[0].config(text="Pipeline complete", fg=self.green)
-            self.ticker_lines[1].config(text=f"Total time: {m:02d}:{sec:02d}  |  {items} items  |  {len(self._ticker)} headlines", fg=self.dim)
+            self.ticker_lines[1].config(text=f"Duration: {m:02d}:{sec:02d}  |  Output: output/{self._schedule.get('week_label','')}.md", fg=self.dim)
         else:
             # Collect new samples while running
             if samples:
