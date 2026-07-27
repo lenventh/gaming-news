@@ -80,6 +80,18 @@ VIDEO_W = 1920
 VIDEO_H = 1080
 MAX_TTS_PARALLEL = 3
 
+# 推荐的硬件/掌机 UP 主 UID（用于 Step1 筛选标记，格式: {UID: 备注}）
+HARDWARE_UP_MAIN = {
+    "25876945": "极客湾Geekerwan",       # 510万+ 综合硬件评测
+    "14871346": "硬件茶谈",              # 393万 硬件科普/系统生态
+    "385136374": "玩機社",               # 10.5万 开源掌机DIY改装
+    "28732825": "博van小哥哥",           # 16.9万 掌机开箱/年度盘点
+    "410439148": "大雄show",             # 21.6万 复古掌机/开源掌机
+    "439733928": "Deck_HQ",              # 0.5万 Steam Deck性能测试
+}
+# B站 UP 主主页 URL 模板: https://space.bilibili.com/{UID}
+# 可通过在 source 中匹配 UP 主名称来标记条目来源
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
