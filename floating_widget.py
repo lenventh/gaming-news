@@ -223,12 +223,14 @@ class FloatingWidget:
         # -- Two separate ticker cards with transparent gap --
         self.ticker_lines = []
         for i in range(2):
-            card = tk.Frame(self.root, bg="#161b22", bd=0,
-                           highlightbackground="#21262d", highlightthickness=1)
-            card.pack(fill=tk.X, padx=PADX, pady=(0,4))
+            card_bg = "#161b22" if i == 0 else "#11151c"
+            card_border = "#21262d" if i == 0 else "#1a1f28"
             clr = self.fg if i == 0 else self.dim
-            lbl = tk.Label(card, text="", fg=clr, bg="#161b22", anchor="w",
-                           justify=tk.LEFT, font=("Microsoft YaHei", 9),
+            card = tk.Frame(self.root, bg=card_bg, bd=0,
+                           highlightbackground=card_border, highlightthickness=1)
+            card.pack(fill=tk.X, padx=PADX, pady=(0,4))
+            lbl = tk.Label(card, text="", fg=clr, bg=card_bg, anchor="w",
+                           justify=tk.LEFT, font=("Microsoft YaHei", 9, "bold"),
                            wraplength=self.WIDTH-60, height=3)
             lbl.pack(fill=tk.BOTH, expand=True, ipadx=18, ipady=4)
             self.ticker_lines.append(lbl)
