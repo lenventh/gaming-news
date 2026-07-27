@@ -175,7 +175,7 @@ class FloatingWidget:
     """半透明悬浮窗"""
 
     WIDTH = 280
-    HEIGHT = 215
+    HEIGHT = 245
     STAGES = {
         "init": ("IDLE", "#484f58"),
         "load_ci": ("CI", "#58a6ff"),
@@ -220,17 +220,16 @@ class FloatingWidget:
         self.progress_canvas.pack(pady=(6,10), padx=PADX)
         self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 4, fill=self.accent, width=0)
 
-        # -- 2-line ticker for sample headlines --
+        # -- 3-line ticker for sample headlines --
         ticker_frame = tk.Frame(self.root, bg="#161b22", bd=0, highlightbackground="#21262d", highlightthickness=1)
         ticker_frame.pack(fill=tk.X, padx=PADX, pady=(0,6))
-        self.ticker_line1 = tk.Label(ticker_frame, text="",
-                                      fg=self.fg, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9), wraplength=self.WIDTH-36)
-        self.ticker_line1.pack(fill=tk.X, ipadx=10, ipady=10)
-        self.ticker_line2 = tk.Label(ticker_frame, text="",
-                                      fg=self.dim, bg="#161b22", anchor="w", justify=tk.LEFT,
-                                      font=("Arial", 9), wraplength=self.WIDTH-36)
-        self.ticker_line2.pack(fill=tk.X, ipadx=10, ipady=10)
+        self.ticker_lines = []
+        for i in range(3):
+            clr = self.fg if i == 0 else self.dim
+            lbl = tk.Label(ticker_frame, text="", fg=clr, bg="#161b22", anchor="w",
+                           justify=tk.LEFT, font=("Arial", 9), wraplength=self.WIDTH-36)
+            lbl.pack(fill=tk.X, ipadx=10, ipady=8)
+            self.ticker_lines.append(lbl)
 
         # -- Sub-stage / item count --
         info_frame = tk.Frame(self.root, bg=self.bg)
@@ -372,17 +371,17 @@ class FloatingWidget:
         self._update_action(s, done)
 
     def _next_tick(self):
-        """Rotate ticker: line2 moves up to line1, new line appears on line2"""
+        """Rotate ticker: 3-line shift-up, new item enters at bottom"""
         if not self._ticker:
             self._ticker_job = None
             return
-        # Cycle: take next item
         item = self._ticker[self._ticker_idx % len(self._ticker)]
         self._ticker_idx += 1
-        # Shift up: line1 text fades to dim, line2 text moves to line1, new text to line2
-        self.ticker_line1.config(text=self.ticker_line2.cget("text") or "")
-        self.ticker_line2.config(text=item)
-        self._ticker_job = self.root.after(8000, self._next_tick)  # ~8s per cycle
+        # Shift up: L2→L1, L3→L2, new→L3
+        self.ticker_lines[0].config(text=self.ticker_lines[1].cget("text") or "")
+        self.ticker_lines[1].config(text=self.ticker_lines[2].cget("text") or "")
+        self.ticker_lines[2].config(text=item)
+        self._ticker_job = self.root.after(6000, self._next_tick)  # ~6s per cycle
 
     def _update_action(self, s, done):
         sch = self._schedule
