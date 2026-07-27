@@ -1,17 +1,22 @@
 @echo off
 cd /d "%~dp0"
 
-echo ========================================
-echo   Gaming News Weekly - Dashboard
-echo ========================================
+echo Starting Gaming News Dashboard...
 echo.
-echo Pulling latest CI data...
-git pull
+
+echo [1/2] Pulling latest CI data...
+git pull 2>&1 | findstr /V "Already up to date" 2>nul
+
+echo [2/2] Starting dashboard + pipeline...
+start /min python dashboard.py --run
+
 echo.
-echo Starting dashboard + pipeline...
-start python dashboard.py --run
+echo Dashboard: http://127.0.0.1:8766
+echo Opening browser window...
+start "" dashboard_startup.vbs
+
 echo.
-echo Browser will open with live dashboard.
-echo Shows: progress stepper, timer, samples, review, recover.
+echo Keep this window open while dashboard is running.
+echo Close this window to shut down dashboard.
 echo.
-timeout /t 3 >nul
+pause
