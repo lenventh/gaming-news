@@ -8,6 +8,9 @@ console = Console()
 
 TOP_PER_CATEGORY = 8
 
+# 同一 source_type 每类最多占几条（保护来源广度，避免B站独占全部8条国内配额）
+MAX_PER_SOURCE_TYPE = 4
+
 # sub_type 优先级：数字越小越靠前
 SUBTYPE_PRIORITY = {"leak": 0, "release": 1, "system": 2, "general": 3}
 
@@ -87,8 +90,22 @@ def select_top_items(items: list[dict], top_n: int = TOP_PER_CATEGORY) -> dict[s
         domestic.sort(key=_sort_key)
         overseas.sort(key=_sort_key)
 
-        picked_d = domestic[:top_n]
-        picked_o = overseas[:top_n]
+        def _pick_with_diversity(items: list[dict], n: int) -> list[dict]:
+            """按分数取 top N，但同一 source_type 不超过 MAX_PER_SOURCE_TYPE 条"""
+            picked = []
+            counts: dict[str, int] = {}
+            for it in items:
+                st = it.get("source_type", "other")
+                if counts.get(st, 0) >= MAX_PER_SOURCE_TYPE:
+                    continue
+                picked.append(it)
+                counts[st] = counts.get(st, 0) + 1
+                if len(picked) >= n:
+                    break
+            return picked
+
+        picked_d = _pick_with_diversity(domestic, top_n)
+        picked_o = _pick_with_diversity(overseas, top_n)
         combined = picked_d + picked_o
         selected[cat] = combined
 
