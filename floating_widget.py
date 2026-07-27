@@ -229,8 +229,8 @@ class FloatingWidget:
             clr = self.fg if i == 0 else self.dim
             lbl = tk.Label(card, text="", fg=clr, bg="#161b22", anchor="w",
                            justify=tk.LEFT, font=("Microsoft YaHei", 9),
-                           wraplength=self.WIDTH-52, height=3)
-            lbl.pack(fill=tk.BOTH, expand=True, ipadx=14, ipady=4)
+                           wraplength=self.WIDTH-60, height=3)
+            lbl.pack(fill=tk.BOTH, expand=True, ipadx=18, ipady=4)
             self.ticker_lines.append(lbl)
 
         # -- Sub-stage / item count --
