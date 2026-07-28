@@ -521,7 +521,7 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
     # 初始化进度追踪
     clear_status()
-    status = PipelineStatus()
+    status = PipelineStatus(week_label=week_label)
 
     if recover_items is not None:
         # === 审核回捞模式：直接使用传入的条目 ===
@@ -697,7 +697,17 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
 
     total_selected = sum(len(v) for v in selected.values())
     console.print(f"\n[bold cyan]🎮 完成！共精选 {total_selected} 条资讯[/bold cyan]")
-    status.done()
+
+    # 完成阶段 3（审核 + 内容生成）
+    status.done_stage("review_generate")
+    console.print("[dim]阶段 3/5 完成: 审核+内容生成 ✓[/dim]")
+
+    # 阶段 4（线上整合正式版）— 占位，后续实现具体逻辑
+    console.print("[dim]阶段 4/5: 线上整合正式版 (待实现 — 拉取在线数据 + 本地合并)[/dim]")
+
+    # 阶段 5（剪映视频草稿）— 占位，后续重写浏览器自动化代码
+    console.print("[dim]阶段 5/5: 剪映视频草稿 (待实现 — 浏览器自动化)[/dim]")
+    console.print("[dim]  → 可通过悬浮窗手动触发阶段 4/5，或后续接入自动化[/dim]")
 
     # 过滤统计速览
     stats = show_filter_stats()

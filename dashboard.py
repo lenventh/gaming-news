@@ -187,8 +187,9 @@ body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #0d11
 
 <script>
 // ===== State =====
-const STAGES = ['load_ci', 'rss_google', 'browsers', 'collected', 'processing', 'generating', 'done'];
-const STAGE_LABELS = {load_ci:'CI Data', rss_google:'RSS+News', browsers:'Browser', collected:'Collected', processing:'Process', generating:'Generate', done:'Done'};
+const STAGES = ['ci_collect', 'local_collect', 'review_generate', 'online_merge', 'jianying_draft'];
+const STAGE_LABELS = {ci_collect:'CI采集', local_collect:'本地采集', review_generate:'审核生成', online_merge:'线上整合', jianying_draft:'剪映草稿'};
+const STAGE_EMOJIS = {ci_collect:'☁️', local_collect:'📡', review_generate:'✅', online_merge:'🔗', jianying_draft:'🎬'};
 let reviewData = [];
 let selectedTitles = new Set();
 let currentAction = null;
@@ -221,32 +222,44 @@ async function poll() {
 
 // ===== Progress bar =====
 function updateProgress(s) {
-  const idx = STAGES.indexOf(s.stage);
-  const pct = s.done ? 100 : Math.max(0, Math.min(95, (idx / (STAGES.length-1)) * 100));
+  // Use new 5-stage model from status.stages, fallback to legacy
+  const stages = s.stages || {};
+  let doneCount = 0, runningIdx = -1;
+  STAGES.forEach((key, i) => {
+    const st = stages[key] || {};
+    if (st.status === 'done') doneCount++;
+    else if (st.status === 'running' && runningIdx < 0) runningIdx = i;
+  });
+  const pct = s.overall_done ? 100 : Math.max(2, Math.min(98, ((doneCount + (runningIdx >= 0 ? 0.3 : 0)) / STAGES.length) * 100));
   document.getElementById('progressFill').style.width = pct + '%';
 
-  const steps = STAGES.map(st => {
+  const stepsHtml = STAGES.map(key => {
+    const st = stages[key] || {};
     let cls = 'waiting';
-    const si = STAGES.indexOf(st);
-    const ci = STAGES.indexOf(s.stage);
-    if (s.done || si < ci) cls = 'done';
-    else if (si === ci) cls = 'current';
-    return '<span class="' + cls + '">' + (STAGE_LABELS[st] || st) + '</span>';
+    if (st.status === 'done') cls = 'done';
+    else if (st.status === 'running') cls = 'current';
+    return '<span class="' + cls + '">' + (STAGE_EMOJIS[key]||'') + ' ' + (STAGE_LABELS[key]||key) + '</span>';
   }).join('');
-  document.getElementById('progressSteps').innerHTML = steps;
+  document.getElementById('progressSteps').innerHTML = stepsHtml;
 }
 
 function updateCards(s) {
   document.getElementById('elapsed').textContent = fmtTime(s.elapsed_seconds || 0);
-  document.getElementById('itemCount').textContent = s.items_so_far || 0;
-  document.getElementById('stageLabel').textContent = s.stage_label || (s.done ? 'done' : 'idle');
+  // Show items from current stage if available
+  let totalItems = 0;
+  const stages = s.stages || {};
+  STAGES.forEach(key => { totalItems += (stages[key]||{}).items_count || 0; });
+  document.getElementById('itemCount').textContent = totalItems || s.items_so_far || 0;
+  // Show current stage label
+  const cur = s.current_stage;
+  document.getElementById('stageLabel').textContent = cur ? (STAGE_LABELS[cur]||cur) : (s.overall_done ? 'done' : 'idle');
 }
 
 function updateStatusDot(s) {
   const dot = document.getElementById('statusDot');
   dot.className = 'dot';
-  if (s.done) dot.classList.add('done');
-  else if (s.stage && s.stage !== 'init') dot.classList.add('running');
+  if (s.overall_done) dot.classList.add('done');
+  else if (s.current_stage) dot.classList.add('running');
   else dot.classList.add('idle');
 }
 
@@ -278,17 +291,31 @@ function updateTicker(s) {
 function updateSchedule(sch) {
   if (!sch || !sch.steps) return;
   const html = sch.steps.map(step => {
-    let icon = step.done ? '&#x2705;' : step.running ? '&#x23F3;' : step.needs_you ? '&#x26A1;' : '&#x23F0;';
-    let statusCls = step.done ? 'ok' : step.running ? 'running' : step.needs_you ? 'needs-you' : 'pending';
-    let statusText = step.done ? 'done' : step.running ? 'running...' : step.needs_you ? 'needs you' : 'waiting';
+    const icon = step.done ? '✅' : step.running ? '⏳' : step.needs_you ? '⚡' : step.error ? '❌' : '⏰';
+    const statusCls = step.done ? 'ok' : step.running ? 'running' : step.needs_you ? 'needs-you' : step.error ? 'needs-you' : 'pending';
+    const statusText = step.done ? 'done' : step.running ? 'running' : step.needs_you ? 'needs you' : step.error ? 'error' : 'waiting';
+
+    // Detail: show sub_stage if running, or elapsed/items if done
+    let detail = '';
+    if (step.running && step.sub_stage) {
+      detail = escHtml(step.sub_stage);
+    } else if (step.done) {
+      const m = Math.floor((step.elapsed_seconds||0)/60);
+      const s = (step.elapsed_seconds||0) % 60;
+      detail = (step.items_count ? step.items_count + ' items · ' : '') + m + 'm' + s + 's';
+    } else {
+      const em = Math.floor((step.estimated_seconds||300)/60);
+      detail = 'est. ' + em + ' min';
+    }
+
     return '<div class="sched-item">'
       + '<span class="icon">' + icon + '</span>'
-      + '<div class="info"><div class="name">' + escHtml(step.name) + '</div>'
-      + '<div class="detail">' + escHtml(step.detail || '') + '</div></div>'
+      + '<div class="info"><div class="name">' + (step.emoji||'') + ' ' + escHtml(step.name) + '</div>'
+      + '<div class="detail">' + detail + '</div></div>'
       + '<span class="status ' + statusCls + '">' + statusText + '</span>'
       + '</div>';
   }).join('');
-  document.getElementById('schedule').innerHTML = '<h3>this week</h3>' + html;
+  document.getElementById('schedule').innerHTML = '<h3>workflow</h3>' + html;
 }
 
 // ===== Action bar =====
@@ -297,50 +324,74 @@ function updateActionBar(s, sch) {
   const msg = document.getElementById('actionMsg');
   const btn = document.getElementById('actionBtn');
 
-  // Pipeline done, review not done
-  if (s.done && !sch.review_done && !document.getElementById('reviewPanel').classList.contains('show')) {
-    bar.classList.add('show');
-    msg.innerHTML = '<strong>Pipeline complete.</strong> Review filtered items?';
-    btn.textContent = 'Start Review';
-    btn.className = 'btn btn-yellow';
-    currentAction = 'review';
-    return;
-  }
+  if (!sch || !sch.steps) return;
 
-  // CI data ready, local pipeline not started
-  if (sch.ci_done && !sch.local_started && !s.done && (!s.stage || s.stage === 'init')) {
+  // Find the first step that needs user action
+  const needsYouStep = sch.steps.find(step => step.needs_you);
+  const runningStep = sch.steps.find(step => step.running);
+
+  if (needsYouStep) {
     bar.classList.add('show');
-    msg.innerHTML = '<strong>CI data ready.</strong> Run local pipeline?';
-    btn.textContent = 'Run Pipeline';
     btn.className = 'btn btn-primary';
-    currentAction = 'pipeline';
+    currentAction = needsYouStep.key;
+
+    switch (needsYouStep.key) {
+      case 'local_collect':
+        msg.innerHTML = '<strong>CI数据就绪.</strong> 运行本地采集管道?';
+        btn.textContent = 'Run Pipeline';
+        btn.className = 'btn btn-primary';
+        currentAction = 'pipeline';
+        break;
+      case 'review_generate':
+        msg.innerHTML = '<strong>管道完成.</strong> 打开审核页面?';
+        btn.textContent = 'Start Review';
+        btn.className = 'btn btn-yellow';
+        currentAction = 'review';
+        break;
+      case 'online_merge':
+        msg.innerHTML = '<strong>内容已生成.</strong> 拉取在线数据整合?';
+        btn.textContent = 'Online Merge';
+        btn.className = 'btn btn-green';
+        currentAction = 'merge';
+        break;
+      case 'jianying_draft':
+        msg.innerHTML = '<strong>正式版已生成.</strong> 创建剪映视频草稿?';
+        btn.textContent = 'Create Draft';
+        btn.className = 'btn btn-green';
+        currentAction = 'jianying';
+        break;
+      default:
+        bar.classList.remove('show');
+        currentAction = null;
+        return;
+    }
     return;
   }
 
-  // Review saved, ready to recover
-  if (sch.review_selected && !sch.local_running) {
+  // Running — show progress, no action needed
+  if (runningStep) {
     bar.classList.add('show');
-    msg.innerHTML = '<strong>' + sch.review_count + ' items selected.</strong> Recover and regenerate?';
-    btn.textContent = 'Recover & Generate';
-    btn.className = 'btn btn-green';
-    currentAction = 'recover';
+    msg.innerHTML = '<strong>' + escHtml(runningStep.name) + '</strong> running... ' + escHtml(runningStep.sub_stage || '');
+    btn.className = 'btn btn-outline';
+    btn.textContent = 'Refresh';
+    currentAction = 'refresh';
     return;
   }
 
-  // Recover complete
-  if (sch.recover_done && s.done) {
+  // All done
+  if (sch.overall_done) {
     bar.classList.add('show');
-    msg.innerHTML = 'Weekly report is ready.';
+    msg.innerHTML = '全部完成!';
     btn.textContent = 'View Report';
     btn.className = 'btn btn-outline';
     currentAction = 'view';
     return;
   }
 
-  // Nothing to do
+  // Waiting for CI
   if (!sch.ci_done) {
     bar.classList.add('show');
-    msg.innerHTML = 'Waiting for CI to finish (Thu/Fri 05:00 Beijing). Check back later.';
+    msg.innerHTML = '等待CI完成 (北京时间周四/周五 05:00)';
     btn.className = 'btn btn-outline';
     btn.textContent = 'Refresh';
     currentAction = 'refresh';
@@ -363,6 +414,16 @@ function handleAction() {
       break;
     case 'recover':
       runRecover();
+      break;
+    case 'merge':
+      fetch('/run-merge', {method:'POST'}).catch(()=>{});
+      document.getElementById('actionBar').classList.remove('show');
+      toast('Online merge triggered', 'ok');
+      break;
+    case 'jianying':
+      fetch('/run-jianying', {method:'POST'}).catch(()=>{});
+      document.getElementById('actionBar').classList.remove('show');
+      toast('Jianying draft triggered', 'ok');
       break;
     case 'view':
       window.open('/open-report', '_blank');
@@ -508,6 +569,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._json({"ok": True})
         elif self.path == "/run-recover":
             self._run_recover()
+        elif self.path == "/run-merge":
+            self._json({"ok": True, "msg": "merge stub — 线上整合待实现"})
+        elif self.path == "/run-jianying":
+            self._json({"ok": True, "msg": "jianying stub — 剪映草稿待实现"})
         else:
             self.send_error(404)
 
@@ -532,34 +597,43 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_error(500)
 
     def _serve_schedule(self):
-        """Build schedule: what should be done vs what is done."""
+        """构建 5 阶段调度数据"""
         now = datetime.now(timezone.utc)
         bj_now = now + timedelta(hours=8)
-        wd = bj_now.weekday()  # 0=Mon ... 6=Sun
         iso = bj_now.isocalendar()
         week_label = f"{iso[0]}-W{iso[1]:02d}"
 
-        # Check file states
+        # 文件状态检查
         ci_done = os.path.exists(CI_RAW_FILE)
-        status_exists = os.path.exists(STATUS_FILE)
-        review_sel_exists = os.path.exists(SELECTION_FILE)
+        st_exists = os.path.exists(STATUS_FILE)
+        sel_exists = os.path.exists(SELECTION_FILE)
 
-        # Parse status if exists
-        local_running = False
-        local_done = False
-        if status_exists:
+        # 读取管道状态（5 阶段模型）
+        pipeline_stages = {}
+        overall_done = False
+        if st_exists:
             try:
                 with open(STATUS_FILE, "r", encoding="utf-8") as f:
                     st = json.load(f)
-                local_running = not st.get("done", False)
-                local_done = st.get("done", False)
+                pipeline_stages = st.get("stages", {})
+                overall_done = st.get("overall_done", False)
             except Exception:
                 pass
 
-        # Parse selection
+        # CI 条目数
+        ci_items_count = 0
+        if ci_done:
+            try:
+                with open(CI_RAW_FILE, "r", encoding="utf-8") as f:
+                    ci_data = json.load(f)
+                ci_items_count = len(ci_data) if isinstance(ci_data, list) else 0
+            except Exception:
+                pass
+
+        # 审核状态
         review_done = False
         review_count = 0
-        if review_sel_exists:
+        if sel_exists:
             try:
                 with open(SELECTION_FILE, "r", encoding="utf-8") as f:
                     sel = json.load(f)
@@ -568,72 +642,82 @@ class DashboardHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-        # Check if recover was run (selection file newer than pipeline status)
-        recover_done = False
-        if review_done and local_done:
-            try:
-                sel_mtime = os.path.getmtime(SELECTION_FILE)
-                st_mtime = os.path.getmtime(STATUS_FILE)
-                recover_done = sel_mtime < st_mtime  # status updated after selection
-            except Exception:
-                pass
-
-        # Check if any weekly output exists this week
+        # 周刊输出检查
         weekly_out = False
         try:
             for f in os.listdir(OUTPUT_DIR):
-                if f.endswith(".md") and (f.startswith(week_label) or f.startswith("2026-W")):
+                if f.endswith(".md") and not f.startswith("."):
                     weekly_out = True
                     break
         except Exception:
             pass
 
-        # --- Build steps ---
-        # Determine schedule based on day of week
-        is_report_day = wd >= 3  # Thu-Sun = report window open
+        # 构建 5 阶段步骤
+        from pipeline.status import STAGE_ORDER, STAGE_DEFS
 
-        steps = [
-            {
-                "name": "CI Collection",
-                "detail": "RSS + Google News (auto, Thu/Fri 05:00 Beijing)",
-                "done": ci_done or weekly_out,
-                "running": False,
-                "needs_you": False,
-            },
-            {
-                "name": "Local Pipeline",
-                "detail": "Browser collectors + process + generate",
-                "done": local_done or weekly_out,
-                "running": local_running,
-                "needs_you": ci_done and not local_done and not local_running,
-            },
-            {
-                "name": "Review & Recover",
-                "detail": "Check filtered items, recover false positives",
-                "done": recover_done or weekly_out,
-                "running": review_done and not recover_done,
-                "needs_you": local_done and not review_done,
-            },
-            {
-                "name": "Weekly Report",
-                "detail": f"output/{week_label}-*.md",
-                "done": weekly_out,
-                "running": False,
-                "needs_you": False,
-            },
-        ]
+        steps = []
+        for key in STAGE_ORDER:
+            info = STAGE_DEFS.get(key, {})
+            ps = pipeline_stages.get(key, {}) if pipeline_stages else {}
+            status = ps.get("status", "pending")
+
+            # 仅从 CI 数据文件推断阶段 1 状态（其他阶段以 pipeline_status 为准）
+            if status == "pending":
+                if key == "ci_collect" and ci_done:
+                    status = "done"
+
+            # needs_you 判断
+            needs_you = False
+            if key == "local_collect" and ci_done and status == "pending":
+                needs_you = True
+            elif key == "review_generate" and status == "pending":
+                prev = pipeline_stages.get("local_collect", {})
+                if prev.get("status") == "done":
+                    needs_you = True
+            elif key == "online_merge" and status == "pending":
+                prev = pipeline_stages.get("review_generate", {})
+                if prev.get("status") == "done":
+                    needs_you = True
+            elif key == "jianying_draft" and status == "pending":
+                prev = pipeline_stages.get("online_merge", {})
+                if prev.get("status") == "done":
+                    needs_you = True
+
+            detail = ""
+            if status == "running" and ps.get("sub_stage"):
+                detail = ps["sub_stage"]
+            elif status == "done" and ps.get("items_count", 0) > 0:
+                detail = f"{ps['items_count']} items"
+
+            steps.append({
+                "key": key,
+                "name": info.get("label", key),
+                "emoji": info.get("emoji", ""),
+                "detail": detail,
+                "done": status == "done",
+                "running": status == "running",
+                "needs_you": needs_you,
+                "error": status == "error",
+                "estimated_seconds": info.get("estimated_seconds", 300),
+                "elapsed_seconds": ps.get("elapsed_seconds", 0),
+                "sub_stage": ps.get("sub_stage", ""),
+                "items_count": ps.get("items_count", 0),
+                "samples": ps.get("samples", [])[-5:],
+            })
 
         self._json({
             "week_label": week_label,
             "ci_done": ci_done,
-            "local_started": status_exists,
-            "local_running": local_running,
+            "ci_items_count": ci_items_count,
+            "local_started": st_exists,
+            "local_running": bool(pipeline_stages.get("local_collect", {}).get("status") == "running"),
+            "local_done": bool(pipeline_stages.get("local_collect", {}).get("status") == "done"),
             "review_done": review_done,
             "review_selected": review_done,
             "review_count": review_count,
-            "recover_done": recover_done,
+            "recover_done": bool(pipeline_stages.get("review_generate", {}).get("status") == "done"),
             "weekly_out": weekly_out,
-            "is_report_day": is_report_day,
+            "overall_done": overall_done,
             "steps": steps,
         })
 
