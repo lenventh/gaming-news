@@ -49,7 +49,14 @@ class WidgetHandler(BaseHTTPRequestHandler):
             self.send_header("Location", "http://127.0.0.1:8765")
             self.end_headers()
         elif self.path == "/status":
-            self._serve_json(STATUS_FILE, {
+            # Per-week aware: prefer per-week status file over global
+            status_path = STATUS_FILE
+            sw = WidgetHandler.selected_week
+            if sw:
+                pwf = os.path.join(OUTPUT_DIR, f".pipeline_status_{sw}.json")
+                if os.path.isfile(pwf):
+                    status_path = pwf
+            self._serve_json(status_path, {
                 "stage": "init", "stage_label": "idle",
                 "elapsed_seconds": 0, "items_so_far": 0,
                 "samples": [], "sources": {},
