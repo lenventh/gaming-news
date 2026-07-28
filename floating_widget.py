@@ -282,10 +282,11 @@ class WidgetHandler(BaseHTTPRequestHandler):
         # If new CI data detected, reset local stages to show CI just completed
         if new_ci_detected and not overall_done:
             ci_done = True  # CI is done (new data exists)
-            # Reset downstream stages so user can re-run
-            for k in ["local_collect", "review_generate", "online_merge", "jianying_draft"]:
-                if k in pipeline_stages and pipeline_stages[k].get("status") == "done":
-                    pipeline_stages[k]["status"] = "pending"
+            # Reset downstream stages in both global and per-week so user can re-run
+            for stages_dict in [pipeline_stages, per_week_stages]:
+                for k in ["local_collect", "review_generate", "online_merge", "jianying_draft"]:
+                    if k in stages_dict and stages_dict[k].get("status") == "done":
+                        stages_dict[k]["status"] = "pending"
 
         self._json({
             "week_label": week_label,
