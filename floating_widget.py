@@ -23,11 +23,24 @@ class ReusableHTTPServer(HTTPServer):
 
 from config import OUTPUT_DIR
 from pipeline.status import STATUS_FILE, STAGE_ORDER, STAGE_DEFS
-from pipeline.filter import _FILTERED_LOG_PATH
 
 DEFAULT_PORT = 8766
-SELECTION_FILE = os.path.join(OUTPUT_DIR, ".filtered_selection.json")
 CI_RAW_FILE = os.path.join(OUTPUT_DIR, ".ci_raw_items.json")
+
+def _per_week_path(base_name: str) -> str:
+    """Get per-week file path for the currently selected week, fallback to global."""
+    week = WidgetHandler.selected_week
+    if week:
+        pwp = os.path.join(OUTPUT_DIR, f"{base_name}_{week}.json")
+        if os.path.isfile(pwp):
+            return pwp
+    return os.path.join(OUTPUT_DIR, f"{base_name}.json")
+
+def _selection_file() -> str:
+    return _per_week_path(".filtered_selection")
+
+def _filtered_log_file() -> str:
+    return _per_week_path(".filtered_items")
 
 CI_POLL_INTERVAL_MS = 60000
 NORMAL_POLL_INTERVAL_MS = 2000
@@ -116,7 +129,7 @@ class WidgetHandler(BaseHTTPRequestHandler):
 
         ci_done = os.path.exists(CI_RAW_FILE)
         st_exists = os.path.exists(STATUS_FILE)
-        sel_exists = os.path.exists(SELECTION_FILE)
+        sel_exists = os.path.isfile(_selection_file())
 
         pipeline_stages = {}
         local_running = False
@@ -151,7 +164,8 @@ class WidgetHandler(BaseHTTPRequestHandler):
         review_done = review_count = 0
         if sel_exists:
             try:
-                with open(SELECTION_FILE, "r", encoding="utf-8") as f:
+                sel_f = _selection_file()
+                with open(sel_f, "r", encoding="utf-8") as f:
                     sel = json.load(f)
                 review_done = True; review_count = sel.get("count", 0)
             except Exception:
@@ -310,8 +324,9 @@ class WidgetHandler(BaseHTTPRequestHandler):
 
     def _serve_filtered(self):
         try:
-            if os.path.exists(_FILTERED_LOG_PATH):
-                with open(_FILTERED_LOG_PATH, "r", encoding="utf-8") as f:
+            flf = _filtered_log_file()
+            if os.path.isfile(flf):
+                with open(flf, "r", encoding="utf-8") as f:
                     log = json.load(f)
                 items = []
                 for run in log.get("runs", []):
@@ -334,7 +349,8 @@ class WidgetHandler(BaseHTTPRequestHandler):
     def _save_selection(self, titles):
         from pathlib import Path
         Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
-        with open(SELECTION_FILE, "w", encoding="utf-8") as f:
+        sel_f = _selection_file()
+        with open(sel_f, "w", encoding="utf-8") as f:
             json.dump({"titles": titles, "count": len(titles)}, f, ensure_ascii=False, indent=2)
 
     def _run_recover(self):
