@@ -152,13 +152,31 @@ class WidgetHandler(BaseHTTPRequestHandler):
 
         ci_items_count = 0
         ci_samples = []
+        ci_mtime = 0
         if ci_done:
             try:
+                ci_mtime = os.path.getmtime(CI_RAW_FILE)
                 with open(CI_RAW_FILE, "r", encoding="utf-8") as f:
                     ci_data = json.load(f)
                 if isinstance(ci_data, list):
                     ci_items_count = len(ci_data)
                     ci_samples = [it.get("title", "") for it in ci_data[:30] if it.get("title")]
+            except Exception:
+                pass
+
+        # Detect NEW CI run: CI file fresher than pipeline start
+        pipeline_started_at = ""
+        new_ci_detected = False
+        if st_exists and ci_done:
+            try:
+                pipeline_started_at = st.get("pipeline_started_at", "")
+                if pipeline_started_at and ci_mtime > 0:
+                    # Compare CI file mtime with pipeline start
+                    from datetime import datetime as dt2
+                    ci_dt = dt2.fromtimestamp(ci_mtime)
+                    pipe_dt = dt2.strptime(pipeline_started_at, "%Y-%m-%dT%H:%M:%S")
+                    if ci_dt > pipe_dt:
+                        new_ci_detected = True
             except Exception:
                 pass
 
@@ -260,6 +278,14 @@ class WidgetHandler(BaseHTTPRequestHandler):
                     "items_count": ps.get("items_count", 0),
                     "samples": ps.get("samples", [])[-5:],
                 })
+
+        # If new CI data detected, reset local stages to show CI just completed
+        if new_ci_detected and not overall_done:
+            ci_done = True  # CI is done (new data exists)
+            # Reset downstream stages so user can re-run
+            for k in ["local_collect", "review_generate", "online_merge", "jianying_draft"]:
+                if k in pipeline_stages and pipeline_stages[k].get("status") == "done":
+                    pipeline_stages[k]["status"] = "pending"
 
         self._json({
             "week_label": week_label,
@@ -622,6 +648,9 @@ class FloatingWidget:
             self._auto_git_pull()
         else:
             self._poll_interval = NORMAL_POLL_INTERVAL_MS
+            # Periodically git pull even when ci_done, to detect re-triggered CI
+            if not running:
+                self._auto_git_pull()
 
         # Periodically scan for new reports (every 10th poll ~ 20s)
         if not hasattr(self, '_poll_count'):
