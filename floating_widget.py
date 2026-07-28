@@ -408,10 +408,11 @@ class FloatingWidget:
         # Progress bar
         stages_order = ["init","load_ci","rss_google","browsers","collected","processing","generating","done"]
         idx = stages_order.index(stage) if stage in stages_order else 0
-        pw = self.WIDTH - 32
-        pct = 1.0 if done else max(0.05, min(0.95, idx / (len(stages_order)-1)))
-        self.progress_canvas.coords(self.progress_bar, 0, 0, pw * pct, 4)
-        self.progress_canvas.itemconfig(self.progress_bar, fill=st_info[1] if pct < 1 else self.green)
+        pw = self.WIDTH - 28
+        pct = 1.0 if done else max(0.04, min(0.96, (idx+0.5) / len(stages_order)))
+        bar_w = int(pw * pct)
+        self.progress_canvas.coords(self.progress_bar, 0, 0, bar_w, 4)
+        self.progress_canvas.itemconfig(self.progress_bar, fill=st_info[1] if not done else self.green)
 
         # Sub-stage + count
         self.sub_label.config(text=sub or "")
@@ -489,16 +490,13 @@ class FloatingWidget:
     def _do_review(self):
         import subprocess
         proj = os.path.dirname(os.path.abspath(__file__))
+        # Kill old review server if any, start fresh
         subprocess.Popen([sys.executable, "review_filtered.py"], cwd=proj,
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.root.after(800, lambda: webbrowser.open("http://127.0.0.1:8765"))
+        self.root.after(1000, lambda: webbrowser.open("http://127.0.0.1:8765"))
 
     def _do_open_report(self):
-        import subprocess
-        proj = os.path.dirname(os.path.abspath(__file__))
-        subprocess.Popen([sys.executable, "review_filtered.py"], cwd=proj,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.root.after(800, lambda: webbrowser.open("http://127.0.0.1:8765"))
+        webbrowser.open("http://127.0.0.1:8766")
 
     def run(self):
         self.root.mainloop()
