@@ -235,14 +235,14 @@ class FloatingWidget:
     WIDTH = 280
     HEIGHT = 245
     STAGES = {
-        "init": ("IDLE", "#484f58"),
-        "load_ci": ("CI", "#58a6ff"),
-        "rss_google": ("RSS+", "#58a6ff"),
-        "browsers": ("BROWSER", "#bc8cff"),
-        "collected": ("COLLECT", "#238636"),
-        "processing": ("PROCESS", "#d2991d"),
-        "generating": ("GENERATE", "#d2991d"),
-        "done": ("DONE", "#238636"),
+        "init": ("待机", "#484f58"),
+        "load_ci": ("加载CI", "#58a6ff"),
+        "rss_google": ("采集", "#58a6ff"),
+        "browsers": ("浏览器", "#bc8cff"),
+        "collected": ("采集完成", "#238636"),
+        "processing": ("处理中", "#d2991d"),
+        "generating": ("生成中", "#d2991d"),
+        "done": ("完成", "#238636"),
     }
 
     def __init__(self, run_pipeline=False):
@@ -312,7 +312,7 @@ class FloatingWidget:
         # -- Bottom controls --
         bottom_bar = tk.Frame(self.root, bg=self.bg)
         bottom_bar.pack(fill=tk.X, padx=PADX, pady=(0,6))
-        tk.Label(bottom_bar, text="-  hide    o  min    x  close", font=("Segoe UI", 7),
+        tk.Label(bottom_bar, text="-  隐藏    o  最小化    x  关闭", font=("Microsoft YaHei", 7),
                  fg=self.dim, bg=self.bg, cursor="hand2").pack(side=tk.LEFT)
         bottom_bar.bind("<Button-1>", self._title_click)
 
@@ -421,8 +421,8 @@ class FloatingWidget:
             # Stop ticker, show completion summary
             self._stop_ticker()
             m, sec = divmod(elapsed, 60)
-            self.ticker_lines[0].config(text="Pipeline complete", fg=self.green)
-            self.ticker_lines[1].config(text=f"Duration: {m:02d}:{sec:02d}  |  Output: output/{self._schedule.get('week_label','')}.md", fg=self.dim)
+            self.ticker_lines[0].config(text="管道完成", fg=self.green)
+            self.ticker_lines[1].config(text=f"耗时: {m}分{sec}秒  |  输出: output/{self._schedule.get('week_label','')}.md", fg=self.dim)
         else:
             # Collect new samples while running
             if samples:
@@ -458,18 +458,18 @@ class FloatingWidget:
         sch = self._schedule
 
         if s.get("error"):
-            self._set_action("ERROR", self.accent, None)
+            self._set_action("出错", self.accent, None)
         elif done and sch.get("local_done") and not sch.get("review_done") and not sch.get("weekly_out"):
-            self._set_action("Review needed", "#d2991d", self._do_review)
+            self._set_action("需要审核", "#d2991d", self._do_review)
         elif sch.get("ci_done") and not sch.get("local_running") and not sch.get("local_done"):
-            self._set_action("Run Pipeline", self.green, self._do_pipeline)
+            self._set_action("运行管道", self.green, self._do_pipeline)
         elif sch.get("local_running"):
-            self._set_action("Running...", self.accent, None)
+            self._set_action("运行中...", self.accent, None)
         elif sch.get("weekly_out"):
-            self._set_action("Weekly Ready  DONE", self.green, self._do_open_report)
+            self._set_action("周刊已完成", self.green, self._do_open_report)
         elif not sch.get("ci_done"):
             day = sch.get("week_label", "")
-            self._set_action(f"Waiting CI {day}", self.dim, None)
+            self._set_action(f"等待CI {day}", self.dim, None)
         else:
             self._set_action("", self.dim, None)
 
