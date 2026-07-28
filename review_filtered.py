@@ -69,16 +69,22 @@ class ReviewHandler(BaseHTTPRequestHandler):
         with open(SELECTION_FILE, "w", encoding="utf-8") as f:
             json.dump({"titles": titles, "count": len(titles)}, f, ensure_ascii=False, indent=2)
 
+        # Auto-trigger recover in background
+        import subprocess
+        proj = os.path.dirname(os.path.abspath(__file__))
+        subprocess.Popen([sys.executable, "main.py", "--recover-reviewed"],
+                        cwd=proj, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
-        self.wfile.write(f"""<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>Saved</title>
+        self.wfile.write(f"""<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>Recovering</title>
+<meta http-equiv="refresh" content="5;url=http://127.0.0.1:8766">
 <style>body{{font-family:"Microsoft YaHei",sans-serif;background:#0d1117;color:#c9d1d9;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px}}
-h1{{color:#238636}} .cmd{{background:#161b22;padding:10px 18px;border-radius:6px;color:#f0f6fc;font-family:monospace;font-size:13px}}</style></head>
-<body><h1>Saved {len(titles)} items</h1>
-<p>Now run in terminal:</p>
-<div class="cmd">python main.py --recover-reviewed</div>
-<p style="color:#8b949e;margin-top:8px">Or click the Recover button in the floating widget</p>
+h1{{color:#238636}} p{{color:#8b949e;font-size:14px}} .spinner{{width:24px;height:24px;border:3px solid #21262d;border-top-color:#58a6ff;border-radius:50%;animation:spin .8s linear infinite}} @keyframes spin{{to{{transform:rotate(360deg)}}}}</style></head>
+<body><h1>Saved {len(titles)} items</h1><div class="spinner"></div>
+<p>Recovering & regenerating weekly report...</p>
+<p style="font-size:12px">Redirecting to dashboard in 5s</p>
 </body></html>""".encode("utf-8"))
 
     def _page(self, items, active_reason):
