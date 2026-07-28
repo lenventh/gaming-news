@@ -496,7 +496,10 @@ class FloatingWidget:
         self.root.after(1000, lambda: webbrowser.open("http://127.0.0.1:8765"))
 
     def _do_open_report(self):
-        webbrowser.open("http://127.0.0.1:8766")
+        import glob as _glob
+        reports = sorted(_glob.glob(os.path.join(OUTPUT_DIR, "2026-W*.md")), reverse=True)
+        if reports:
+            os.startfile(reports[0]) if sys.platform == "win32" else webbrowser.open(reports[0])
 
     def run(self):
         self.root.mainloop()
