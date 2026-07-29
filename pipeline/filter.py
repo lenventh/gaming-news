@@ -285,19 +285,24 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
 def get_week_label() -> str:
     """返回半周标签，如 '2026-W28-上' / '2026-W28-下'
 
-    周一运行 → 下（覆盖上周四-日，ISO 周号取上周）
-    周四运行 → 上（覆盖本周一-三，ISO 周号取本周）
+    上：报道本周一-三/四（Thu-Fri UTC 运行）
+    下：报道上周/本周四-日（Sat-Wed UTC 运行）
     workflow_dispatch 时根据当天星期自动判断。
     """
     now = datetime.now(timezone.utc)
     wd = now.weekday()  # 0=Mon ... 6=Sun
     if wd <= 2:
+        # Mon-Wed: 下（覆盖上周四-日）
         half = "下"
-        # 报道的是上周四-日 → 取上周的 ISO 周号
         report_week = (now - timedelta(days=3)).isocalendar()
-    else:
+    elif wd <= 4:
+        # Thu-Fri: 上（覆盖本周一-三/四）
         half = "上"
         report_week = now.isocalendar()
+    else:
+        # Sat-Sun: 下（覆盖本周四-日）
+        half = "下"
+        report_week = (now - timedelta(days=3)).isocalendar()
     return f"{report_week[0]}-W{report_week[1]:02d}-{half}"
 
 

@@ -519,6 +519,11 @@ def run(recover_reasons: list[str] | None = None, recover_items: list[dict] | No
     week_range = get_week_range(CUTOFF_DATE)
     console.print(f"[bold]本周标签: {week_label} ({week_range})[/bold]\n")
 
+    # 写入标签文件供 CI commit 步骤读取，避免跨日导致标签不一致
+    label_path = os.path.join(OUTPUT_DIR, ".week_label.txt")
+    with open(label_path, "w", encoding="utf-8") as f:
+        f.write(week_label)
+
     # 初始化进度追踪
     clear_status()
     status = PipelineStatus(week_label=week_label)

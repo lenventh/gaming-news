@@ -112,7 +112,6 @@ jobs:
           git pull --rebase origin master
           git stash pop || true
           git add output/
-          HALF=$(python3 -c "import datetime; wd=datetime.datetime.now(datetime.timezone.utc).weekday(); print({3:'上',6:'下'}.get(wd,'上'))")
-          LABEL="$(date +%G-W%V)-${HALF}"
+          LABEL=$(cat output/.week_label.txt 2>/dev/null || python3 -c "import datetime; d=datetime.datetime.now(datetime.timezone.utc); w=d.isocalendar(); print(f'{w[0]}-W{w[1]:02d}')")
           git diff --staged --quiet || git commit -m "${LABEL} semi-weekly report"
           git push

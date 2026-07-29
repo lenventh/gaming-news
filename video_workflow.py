@@ -105,113 +105,258 @@ state = {
 
 # ========== Flask 页面模板 ==========
 
-STEP1_TEMPLATE = """<!DOCTYPE html>
+STEP1_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Step 1/5 — 选择新闻条目</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:20px}
-h1{color:#e94560;margin-bottom:4px}
-.sub{color:#888;margin-bottom:20px;font-size:14px}
-.cat{background:#16213e;border-radius:10px;padding:16px;margin-bottom:16px}
-.cat h2{color:#0f3460;background:#e94560;display:inline-block;padding:4px 14px;border-radius:6px;font-size:16px}
-.item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #222}
-.item:last-child{border:none}
-.item input[type=checkbox]{margin-top:6px;transform:scale(1.3);accent-color:#e94560}
-.item .info{flex:1}
-.item .title{font-weight:bold;color:#fff;margin-bottom:4px}
-.item .meta{font-size:12px;color:#888}
-.item .meta span{margin-right:12px}
-.preview-img{max-width:120px;max-height:68px;border-radius:6px;object-fit:cover}
-.btn-bar{position:sticky;bottom:0;background:#1a1a2e;padding:16px 0;border-top:2px solid #e94560;margin-top:20px}
-.btn{background:#e94560;color:#fff;border:none;padding:12px 32px;font-size:18px;border-radius:8px;cursor:pointer}
+body{font-family:"Microsoft YaHei",sans-serif;background:#1a1a2e;color:#eee;padding:16px}
+h1{color:#e94560;margin-bottom:4px;font-size:22px}
+.sub{color:#888;margin-bottom:16px;font-size:13px}
+
+/* Week selector */
+.week-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px}
+.week-bar select{flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:6px;padding:8px 12px;font-size:14px}
+.week-bar button{background:#0f3460;color:#ccc;border:1px solid #555;padding:7px 14px;font-size:13px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.week-bar button:hover{background:#1a4a7a;color:#fff}
+
+/* Selection bar */
+.sel-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;font-size:13px;color:#aaa}
+.sel-bar b{color:#e94560;font-size:16px}
+.sel-bar button{background:transparent;color:#aaa;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.sel-bar button:hover{color:#fff;border-color:#888}
+
+/* Category card */
+.cat-card{background:#16213e;border-radius:10px;margin-bottom:14px;overflow:hidden}
+.cat-header{padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid #222}
+.cat-header .cat-name{font-weight:bold;font-size:15px;flex:1}
+.cat-header .cat-counts{font-size:12px;color:#888}
+.cat-header .cat-counts span{margin:0 4px}
+.cat-header .toggle{color:#888;font-size:12px;transition:transform .2s}
+.cat-body{padding:8px 12px}
+
+/* Sub-type group */
+.sub-group{margin-bottom:8px}
+.sub-label{font-size:13px;color:#f0c040;padding:6px 4px 4px;border-bottom:1px solid #222;margin-bottom:4px}
+.sub-label .sub-cnt{color:#888;font-size:11px}
+
+/* Item row */
+.item-row{display:flex;align-items:center;gap:8px;padding:6px 8px;margin:2px 0;border-radius:6px;background:#0f1a2e;transition:all .15s}
+.item-row:hover{background:#1a2a44}
+.item-row.dragging{opacity:0.4;background:#1a1a3a}
+.item-row input[type=checkbox]{transform:scale(1.2);accent-color:#e94560;flex-shrink:0}
+.item-row .drag-handle{color:#555;cursor:grab;font-size:16px;padding:0 2px;user-select:none;flex-shrink:0}
+.item-row .drag-handle:active{cursor:grabbing}
+.item-row .region-badge{font-size:11px;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.item-row .region-badge.os{background:#1a3a5c;color:#58a6ff}
+.item-row .region-badge.cn{background:#3a1a1a;color:#f85149}
+.item-row .item-img{width:60px;height:34px;border-radius:4px;object-fit:cover;flex-shrink:0;background:#0f3460}
+.item-row .item-info{flex:1;min-width:0}
+.item-row .item-title{font-size:13px;color:#eee;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item-row .item-meta{font-size:11px;color:#666;margin-top:2px}
+.item-row .item-actions{flex-shrink:0;display:flex;gap:4px}
+.item-row .item-actions select{background:#0f3460;color:#aaa;border:1px solid #333;border-radius:4px;padding:2px 4px;font-size:11px;max-width:100px}
+.item-row .item-actions select:focus{color:#fff;border-color:#58a6ff}
+
+/* Drop target highlight */
+.cat-card.drop-target{border:2px dashed #e94560}
+.sub-group.drop-target{background:rgba(233,69,96,.08);border-radius:6px}
+
+/* Bottom bar */
+.btn-bar{position:sticky;bottom:0;background:#1a1a2e;padding:14px 0;border-top:2px solid #e94560;margin-top:16px;display:flex;gap:12px;align-items:center}
+.btn{background:#e94560;color:#fff;border:none;padding:11px 28px;font-size:16px;border-radius:8px;cursor:pointer}
 .btn:hover{background:#ff6b81}
-.btn-ghost{background:transparent;border:1px solid #555;margin-left:12px}
-.summary{float:right;color:#aaa;font-size:14px;line-height:48px}
+.btn-ghost{background:transparent;border:1px solid #555;color:#ccc}
+.sel-count{color:#aaa;font-size:14px;flex:1}
+.sel-count b{color:#e94560}
 </style>
 </head>
 <body>
-<h1>🎬 口播视频工作流 — Step 1/5</h1>
-<p class="sub">勾选要制作成视频的新闻条目</p>
+<h1>Step 1/5 — 选择新闻条目</h1>
+<p class="sub">勾选条目，或拖拽 ⋮⋮ 移动到其他分类。区域标签：<span class="region-badge os">海外</span> <span class="region-badge cn">国内</span></p>
+
 {% if available_weeklies and available_weeklies|length > 1 %}
-<div style="margin-bottom:20px;display:flex;gap:12px;align-items:center">
-  <label style="color:#aaa;font-size:14px">📅 周刊期数</label>
-  <select id="weeklySelector" onchange="switchWeekly(this.value)" style="flex:1;background:#0f3460;color:#eee;border:1px solid #555;border-radius:6px;padding:8px 12px;font-size:15px">
+<div class="week-bar">
+  <select id="weeklySelector" onchange="switchWeekly(this.value)">
     {% for w in available_weeklies %}
     <option value="{{ w }}" {% if w == current_weekly %}selected{% endif %}>{{ w.replace('.md','').replace('-',' · ') }}</option>
     {% endfor %}
   </select>
-  <button type="button" class="btn-ghost" onclick="refreshWeekly()" style="background:#0f3460;color:#ccc;border:1px solid #555;padding:8px 16px;font-size:14px;border-radius:6px;cursor:pointer;white-space:nowrap">🔄 刷新列表</button>
+  <button onclick="refreshWeekly()">刷新</button>
 </div>
 {% endif %}
+
+<div class="sel-bar">
+  <span>已选 <b id="count">0</b> / {{ total }} 条</span>
+  <button onclick="selAll(true)">全选</button>
+  <button onclick="selAll(false)">全不选</button>
+</div>
+
 <form id="form" method="POST" action="/step2">
-{% for cat, items in by_category.items() %}
-<div class="cat">
-  <h2>{{ cat }} ({{ items|length }} 条) <button type="button" onclick="selectInBlock(this,true)" style="font-size:12px;background:transparent;color:#aaa;border:1px solid #555;padding:2px 10px;border-radius:4px;cursor:pointer">全选</button> <button type="button" onclick="selectInBlock(this,false)" style="font-size:12px;background:transparent;color:#aaa;border:1px solid #555;padding:2px 10px;border-radius:4px;cursor:pointer">全不选</button></h2>
-  {% for seg in items %}
-  <label class="item">
-    <input type="checkbox" name="idx" value="{{ seg._idx }}">
-    {% if seg.image_url %}
-    <img class="preview-img" src="{{ seg.image_url }}" onerror="this.style.display='none'" loading="lazy">
-    {% endif %}
-    <div class="info">
-      <div class="title">{{ seg.display_title[:80] }}</div>
-      <div class="meta">
-        <span>原文: {{ seg.title[:30] }}</span>
-        <span>源: {{ seg.source[:20] }}</span>
-        <span>{{ seg.char_count }} 字</span>
-        <span>配图: {{ '有' if seg.image_url else '无' }}</span>
+{% for cat_name in cat_order %}
+{% set cat_data = merged[cat_name] %}
+{% set cat_total = cat_data.overseas + cat_data.domestic %}
+<div class="cat-card" data-cat="{{ cat_name }}">
+  <div class="cat-header" onclick="toggleCat(this)">
+    <span class="cat-name">{{ cat_name }}</span>
+    <span class="cat-counts">
+      <span class="region-badge os">海外 {{ cat_data.overseas }}</span>
+      <span class="region-badge cn">国内 {{ cat_data.domestic }}</span>
+    </span>
+    <span class="toggle">▼</span>
+  </div>
+  <div class="cat-body">
+    {% for sub_name, items in cat_data.subs.items() %}
+    <div class="sub-group" data-sub="{{ sub_name }}">
+      <div class="sub-label">{{ sub_name }} <span class="sub-cnt">({{ items|length }})</span></div>
+      {% for seg in items %}
+      <div class="item-row" draggable="true" data-idx="{{ seg._idx }}" data-cat="{{ cat_name }}" data-sub="{{ sub_name }}">
+        <span class="drag-handle" title="拖拽移动">⋮⋮</span>
+        <input type="checkbox" name="idx" value="{{ seg._idx }}" onchange="updateCount()">
+        <span class="region-badge {{ 'os' if seg.region != '国内' else 'cn' }}">{{ seg.region }}</span>
+        {% if seg.image_url %}
+        <img class="item-img" src="{{ seg.image_url }}" loading="lazy" onerror="this.style.display='none'">
+        {% endif %}
+        <div class="item-info">
+          <div class="item-title">{{ seg.display_title[:80] }}</div>
+          <div class="item-meta">{{ seg.source[:20] }} · {{ seg.char_count }}字</div>
+        </div>
+        <div class="item-actions">
+          <select onchange="moveItem({{ seg._idx }}, this.value)" title="移动到">
+            <option value="">移动…</option>
+            {% for c in all_cats %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
+      {% endfor %}
     </div>
-  </label>
-  {% endfor %}
+    {% endfor %}
+  </div>
 </div>
 {% endfor %}
+
 <div class="btn-bar">
-  <button class="btn" type="submit">下一步 → 编辑脚本</button>
-  <button type="button" class="btn" onclick="refreshWeekly()" style="background:#0f3460">🔄 刷新文稿</button>
-<span class="summary">已选 <b id="count">0</b> / {{ total }} 条</span>
+  <span class="sel-count">已选 <b id="count2">0</b> 条</span>
+  <button type="button" class="btn btn-ghost" onclick="history.back()">返回</button>
+  <button type="submit" class="btn">下一步 → 编辑脚本</button>
 </div>
 </form>
+
 <script>
-function selectInBlock(btn, checked) {
-  const cat = btn.closest('.cat');
-  cat.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = checked; });
-  document.getElementById('count').textContent = document.querySelectorAll('input[type=checkbox]:checked').length;
+// ---- Selection counter ----
+function updateCount(){
+  var n=document.querySelectorAll('input[name=idx]:checked').length;
+  document.getElementById('count').textContent=n;
+  document.getElementById('count2').textContent=n;
 }
-document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-  cb.addEventListener('change',()=>{
-    document.getElementById('count').textContent=
-      document.querySelectorAll('input[type=checkbox]:checked').length
-  })
-})
-async function switchWeekly(filename) {
-  const sel = document.getElementById('weeklySelector');
-  sel.disabled = true;
-  try {
-    const r = await fetch('/api/switch-weekly', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({file: filename})
-    });
-    if (r.ok) { location.reload(); }
-    else { sel.disabled = false; alert('切换失败'); }
-  } catch(e) { sel.disabled = false; }
+document.querySelectorAll('input[name=idx]').forEach(function(cb){
+  cb.addEventListener('change',updateCount);
+});
+
+function selAll(checked){
+  document.querySelectorAll('input[name=idx]').forEach(function(cb){cb.checked=checked;});
+  updateCount();
 }
 
-async function refreshWeekly() {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '刷新中...';
-  try {
-    const r = await fetch('/api/refresh-weekly', {method:'POST'});
-    const data = await r.json();
-    if (data.ok) { location.reload(); }
-    else { alert('刷新失败: ' + (data.error || '未知')); btn.disabled = false; btn.textContent = '🔄 刷新列表'; }
-  } catch(e) { alert('网络错误'); btn.disabled = false; btn.textContent = '🔄 刷新列表'; }
+// ---- Category toggle ----
+function toggleCat(hdr){
+  var body=hdr.nextElementSibling;
+  var tog=hdr.querySelector('.toggle');
+  if(body.style.display==='none'){body.style.display='';tog.textContent='▼';}
+  else{body.style.display='none';tog.textContent='▶';}
 }
+
+// ---- Move item via dropdown ----
+async function moveItem(idx, newCat){
+  if(!newCat)return;
+  var sel=event.target;
+  sel.disabled=true;
+  try{
+    var r=await fetch('/api/move-item',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idx:idx,category:newCat,sub_type:'其他'})
+    });
+    if((await r.json()).ok){location.reload();}
+    else{sel.disabled=false;alert('移动失败');}
+  }catch(e){sel.disabled=false;}
+}
+
+// ---- Drag and drop ----
+var dragIdx=null,dragCat=null,dragSub=null;
+document.querySelectorAll('.item-row').forEach(function(row){
+  row.addEventListener('dragstart',function(e){
+    dragIdx=parseInt(this.dataset.idx);
+    dragCat=this.dataset.cat;
+    dragSub=this.dataset.sub;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',String(dragIdx));
+  });
+  row.addEventListener('dragend',function(e){
+    this.classList.remove('dragging');
+    document.querySelectorAll('.drop-target').forEach(function(el){el.classList.remove('drop-target');});
+  });
+});
+
+document.querySelectorAll('.sub-group,.cat-card').forEach(function(zone){
+  zone.addEventListener('dragover',function(e){
+    e.preventDefault();
+    e.dataTransfer.dropEffect='move';
+    this.classList.add('drop-target');
+  });
+  zone.addEventListener('dragleave',function(e){
+    if(!this.contains(e.relatedTarget))this.classList.remove('drop-target');
+  });
+  zone.addEventListener('drop',async function(e){
+    e.preventDefault();
+    this.classList.remove('drop-target');
+    if(dragIdx===null)return;
+    // Determine target category and sub_type
+    var card=this.closest('.cat-card');
+    var targetCat=card?card.dataset.cat:'';
+    var targetSub=this.classList.contains('sub-group')?this.dataset.sub:'其他';
+    if(!targetCat || (targetCat===dragCat && targetSub===dragSub)){dragIdx=null;return;}
+    try{
+      var r=await fetch('/api/move-item',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({idx:dragIdx,category:targetCat,sub_type:targetSub})
+      });
+      if((await r.json()).ok){location.reload();}
+    }catch(e){}
+    dragIdx=null;
+  });
+});
+
+// Prevent drag on interactive elements
+document.querySelectorAll('input,select,button').forEach(function(el){
+  el.addEventListener('dragstart',function(e){e.stopPropagation();});
+});
+
+// ---- Week switching ----
+async function switchWeekly(filename){
+  var sel=document.getElementById('weeklySelector');
+  sel.disabled=true;
+  try{
+    var r=await fetch('/api/switch-weekly',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:filename})});
+    if(r.ok){location.reload();}
+    else{sel.disabled=false;alert('切换失败');}
+  }catch(e){sel.disabled=false;}
+}
+async function refreshWeekly(){
+  var btn=event.target;btn.disabled=true;
+  try{
+    var r=await fetch('/api/refresh-weekly',{method:'POST'});
+    if((await r.json()).ok){location.reload();}
+    else{alert('刷新失败');btn.disabled=false;}
+  }catch(e){alert('网络错误');btn.disabled=false;}
+}
+
+// Initial count
+updateCount();
 </script>
 </body>
 </html>"""
@@ -755,26 +900,44 @@ def _translate_title(title: str) -> str:
 
 
 def parse_weekly(md_text: str) -> list[dict]:
-    """解析周刊，返回结构化条目"""
+    """解析周刊，返回结构化条目（含 region/sub_type/category）"""
     lines = md_text.split("\n")
     segments = []
     current_cat = ""
     current_region = ""
+    current_sub_type = ""
     in_ref = False
     i = 0
 
-    # 板块名称映射（### 标题 → 简短分类名）
+    # 板块名称映射（### 标题 → 简短分类名，支持中英文+emoji 前缀）
     CAT_LABEL_MAP = {
         "steam deck": "Steam Deck",
         "windows 掌机": "Windows 掌机",
         "安卓掌机": "安卓掌机",
         "开源掌机/linux掌机": "开源掌机/Linux掌机",
-        "playstation": "playstation",
-        "xbox": "xbox",
-        "任天堂 switch": "nintendo",
+        "playstation": "PlayStation",
+        "xbox": "Xbox",
+        "任天堂 switch": "Nintendo Switch",
         "模拟器资讯": "模拟器资讯",
         "游戏外设": "游戏外设",
     }
+    # Emoji-stripped variants
+    _cat_extra = {}
+    for _k, _v in list(CAT_LABEL_MAP.items()):
+        _clean = re.sub(r'^[^\w一-鿿]+', '', _k).strip()
+        if _clean and _clean != _k:
+            _cat_extra[_clean.lower()] = _v
+    CAT_LABEL_MAP.update(_cat_extra)
+
+    def _clean_region(h2_text: str) -> str:
+        """Extract clean region name from H2 header"""
+        h2_text = h2_text.strip()
+        h2_text = re.sub(r'^[^\w一-鿿]+', '', h2_text)
+        if "海外" in h2_text:
+            return "海外"
+        if "国内" in h2_text:
+            return "国内"
+        return h2_text
 
     while i < len(lines):
         line = lines[i].strip()
@@ -792,18 +955,23 @@ def parse_weekly(md_text: str) -> list[dict]:
         # 二级标题：区域（🌍 海外资讯 / 🇨🇳 国内资讯）
         m2 = re.match(r'^##\s+(.+)', line)
         if m2 and not line.startswith("####"):
-            current_region = m2.group(1).strip()
+            current_region = _clean_region(m2.group(1).strip())
             i += 1
             continue
 
-        # 三级标题：主分类（### Steam Deck 等）或子类型（### 🔮 新机爆料 等）
+        # 三级标题：主分类 或 子类型（带 emoji）
         m3 = re.match(r'^###\s+(.+)', line)
         if m3 and not line.startswith("####"):
             cat_raw = m3.group(1).strip()
-            cat_lower = cat_raw.lower()
+            # Strip leading emoji/symbols for lookup
+            cat_clean = re.sub(r'^[^\w一-鿿]+', '', cat_raw).strip()
+            cat_lower = cat_clean.lower()
             if cat_lower in CAT_LABEL_MAP:
                 current_cat = CAT_LABEL_MAP[cat_lower]
-            # else: 子类型标题（带 emoji），保持 current_cat 不变
+                current_sub_type = ""  # main category, reset sub_type
+            else:
+                # Sub-type header (🔮 新机爆料, 🆕 新机发售, etc.)
+                current_sub_type = cat_raw
             i += 1
             continue
 
@@ -811,7 +979,6 @@ def parse_weekly(md_text: str) -> list[dict]:
         m = re.match(r'^####\s+\d+[\.\、]\s*(.+)', line)
         if m:
             title = m.group(1).strip()
-            # 去除末尾残留的 ** 标记
             title = re.sub(r'\*+$', '', title).strip()
             image_url = ""
             content = ""
@@ -821,55 +988,49 @@ def parse_weekly(md_text: str) -> list[dict]:
             i += 1
             while i < len(lines) and not re.match(r'^(####|###|##|--)', lines[i]):
                 sub = lines[i].strip()
-                # 配图
-                im = re.match(r'!\[配图\]\((.+)\)', sub)
+                # 配图（独立行 ![](url)）
+                im = re.match(r'!\[配?[图圖]?\]\((.+)\)', sub)
                 if im:
                     image_url = im.group(1)
                     i += 1
                     continue
-                # 新闻内容（兼容有/无 ** 加粗）
+                # 结构化字段（兼容旧格式）
                 cm = re.match(r'-\s*(?:\*\*)?新闻内容(?:\*\*)?[：:]\s*(.+)', sub)
                 if cm:
                     content = cm.group(1).strip()
                     i += 1
                     continue
-                # 简要分析（兼容有/无 ** 加粗）
                 am = re.match(r'-\s*(?:\*\*)?简要分析(?:\*\*)?[：:]\s*(.+)', sub)
                 if am:
                     analysis = am.group(1).strip()
                     i += 1
                     continue
-                # 来源（兼容有/无 ** 加粗）
                 sm = re.match(r'-\s*(?:\*\*)?来源(?:\*\*)?[：:]\s*(.+)', sub)
                 if sm:
                     source = sm.group(1).strip()
                     i += 1
                     continue
-                # 模板兜底格式: 日期: YYYY-MM-DD | 来源: xxx
                 dm = re.match(r'^日期[：:]\s*(\S+)\s*\|\s*来源[：:]\s*(.+)', sub)
                 if dm:
                     source = dm.group(2).strip()
                     i += 1
                     continue
-                # 模板兜底格式: > summary (引用块中的摘要)
                 qm = re.match(r'^>\s*(.+)', sub)
                 if qm and not content:
                     content = qm.group(1).strip()
                     i += 1
                     continue
-                # 无标签纯文本兜底: LLM 有时不遵守结构化输出格式，直接写自然段落
+                # 自然段落兜底
                 if sub and not sub.startswith('!['):
                     raw_body += sub + " "
                 i += 1
 
-            # 无结构化字段时，从自然段落中拆分内容/分析/来源
+            # 从自然段落中拆分内容/分析/来源
             if not content and raw_body.strip():
                 body = raw_body.strip()
-                # 匹配多种"分析"表达: 分析：/ 分析认为，/ 分析指出，/ 分析称，
                 am = re.search(r'[。\s]分析(?:认为|指出|称)?[：:，,]\s*(.+)', body)
                 if am:
                     analysis = am.group(1).strip()
-                    # 从 analysis 中进一步拆分来源（支持中英文括号）
                     sm = re.search(r'[。\s][（(]?来源[：:]\s*(.+)', analysis)
                     if sm:
                         source = sm.group(1).strip().rstrip('）)')
@@ -879,9 +1040,16 @@ def parse_weekly(md_text: str) -> list[dict]:
                     sm = re.search(r'[。\s][（(]?来源[：:]\s*(.+)', body)
                     if sm:
                         source = sm.group(1).strip().rstrip('）)')
-                        content = body[:sm.start()].strip()
+                        body_no_src = body[:sm.start()].strip()
                     else:
-                        content = body
+                        body_no_src = body
+                    # No "分析" keyword → last sentence is the analysis
+                    last_period = body_no_src.rfind('。')
+                    if last_period > len(body_no_src) * 0.6:
+                        content = body_no_src[:last_period + 1].strip()
+                        analysis = body_no_src[last_period + 1:].strip()
+                    else:
+                        content = body_no_src
 
             content = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', content).strip()
             analysis = re.sub(r'\[|\]|\*|`|!\[配图\]\(.*?\)', '', analysis).strip()
@@ -896,7 +1064,9 @@ def parse_weekly(md_text: str) -> list[dict]:
                 "content": content,
                 "analysis": analysis,
                 "source": source,
-                "category": current_cat or current_region,
+                "region": current_region or "未知",
+                "category": current_cat or current_region or "未分类",
+                "sub_type": current_sub_type or "",
                 "speak_text": speak_text,
                 "char_count": len(speak_text),
             })
@@ -1919,8 +2089,7 @@ def _cleanup_temp_cache(keep_stem: str, max_age_days: int = 7):
 
 @app.route("/")
 def step1():
-    """选择条目"""
-    # 清理上次工作流的临时文件（裁剪图等），避免旧数据污染新流程
+    """选择条目 — 合并区域分类 + 子类型分组"""
     if WORK_DIR and WORK_DIR.exists():
         for f in WORK_DIR.glob("bg_*.jpg"):
             f.unlink(missing_ok=True)
@@ -1931,17 +2100,59 @@ def step1():
     segments = parse_weekly(md_text)
     state["segments"] = segments
 
-    by_category = {}
+    # Build merged structure: category → sub_type → items
+    merged = {}
+    all_cats = set()
     for seg in segments:
-        by_category.setdefault(seg["category"] or "未分类", []).append(seg)
+        cat = seg.get("category", "未分类")
+        sub = seg.get("sub_type", "") or "其他"
+        all_cats.add(cat)
+        merged.setdefault(cat, {"overseas": 0, "domestic": 0, "subs": {}})
+        merged[cat]["subs"].setdefault(sub, []).append(seg)
+        if seg.get("region") == "国内":
+            merged[cat]["domestic"] += 1
+        else:
+            merged[cat]["overseas"] += 1
+
+    # Sort categories by total items (most first), with "未分类" last
+    cat_order = sorted(merged.keys(), key=lambda c: (
+        0 if c == "未分类" else 1,
+        -(merged[c]["overseas"] + merged[c]["domestic"])
+    ))
+    # Categories available for move-to dropdown
+    all_cats_sorted = sorted(all_cats)
 
     return render_template_string(
         STEP1_TEMPLATE,
-        by_category=by_category,
+        merged=merged,
+        cat_order=cat_order,
+        all_cats=all_cats_sorted,
         total=len(segments),
         available_weeklies=state.get("_available_weeklies", []),
         current_weekly=Path(state["md_path"]).name,
     )
+
+
+@app.route("/api/move-item", methods=["POST"])
+def api_move_item():
+    """移动条目到指定分类/子类型"""
+    data = request.get_json()
+    idx = data.get("idx")
+    new_cat = data.get("category", "")
+    new_sub = data.get("sub_type", "")
+    if idx is None:
+        return jsonify({"ok": False, "error": "缺少 idx"}), 400
+    segs = state.get("segments", [])
+    found = None
+    for s in segs:
+        if s["_idx"] == idx:
+            s["category"] = new_cat
+            s["sub_type"] = new_sub
+            found = s
+            break
+    if found:
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "条目未找到"}), 404
 
 
 def _ensure_intro_outro(selected: list[dict] | None = None):
@@ -2267,6 +2478,7 @@ def step3_page():
             p["steps"][3]["status"] = "done"
             p["steps"][3]["text"] = f"剪映草稿已生成: {draft_msg}"
             p["steps"][3]["detail"] = "打开剪映 10.x → 草稿列表中找到该草稿，可直接编辑和导出"
+            _notify_widget_done()
         else:
             p["steps"][3]["status"] = "done"
             p["steps"][3]["text"] = f"剪映草稿: {draft_msg}"
@@ -2316,12 +2528,27 @@ def step5():
         if ok:
             state["_jy_draft_path"] = msg
             draft_path = msg
+            _notify_widget_done()
 
     return render_template_string(
         STEP5_TEMPLATE,
         draft_path=draft_path,
         work_dir=str(WORK_DIR),
     )
+
+
+def _notify_widget_done():
+    """Notify the floating widget that jianying draft generation completed."""
+    notify_url = os.environ.get("WIDGET_NOTIFY_URL", "")
+    if not notify_url:
+        return
+    try:
+        import urllib.request
+        req = urllib.request.Request(notify_url, method="POST")
+        urllib.request.urlopen(req, timeout=3)
+        console.log("[dim]已通知悬浮窗：剪映草稿完成[/dim]")
+    except Exception:
+        pass  # widget might not be running — that's fine
 
 
 def _build_ass_from_srt(srt_text: str, ass_path: str):
