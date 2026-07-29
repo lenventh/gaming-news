@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-07-28T16:21:06",
-  "updated_at": "17:18:53",
+  "pipeline_started_at": "2026-07-29T03:38:58",
+  "updated_at": "04:35:08",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1214,
-      "started_at": "16:21:06",
-      "done_at": "16:41:21",
+      "elapsed_seconds": 1184,
+      "started_at": "03:38:58",
+      "done_at": "03:58:43",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Logitech’s handheld plans are on ice — don’t expect a G Cloud 2 soon",
-        "You don’t need to splurge on an expensive handheld fan to beat the heat",
-        "触乐怪话：索尼取消实体光盘令人无奈，但它早晚会来",
+        "Logitech will pull a Nintendo — only European mice will come with replaceable batteries",
+        "This comfy gaming headset that can play audio from two sources is $25",
         "触乐怪话：脑子会了，手还不会",
-        "台积电CEO回应上调2026资本支出：设备通胀抬升采购成本",
-        "台积电2纳米工艺需求强劲 流片数量激增四倍",
-        "TCL 回音壁旗舰 Q95K 发售：11.1.4 物理 Hi-Fi 级声学架构、支持 360° 全向声场，7999 元",
-        "Meta 联合贝莱德成立合资企业，投资 140 亿美元建设得州 AI 数据中心",
-        "【抽奖】增量成长x魔像管理×元素暴击！95%好评Steam新作《无尽废墟》现已发售",
-        "祝愿天下父母身体健康，录音笔 VOL.750"
+        "拿到50万天使投资，44岁房地产老板开始做AI漫剧",
+        "美国称少数英伟达H200芯片卖给了中国：商务部回应",
+        "印度芯片制造计划面临挑战：塔塔电子将以90纳米工艺起步",
+        "2nm 芯片成本激增：高通骁龙 8 Elite Gen 6 Pro 预计突破 300 美元，联发科天玑 9600 Pro 单价约 216 美元",
+        "AI 推动软件漏洞发现速度大幅加快，今年数量较去年预计翻番",
+        "当“超级企业”被迫“讲政治”：产业已经成为大国竞争主战场",
+        "《突击风暴：零点》将于本周四在Steam开启抢先体验"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1521,
-      "started_at": "16:41:21",
-      "done_at": "17:06:44",
+      "elapsed_seconds": 1511,
+      "started_at": "03:58:43",
+      "done_at": "04:23:55",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2014,
+      "items_count": 1979,
       "samples": [
-        "【掌机快讯】GPD Win Max3将正式亮相ChinaJoy、Steamdeck涨价后销量暴跌82%",
-        "优化最好的次时代刺客信条！ROG掌机试玩《刺客信条：黑旗记忆重置》 最佳优化设置与多场景帧数测试 | ROG ALLY对比ROG XBOX掌机X",
         "Steam Deck OLED / 《恐怖黎明：阿斯特卡恩之牙》性能测试 / SteamOS 3.8.24",
         "离谱！AI 抢光内存芯片，Steam Deck 涨价后销量直接崩掉 82%",
-        "物理级防借！老外给steamdeck装电击枪，只为防家人偷玩？        #steam游戏#steamdeck#掌机#主机游戏"
+        "物理级防借！老外给steamdeck装电击枪，只为防家人偷玩？        #steam游戏#steamdeck#掌机#主机游戏",
+        "AMD Zen1-3处理器在Linux下游玩D加密HV破解游戏（适用于SteamDeck RogAlly等掌机，支持Bazzite系统）",
+        "《漫威蜘蛛侠2》Steam Deck 性能测试：2026年7月全新补丁更新"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 730,
-      "started_at": "17:06:44",
-      "done_at": "17:18:54",
+      "elapsed_seconds": 672,
+      "started_at": "04:23:55",
+      "done_at": "04:35:08",
       "sub_stage": "",
       "progress": null,
-      "items_count": 149,
+      "items_count": 154,
       "samples": []
     },
     "online_merge": {
@@ -97,23 +97,23 @@
     "贴吧排行榜",
     "贴吧排行榜",
     "贴吧排行榜",
+    "《漫威蜘蛛侠2》Steam Deck 性能测试：2026年7月全新补丁更新",
+    "AMD Zen1-3处理器在Linux下游玩D加密HV破解游戏（适用于SteamDeck RogAlly等掌机，支持Bazzite系统）",
     "物理级防借！老外给steamdeck装电击枪，只为防家人偷玩？        #steam游戏#steamdeck#掌机#主机游戏",
     "离谱！AI 抢光内存芯片，Steam Deck 涨价后销量直接崩掉 82%",
-    "Steam Deck OLED / 《恐怖黎明：阿斯特卡恩之牙》性能测试 / SteamOS 3.8.24",
-    "优化最好的次时代刺客信条！ROG掌机试玩《刺客信条：黑旗记忆重置》 最佳优化设置与多场景帧数测试 | ROG ALLY对比ROG XBOX掌机X",
-    "【掌机快讯】GPD Win Max3将正式亮相ChinaJoy、Steamdeck涨价后销量暴跌82%"
+    "Steam Deck OLED / 《恐怖黎明：阿斯特卡恩之牙》性能测试 / SteamOS 3.8.24"
   ],
   "sources": {
-    "rss_cn": 77,
-    "rss": 434,
-    "web_search": 39,
-    "chinese_web": 55,
-    "bilibili": 1341,
-    "tieba": 68
+    "rss_cn": 73,
+    "rss": 432,
+    "web_search": 27,
+    "chinese_web": 61,
+    "bilibili": 1317,
+    "tieba": 69
   },
-  "items_so_far": 149,
+  "items_so_far": 154,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3466
+  "elapsed_seconds": 3369
 }
