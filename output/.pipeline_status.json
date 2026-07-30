@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-07-29T03:38:58",
-  "updated_at": "04:35:08",
+  "pipeline_started_at": "2026-07-30T22:08:23",
+  "updated_at": "23:05:44",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1184,
-      "started_at": "03:38:58",
-      "done_at": "03:58:43",
+      "elapsed_seconds": 1169,
+      "started_at": "22:08:23",
+      "done_at": "22:27:54",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Logitech will pull a Nintendo — only European mice will come with replaceable batteries",
-        "This comfy gaming headset that can play audio from two sources is $25",
-        "触乐怪话：脑子会了，手还不会",
-        "拿到50万天使投资，44岁房地产老板开始做AI漫剧",
-        "美国称少数英伟达H200芯片卖给了中国：商务部回应",
-        "印度芯片制造计划面临挑战：塔塔电子将以90纳米工艺起步",
-        "2nm 芯片成本激增：高通骁龙 8 Elite Gen 6 Pro 预计突破 300 美元，联发科天玑 9600 Pro 单价约 216 美元",
-        "AI 推动软件漏洞发现速度大幅加快，今年数量较去年预计翻番",
-        "当“超级企业”被迫“讲政治”：产业已经成为大国竞争主战场",
-        "《突击风暴：零点》将于本周四在Steam开启抢先体验"
+        "Guide: Best Nintendo Remakes & Remasters Of All Time, Ranked",
+        "Video: Crazy Taxi: World Tour Gets A Crazy New Trailer Highlighting West Coast Map",
+        "一场主播办的《三角洲行动》比赛，怎么就坐满了万人体育场？",
+        "触乐怪话：随时随地“养女儿”",
+        "摆脱制程依赖！东方算芯3D AI芯片DF1000首次展出：获SAIL大奖",
+        "昇腾950超节点真机亮相就拿大奖：华为实现业界最大1024卡规模",
+        "外卖平台 DoorDash 成立无人机外送部门，计划今年秋季开启商业空中配送服务",
+        "IBM 宣布已进入“量子优势”时代，结果可验证",
+        "《战锤40K：战争黎明4》公布最新预告，太空死灵于克洛诺斯再度崛起",
+        "Vol.182｜Meta Phoenix 新品可能真的要来了"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1511,
-      "started_at": "03:58:43",
-      "done_at": "04:23:55",
+      "elapsed_seconds": 1551,
+      "started_at": "22:27:54",
+      "done_at": "22:53:46",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1979,
+      "items_count": 1985,
       "samples": [
-        "Steam Deck OLED / 《恐怖黎明：阿斯特卡恩之牙》性能测试 / SteamOS 3.8.24",
-        "离谱！AI 抢光内存芯片，Steam Deck 涨价后销量直接崩掉 82%",
-        "物理级防借！老外给steamdeck装电击枪，只为防家人偷玩？        #steam游戏#steamdeck#掌机#主机游戏",
-        "AMD Zen1-3处理器在Linux下游玩D加密HV破解游戏（适用于SteamDeck RogAlly等掌机，支持Bazzite系统）",
-        "《漫威蜘蛛侠2》Steam Deck 性能测试：2026年7月全新补丁更新"
+        "出SteamDeck OLED 2T 4600",
+        "这是我的小男朋友。ヽ(*≧ω≦)ﾉSteam Deck Oled. 512GB",
+        "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
+        "Steam Deck OLED / 《光环：战役进化》首发性能测试 / SteamOS 3.8.24",
+        "【Steam Deck推荐】OLED屏双系统掌机｜原装512G｜Windows+SteamOS双启动｜免拆封｜原厂全新开箱"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 672,
-      "started_at": "04:23:55",
-      "done_at": "04:35:08",
+      "elapsed_seconds": 718,
+      "started_at": "22:53:46",
+      "done_at": "23:05:44",
       "sub_stage": "",
       "progress": null,
-      "items_count": 154,
+      "items_count": 147,
       "samples": []
     },
     "online_merge": {
@@ -95,25 +95,25 @@
   },
   "samples": [
     "贴吧排行榜",
+    "其他游戏及话题_游戏",
     "贴吧排行榜",
-    "贴吧排行榜",
-    "《漫威蜘蛛侠2》Steam Deck 性能测试：2026年7月全新补丁更新",
-    "AMD Zen1-3处理器在Linux下游玩D加密HV破解游戏（适用于SteamDeck RogAlly等掌机，支持Bazzite系统）",
-    "物理级防借！老外给steamdeck装电击枪，只为防家人偷玩？        #steam游戏#steamdeck#掌机#主机游戏",
-    "离谱！AI 抢光内存芯片，Steam Deck 涨价后销量直接崩掉 82%",
-    "Steam Deck OLED / 《恐怖黎明：阿斯特卡恩之牙》性能测试 / SteamOS 3.8.24"
+    "【Steam Deck推荐】OLED屏双系统掌机｜原装512G｜Windows+SteamOS双启动｜免拆封｜原厂全新开箱",
+    "Steam Deck OLED / 《光环：战役进化》首发性能测试 / SteamOS 3.8.24",
+    "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
+    "这是我的小男朋友。ヽ(*≧ω≦)ﾉSteam Deck Oled. 512GB",
+    "出SteamDeck OLED 2T 4600"
   ],
   "sources": {
-    "rss_cn": 73,
-    "rss": 432,
-    "web_search": 27,
-    "chinese_web": 61,
-    "bilibili": 1317,
-    "tieba": 69
+    "rss_cn": 60,
+    "rss": 425,
+    "web_search": 43,
+    "chinese_web": 70,
+    "bilibili": 1323,
+    "tieba": 64
   },
-  "items_so_far": 154,
+  "items_so_far": 147,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3369
+  "elapsed_seconds": 3440
 }
