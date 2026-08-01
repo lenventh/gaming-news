@@ -43,7 +43,9 @@ ANDROID_DEVICES = {
     "kinhank k36",
     "kinhank k56",
     "kinhank k59",
-    "konkr pocket fit", "konkr pocket advance", "konkr advance",
+    "konkr advance",
+    "konkr pocket advance",
+    "konkr pocket fit",
     "kt r2",
     "logitech g cloud",
     "lokiii",
@@ -90,7 +92,7 @@ ANDROID_DEVICES = {
     "xu20 v32",
     "罗技 g cloud",
     "雷蛇 edge",
-}
+}}
 
 # ============================================================
 # Linux/开源掌机 — 运行 Linux CFW (ArkOS/AmberELEC/JELOS/MuOS/MinUI 等)
@@ -122,7 +124,6 @@ LINUX_DEVICES = {
     "magicx zero 40",
     "mangmi air x",
     "mangmi air y",
-    "芒米 air y",
     "mangmi pocket max",
     "miyoo a30",
     "miyoo flip",
@@ -177,28 +178,58 @@ LINUX_DEVICES = {
     "trimui model s",
     "trimui smart",
     "trimui smart pro",
-}
+    "芒米 air y",
+}}
 
 # ============================================================
 # Windows 掌机 (x86_64)
 # ============================================================
 WINDOWS_DEVICES = {
-    "rog ally", "rog ally x", "rog ally 2",
-    "legion go", "legion go s",
-    "msi claw", "msi claw 7", "msi claw 8", "msi claw 8 ai+",
-    "ayaneo 2", "ayaneo 3", "ayaneo kun", "ayaneo air", "ayaneo air plus",
-    "ayaneo slide", "ayaneo flip", "ayaneo next", "ayaneo next lite",
-    "gpd win 4", "gpd win 5", "gpd win mini", "gpd win max 2", "gpd win max 3",
-    "gpd pocket 4", "gpd win 3",
-    "onexplayer x1", "onexplayer x1 mini", "onexplayer 2",
-    "aokzoe a1", "aokzoe a1 x", "aokzoe a2",
-    "onexfly", "onexfly f1", "onexfly f1 pro",
-    "索泰 zone", "zotac zone", "zotac zone 2",
+    "acer nitro handheld",
+    "aokzoe a1",
+    "aokzoe a1 x",
+    "aokzoe a2",
+    "ayaneo 2",
+    "ayaneo 3",
+    "ayaneo air",
+    "ayaneo air plus",
+    "ayaneo flip",
+    "ayaneo kun",
+    "ayaneo next",
+    "ayaneo next lite",
+    "ayaneo slide",
+    "gigabyte aorus handheld",
+    "gpd pocket 4",
+    "gpd win 3",
+    "gpd win 4",
+    "gpd win 5",
+    "gpd win max 2",
+    "gpd win max 3",
+    "gpd win mini",
+    "legion go",
+    "legion go s",
+    "msi claw",
+    "msi claw 7",
+    "msi claw 8",
+    "msi claw 8 ai+",
+    "onexfly",
+    "onexfly f1",
+    "onexfly f1 pro",
+    "onexplayer 2",
+    "onexplayer x1",
+    "onexplayer x1 mini",
+    "rog ally",
+    "rog ally 2",
+    "rog ally x",
+    "zotac zone",
+    "zotac zone 2",
+    "宏碁 nitropad",
+    "技嘉 aorus handheld",
     "攻氪 konk",
-    "acer nitro handheld", "宏碁 nitropad",
-    "gigabyte aorus handheld", "技嘉 aorus handheld",
-    "联想 拯救者 go", "联想 legion go",
-}
+    "索泰 zone",
+    "联想 legion go",
+    "联想 拯救者 go",
+}}
 
 # ============================================================
 # Steam Deck 系列
