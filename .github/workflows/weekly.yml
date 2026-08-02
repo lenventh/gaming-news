@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          lfs: true
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -41,7 +42,9 @@ jobs:
         run: playwright install chromium --with-deps
 
       - name: Pull latest
-        run: git pull --rebase origin master
+        run: |
+          git pull --rebase origin master
+          git lfs pull
 
       - name: Run news pipeline
         env:

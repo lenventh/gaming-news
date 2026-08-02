@@ -8,7 +8,6 @@ output/.checkpoints/
 output/.filtered_items.json
 output/.filtered_selection.json
 output/.pipeline_status_*.json
-output/images/
 output/~$*
 temp/
 .weekly_cache/

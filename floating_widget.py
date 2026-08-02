@@ -21,7 +21,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if sys.platform == "win32" else 0
 
 class ReusableHTTPServer(HTTPServer):
-    allow_reuse_address = True
+    # Do NOT set allow_reuse_address — it lets two widget processes
+    # silently share port 8766, causing requests to randomly hit old
+    # code and produce stale / inconsistent state.
     daemon_threads = True
 
 from config import OUTPUT_DIR
@@ -31,12 +33,11 @@ DEFAULT_PORT = 8766
 CI_RAW_FILE = os.path.join(OUTPUT_DIR, ".ci_raw_items.json")
 
 def _per_week_path(base_name: str) -> str:
-    """Get per-week file path for the currently selected week, fallback to global."""
+    """Get per-week file path for the currently selected week. No fallback to global
+    when a week is selected — avoids stale global data masking per-week state."""
     week = WidgetHandler.selected_week
     if week:
-        pwp = os.path.join(OUTPUT_DIR, f"{base_name}_{week}.json")
-        if os.path.isfile(pwp):
-            return pwp
+        return os.path.join(OUTPUT_DIR, f"{base_name}_{week}.json")
     return os.path.join(OUTPUT_DIR, f"{base_name}.json")
 
 def _selection_file() -> str:
@@ -66,30 +67,8 @@ class WidgetHandler(BaseHTTPRequestHandler):
             self.send_header("Location", "http://127.0.0.1:8765")
             self.end_headers()
         elif self.path == "/status":
-            # Per-week aware: prefer per-week, only use global if pipeline is active
-            status_path = ""
-            sw = WidgetHandler.selected_week
-            if sw:
-                pwf = os.path.join(OUTPUT_DIR, f".pipeline_status_{sw}.json")
-                if os.path.isfile(pwf):
-                    status_path = pwf
-            if not status_path:
-                # Check if global status is from an active pipeline (not stale)
-                if os.path.exists(STATUS_FILE):
-                    try:
-                        with open(STATUS_FILE, "r", encoding="utf-8") as f:
-                            gs = json.load(f)
-                        if not gs.get("overall_done", False):
-                            status_path = STATUS_FILE  # Active pipeline
-                    except Exception:
-                        pass
-            self._serve_json(status_path if status_path else "", {
-                "stage": "init", "stage_label": "idle",
-                "elapsed_seconds": 0, "items_so_far": 0,
-                "samples": [], "sources": {},
-                "done": False, "current_stage": None,
-                "stages": {}, "overall_done": False,
-            })
+            sw = WidgetHandler.selected_week or WidgetHandler._get_active_week_label()
+            self._json(WidgetHandler._assemble_status(sw))
         elif self.path == "/schedule":
             self._serve_schedule()
         elif self.path == "/filtered":
@@ -133,252 +112,342 @@ class WidgetHandler(BaseHTTPRequestHandler):
         except Exception:
             self.send_error(500)
 
-    def _serve_schedule(self):
-        # Use selected week from available reports, or fall back to current date
-        week_label = WidgetHandler.selected_week
-        if not week_label:
-            from datetime import datetime, timezone, timedelta
-            now = datetime.now(timezone.utc)
-            bj_now = now + timedelta(hours=8)
-            iso = bj_now.isocalendar()
-            week_label = f"{iso[0]}-W{iso[1]:02d}"
+    # ── Week state helpers ───────────────────────────────────────────
 
-        ci_done = os.path.exists(CI_RAW_FILE)
-        st_exists = os.path.exists(STATUS_FILE)
-        sel_exists = os.path.isfile(_selection_file())
+    _ci_cache = None
+    _ci_cache_time = 0
 
-        pipeline_stages = {}
-        local_running = False
-        local_done = False
-        overall_done = False
-        status_stale = False
-        if st_exists:
+    @classmethod
+    def _get_ci_data(cls):
+        """Return (exists, items_count, samples) with 60s cache.
+
+        The CI raw file is ~700 KB.  Reading + parsing it on every poll
+        cycle would cause /schedule requests to exceed the 3 s fetch
+        timeout, which makes the UI silently keep stale state after a
+        week switch.  Cache it for 60 s so the HTTP handler stays fast.
+        """
+        import time as _time
+        now = _time.time()
+        if cls._ci_cache is not None and now - cls._ci_cache_time < 60:
+            return cls._ci_cache
+        try:
+            if os.path.exists(CI_RAW_FILE):
+                with open(CI_RAW_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    cls._ci_cache = (
+                        True,
+                        len(data),
+                        [it.get("title", "") for it in data[:30] if it.get("title")],
+                    )
+                else:
+                    cls._ci_cache = (True, 0, [])
+            else:
+                cls._ci_cache = (False, 0, [])
+        except Exception:
+            cls._ci_cache = (False, 0, [])
+        cls._ci_cache_time = now
+        return cls._ci_cache
+
+    @classmethod
+    def _get_active_week_label(cls):
+        """Return the calendar-based active week label (e.g. 2026-W31-上)."""
+        from datetime import datetime, timezone, timedelta
+        now_utc = datetime.now(timezone.utc)
+        wd = now_utc.weekday()
+        if wd <= 2:
+            half, rw = "下", (now_utc - timedelta(days=3)).isocalendar()
+        elif wd <= 4:
+            half, rw = "上", now_utc.isocalendar()
+        else:
+            half, rw = "下", (now_utc - timedelta(days=3)).isocalendar()
+        return f"{rw[0]}-W{rw[1]:02d}-{half}"
+
+    @classmethod
+    def _build_steps(cls, week_label):
+        """Compute stage states for a given week label.
+
+        Returns: {steps, ci_available, ci_items_count, ci_samples,
+                  report_exists, per_week_stages}
+
+        Single source of truth — both /status and /schedule use this.
+        """
+        report_path = os.path.join(OUTPUT_DIR, f"{week_label}.md")
+        report_exists = os.path.isfile(report_path)
+
+        # Per-week status file
+        per_week_file = os.path.join(OUTPUT_DIR, f".pipeline_status_{week_label}.json")
+        per_week_stages = {}
+        if os.path.isfile(per_week_file):
             try:
-                with open(STATUS_FILE, "r", encoding="utf-8") as f:
-                    st = json.load(f)
-                pipeline_stages = st.get("stages", {})
-                overall_done = st.get("overall_done", False)
-                local_running = bool(pipeline_stages.get("local_collect", {}).get("status") == "running")
-                local_done = bool(pipeline_stages.get("local_collect", {}).get("status") == "done")
-
-                updated_at = st.get("updated_at", "")
-                if updated_at:
-                    from datetime import datetime as dt2
-                    now_str = dt2.now().strftime("%H:%M:%S")
-                    try:
-                        updated_parts = [int(x) for x in updated_at.split(":")]
-                        now_parts = [int(x) for x in now_str.split(":")]
-                        updated_secs = updated_parts[0]*3600 + updated_parts[1]*60 + updated_parts[2]
-                        now_secs = now_parts[0]*3600 + now_parts[1]*60 + now_parts[2]
-                        if now_secs - updated_secs > 60:
-                            status_stale = True
-                    except Exception:
-                        pass
+                with open(per_week_file, "r", encoding="utf-8") as f:
+                    pw = json.load(f)
+                if pw.get("pipeline_started_at", ""):
+                    per_week_stages = pw.get("stages", {})
             except Exception:
                 pass
 
-        review_done = review_count = 0
-        if sel_exists:
-            try:
-                sel_f = _selection_file()
-                with open(sel_f, "r", encoding="utf-8") as f:
-                    sel = json.load(f)
-                review_done = True; review_count = sel.get("count", 0)
-            except Exception:
-                pass
-
+        # CI availability for this week
+        ci_available = False
         ci_items_count = 0
         ci_samples = []
-        ci_mtime = 0
-        if ci_done:
-            try:
-                ci_mtime = os.path.getmtime(CI_RAW_FILE)
-                with open(CI_RAW_FILE, "r", encoding="utf-8") as f:
-                    ci_data = json.load(f)
-                if isinstance(ci_data, list):
-                    ci_items_count = len(ci_data)
-                    ci_samples = [it.get("title", "") for it in ci_data[:30] if it.get("title")]
-            except Exception:
-                pass
+        if per_week_stages.get("ci_collect", {}).get("status") == "done":
+            ci_available = True
+        elif week_label == cls._get_active_week_label():
+            ci_available = True
 
-        # Determine which week the CI data belongs to by matching mtime with report files.
-        # Git pull/commit updates both files simultaneously, so same mtime = same CI run.
-        ci_matches_week = True
-        ci_belongs_to = ""
-        if ci_done and ci_mtime > 0 and week_label:
-            try:
-                import re as _re
-                best_match = ""
-                best_diff = float("inf")
-                out_dir = os.path.dirname(CI_RAW_FILE)
-                for f in os.listdir(out_dir):
-                    m = _re.match(r"(20\d{2}-W\d{2}(?:-[上下])?)\.md$", f)
-                    if not m:
-                        continue
-                    rpath = os.path.join(out_dir, f)
-                    r_mtime = os.path.getmtime(rpath)
-                    diff = abs(ci_mtime - r_mtime)
-                    if diff < best_diff and diff < 5:  # within 5 seconds = same git operation
-                        best_diff = diff
-                        best_match = m.group(1)
-                if best_match:
-                    ci_belongs_to = best_match
-                    ci_matches_week = (week_label == best_match)
-            except Exception:
-                pass
+        ci_exists, ci_count, ci_samp = cls._get_ci_data()
+        if ci_available and ci_exists:
+            ci_items_count = ci_count
+            ci_samples = ci_samp
 
-        # Detect NEW CI run: CI file fresher than pipeline start
-        pipeline_started_at = ""
-        new_ci_detected = False
-        if st_exists and ci_done:
-            try:
-                pipeline_started_at = st.get("pipeline_started_at", "")
-                if pipeline_started_at and ci_mtime > 0:
-                    # Compare CI file mtime with pipeline start
-                    from datetime import datetime as dt2
-                    ci_dt = dt2.fromtimestamp(ci_mtime)
-                    pipe_dt = dt2.strptime(pipeline_started_at, "%Y-%m-%dT%H:%M:%S")
-                    if ci_dt > pipe_dt:
-                        new_ci_detected = True
-            except Exception:
-                pass
-
-        # Build 5 steps — per-week aware
-        selected_week = week_label
-        report_path = os.path.join(OUTPUT_DIR, f"{selected_week}.md") if selected_week else ""
-        report_exists = os.path.isfile(report_path) if report_path else False
-
-        # Try loading per-week status file first
-        per_week_stages = {}
-        per_week_overall = False
-        pw = None
-        if selected_week:
-            per_week_file = os.path.join(OUTPUT_DIR, f".pipeline_status_{selected_week}.json")
-            if os.path.isfile(per_week_file):
-                try:
-                    with open(per_week_file, "r", encoding="utf-8") as f:
-                        pw = json.load(f)
-                    per_week_stages = pw.get("stages", {})
-                    per_week_overall = pw.get("overall_done", False)
-                except Exception:
-                    pw = None
-
-        # If per-week data exists, use it as the authoritative source for CI and overall state
-        if per_week_stages:
-            per_week_ci = per_week_stages.get("ci_collect", {})
-            if per_week_ci.get("status") == "done":
-                ci_done = True
-            overall_done = per_week_overall
-
-        # Distinguish real per-week data from stub files (pipeline_started_at empty)
-        pw_is_stub = per_week_stages and (pw or {}).get("pipeline_started_at", "") == ""
-
+        # ── Build steps ──
         steps = []
-        for i, key in enumerate(STAGE_ORDER):
-            info = STAGE_DEFS.get(key, {})
-            est = info.get("estimated_seconds", 300)
 
-            if per_week_stages and not (pw_is_stub and report_exists):
-                # Per-week status file exists — show its state
+        if report_exists:
+            # Category A: Report generated.
+            # Core stages 0-2 = always done.
+            # Post stages 3-4 = cascade: only the **first** non-done one
+            #   is needs_you — the user acts on them sequentially.
+            first_post_undone_found = False
+            for i, key in enumerate(STAGE_ORDER):
+                info = STAGE_DEFS.get(key, {})
+                est = info.get("estimated_seconds", 300)
                 ps = per_week_stages.get(key, {})
-                status = ps.get("status", "pending")
 
-                # Determine needs_you: pending + all previous done + no later stage active
-                needs_you = False
-                if status == "pending":
-                    prev_all_done = all(
-                        per_week_stages.get(k, {}).get("status") == "done"
-                        for k in STAGE_ORDER[:i]
-                    )
-                    later_active = any(
-                        per_week_stages.get(k, {}).get("status") in ("running", "done")
-                        for k in STAGE_ORDER[i+1:]
-                    )
-                    if prev_all_done and not later_active:
-                        needs_you = True
-
-                steps.append({
-                    "key": key, "name": info.get("label", key),
-                    "emoji": info.get("emoji", ""),
-                    "done": status == "done",
-                    "running": status == "running",
-                    "needs_you": needs_you,
-                    "error": status == "error",
-                    "estimated_seconds": est,
-                    "elapsed_seconds": ps.get("elapsed_seconds", 0),
-                    "sub_stage": ps.get("sub_stage", ""),
-                    "items_count": ps.get("items_count", 0),
-                    "samples": ps.get("samples", [])[-5:],
-                })
-            elif report_exists:
-                # Report was generated → core stages 1-3 done, stages 4-5 are optional post-processing
-                is_core_stage = i < 3  # ci_collect, local_collect, review_generate
-                if is_core_stage:
-                    done, running, needs_you, error = True, False, False, False
-                elif key == "online_merge":
-                    done, running, needs_you, error = False, False, True, False
-                else:  # jianying_draft — only needs_you after online_merge is done
-                    done, running, needs_you, error = False, False, False, False
-                steps.append({
-                    "key": key, "name": info.get("label", key),
-                    "emoji": info.get("emoji", ""),
-                    "done": done, "running": running, "needs_you": needs_you, "error": error,
-                    "estimated_seconds": est,
-                    "elapsed_seconds": est if is_core_stage else 0,
-                    "sub_stage": "", "items_count": 0, "samples": [],
-                })
-            else:
-                # No report, no per-week data — build clean state for this week.
-                # Don't inherit global pipeline_stages (it belongs to a different week).
-                effective_ci_done = ci_done and ci_matches_week
-
-                # Fresh state: only ci_collect reflects CI data; everything else is pending
-                if key == "ci_collect" and effective_ci_done:
-                    status, needs_you = "done", False
-                elif key == "local_collect" and effective_ci_done:
-                    status, needs_you = "pending", True
+                if i < 3:
+                    steps.append({
+                        "key": key, "name": info.get("label", key),
+                        "emoji": info.get("emoji", ""),
+                        "done": True, "running": False, "needs_you": False,
+                        "error": False, "estimated_seconds": est,
+                        "elapsed_seconds": ps.get("elapsed_seconds", est),
+                        "sub_stage": "", "items_count": ps.get("items_count", 0),
+                        "samples": [],
+                    })
                 else:
-                    status, needs_you = "pending", False
+                    is_done = (ps.get("status") == "done")
+                    needs_you = (not is_done and not first_post_undone_found)
+                    if needs_you:
+                        first_post_undone_found = True
+                    steps.append({
+                        "key": key, "name": info.get("label", key),
+                        "emoji": info.get("emoji", ""),
+                        "done": is_done, "running": False,
+                        "needs_you": needs_you, "error": False,
+                        "estimated_seconds": est,
+                        "elapsed_seconds": ps.get("elapsed_seconds", 0),
+                        "sub_stage": "", "items_count": ps.get("items_count", 0),
+                        "samples": [],
+                    })
+
+        elif ci_available and ci_exists:
+            # Category B: CI data ready — local pipeline may or may not be running.
+            # Check the global status file to see if a pipeline is active RIGHT NOW
+            # for the active week.  (The pipeline writes to the global file, not
+            # per-week, so we must consult it directly.)
+            # Check if a pipeline is actively running (process alive, not stale file)
+            pipeline_alive = (
+                WidgetHandler.pipeline_proc is not None
+                and WidgetHandler.pipeline_proc.poll() is None
+            )
+            global_stages = {}
+            if pipeline_alive and os.path.exists(STATUS_FILE):
+                try:
+                    with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                        gs = json.load(f)
+                    if (not gs.get("overall_done", False)
+                            and gs.get("pipeline_started_at", "")):
+                        global_stages = gs.get("stages", {})
+                except Exception:
+                    pass
+
+            # If the process is alive but no status file written yet, treat
+            # local_collect as "just started" so the UI doesn't jump back.
+            just_started = pipeline_alive and not global_stages
+
+            for i, key in enumerate(STAGE_ORDER):
+                info = STAGE_DEFS.get(key, {})
+                est = info.get("estimated_seconds", 300)
+                gs_st = global_stages.get(key, {})
+                gs_status = gs_st.get("status", "")
+
+                if just_started:
+                    # Process alive, no status yet → local_collect just started
+                    if key == "ci_collect":
+                        done, running, needs_you, ic, sub = True, False, False, ci_items_count, ""
+                    elif key == "local_collect":
+                        done, running, needs_you, ic, sub = False, True, False, 0, "启动中..."
+                    else:
+                        done, running, needs_you, ic, sub = False, False, False, 0, ""
+                elif gs_status == "running":
+                    done, running, needs_you, ic = False, True, False, gs_st.get("items_count", 0)
+                    sub = gs_st.get("sub_stage", "")
+                elif gs_status == "done":
+                    done, running, needs_you, ic = True, False, False, gs_st.get("items_count", 0)
+                    sub = ""
+                elif key == "ci_collect":
+                    done, running, needs_you, ic, sub = True, False, False, ci_items_count, ""
+                elif key == "local_collect":
+                    done, running, needs_you, ic, sub = False, False, True, 0, ""
+                else:
+                    done, running, needs_you, ic, sub = False, False, False, 0, ""
 
                 steps.append({
                     "key": key, "name": info.get("label", key),
                     "emoji": info.get("emoji", ""),
-                    "done": status == "done",
-                    "running": False,
-                    "needs_you": needs_you,
-                    "error": False,
+                    "done": done, "running": running, "needs_you": needs_you,
+                    "error": gs_status == "error",
                     "estimated_seconds": est,
-                    "elapsed_seconds": 0,
-                    "sub_stage": "", "items_count": 0, "samples": [],
+                    "elapsed_seconds": gs_st.get("elapsed_seconds", 0),
+                    "sub_stage": sub,
+                    "items_count": ic,
+                    "samples": gs_st.get("samples", [])[-5:] if gs_status == "running" else [],
                 })
 
-        # If new CI data detected, reset local stages to show CI just completed
-        if new_ci_detected and not overall_done:
-            ci_done = True
-            # Reset downstream stages in-memory for this response
-            for stages_dict in [pipeline_stages, per_week_stages]:
-                for k in ["local_collect", "review_generate", "online_merge", "jianying_draft"]:
-                    if k in stages_dict and stages_dict[k].get("status") == "done":
-                        stages_dict[k]["status"] = "pending"
+        else:
+            # Category C: Nothing yet — all pending.
+            for i, key in enumerate(STAGE_ORDER):
+                info = STAGE_DEFS.get(key, {})
+                est = info.get("estimated_seconds", 300)
+                steps.append({
+                    "key": key, "name": info.get("label", key),
+                    "emoji": info.get("emoji", ""),
+                    "done": False, "running": False, "needs_you": False,
+                    "error": False, "estimated_seconds": est,
+                    "elapsed_seconds": 0, "sub_stage": "",
+                    "items_count": 0, "samples": [],
+                })
 
-            # Persist reset to disk so it survives across poll cycles
-            self._reset_status_for_new_ci(selected_week, ci_items_count)
+        return {
+            "steps": steps,
+            "ci_available": ci_available,
+            "ci_items_count": ci_items_count,
+            "ci_samples": ci_samples,
+            "report_exists": report_exists,
+            "per_week_stages": per_week_stages,
+        }
 
-        # Only show CI sample data for the active week (no report yet, not a historical view)
-        show_ci_data = not report_exists and not (per_week_stages and not pw_is_stub)
+    # ── Data assembly (used by both HTTP handlers and widget poll) ───
 
-        self._json({
+    @classmethod
+    def _read_review_state(cls, week_label):
+        """Return (review_done, review_count) for *week_label*."""
+        sel_file = os.path.join(OUTPUT_DIR, f".filtered_selection_{week_label}.json")
+        if os.path.isfile(sel_file):
+            try:
+                with open(sel_file, "r", encoding="utf-8") as f:
+                    sel = json.load(f)
+                return True, sel.get("count", 0)
+            except Exception:
+                return False, 0
+        # Sync from global if just written (review_filtered.py may have
+        # saved to the global file before per-week was created).
+        global_sel = os.path.join(OUTPUT_DIR, ".filtered_selection.json")
+        if os.path.isfile(global_sel):
+            try:
+                if time.time() - os.path.getmtime(global_sel) < 120:
+                    import shutil as _shutil
+                    _shutil.copyfile(global_sel, sel_file)
+                    with open(sel_file, "r", encoding="utf-8") as f:
+                        sel = json.load(f)
+                    return True, sel.get("count", 0)
+            except Exception:
+                pass
+        return False, 0
+
+    @classmethod
+    def _assemble_schedule(cls, week_label):
+        """Return the schedule dict for *week_label* (pure data, no I/O beyond
+        what _build_steps already does)."""
+        state = cls._build_steps(week_label)
+        review_done, review_count = cls._read_review_state(week_label)
+        show_ci_data = not state["report_exists"] and not state["per_week_stages"]
+        return {
             "week_label": week_label,
-            "ci_done": (True if (per_week_stages and not pw_is_stub and per_week_stages.get("ci_collect", {}).get("status") == "done") else (ci_done and ci_matches_week)),
-            "ci_items_count": ci_items_count if show_ci_data else 0,
-            "ci_samples": ci_samples if show_ci_data else [],
-            "local_running": local_running,
-            "local_done": local_done,
+            "ci_done": state["ci_available"],
+            "ci_items_count": state["ci_items_count"] if show_ci_data else 0,
+            "ci_samples": state["ci_samples"] if show_ci_data else [],
+            "local_running": False,
+            "local_done": False,
             "review_done": review_done,
             "review_count": review_count,
-            "overall_done": per_week_overall if (per_week_stages and not pw_is_stub) else False,
-            "steps": steps,
-        })
+            "overall_done": all(s["done"] for s in state["steps"]),
+            "report_exists": state["report_exists"],
+            "steps": state["steps"],
+        }
+
+    @classmethod
+    def _assemble_status(cls, week_label):
+        """Return the status dict for *week_label* (pure data)."""
+        state = cls._build_steps(week_label)
+
+        # Elapsed time: per-week first, then global status (active pipeline),
+        # then sum stage elapsed times.
+        elapsed = 0
+        pwf = os.path.join(OUTPUT_DIR, f".pipeline_status_{week_label}.json")
+        if os.path.isfile(pwf):
+            try:
+                with open(pwf, "r", encoding="utf-8") as f:
+                    pw = json.load(f)
+                elapsed = pw.get("elapsed_seconds", 0) or 0
+            except Exception:
+                pass
+        if not elapsed and os.path.exists(STATUS_FILE):
+            try:
+                with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                    gs = json.load(f)
+                elapsed = gs.get("elapsed_seconds", 0) or 0
+            except Exception:
+                pass
+        if not elapsed:
+            for s in state["steps"]:
+                elapsed += s.get("elapsed_seconds", 0) or 0
+
+        stages = {}
+        for s in state["steps"]:
+            key = s["key"]
+            status = "done" if s["done"] else ("running" if s["running"] else "pending")
+            stages[key] = {
+                "key": key, "label": s["name"], "emoji": s["emoji"],
+                "status": status,
+                "elapsed_seconds": s["elapsed_seconds"],
+                "items_count": s.get("items_count", 0),
+                "sub_stage": s["sub_stage"], "samples": s["samples"],
+                "estimated_seconds": s["estimated_seconds"],
+            }
+
+        return {
+            "stage": "init", "stage_label": "idle",
+            "elapsed_seconds": elapsed,
+            "items_so_far": state["ci_items_count"],
+            "samples": state["ci_samples"], "sources": {},
+            "done": all(s["done"] for s in state["steps"]),
+            "current_stage": None, "stages": stages,
+            "overall_done": all(s["done"] for s in state["steps"]),
+        }
+
+    # ── HTTP route handlers ──────────────────────────────────────────
+
+    def _serve_schedule(self):
+        week_label = WidgetHandler.selected_week or WidgetHandler._get_active_week_label()
+
+        # Side effect: detect new CI and reset local stage states on disk
+        state = WidgetHandler._build_steps(week_label)
+        if state["ci_available"] and not state["report_exists"] and os.path.exists(STATUS_FILE):
+            try:
+                ci_mtime = os.path.getmtime(CI_RAW_FILE)
+                with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                    gs = json.load(f)
+                pipe_start = gs.get("pipeline_started_at", "")
+                if pipe_start and ci_mtime > 0:
+                    from datetime import datetime as dt2
+                    if dt2.fromtimestamp(ci_mtime) > dt2.strptime(pipe_start, "%Y-%m-%dT%H:%M:%S"):
+                        self._reset_status_for_new_ci(week_label, state["ci_items_count"])
+            except Exception:
+                pass
+
+        self._json(WidgetHandler._assemble_schedule(week_label))
 
     def _serve_filtered(self):
         try:
@@ -399,6 +468,13 @@ class WidgetHandler(BaseHTTPRequestHandler):
             self.send_error(500)
 
     def _start_pipeline(self):
+        # Don't re-run if the selected week already has a report
+        sw = WidgetHandler.selected_week
+        if sw:
+            report_path = os.path.join(OUTPUT_DIR, f"{sw}.md")
+            if os.path.isfile(report_path):
+                self._json({"ok": False, "msg": f"报告 {sw} 已存在，跳过管道运行"})
+                return
         project_dir = os.path.dirname(os.path.abspath(__file__))
         self.__class__.pipeline_proc = subprocess.Popen(
             [sys.executable, "main.py", "--from-ci"],
@@ -536,8 +612,12 @@ class WidgetHandler(BaseHTTPRequestHandler):
         except Exception:
             pass
 
-    def _reset_status_for_new_ci(self, week_label: str, ci_count: int):
+    @classmethod
+    def _reset_status_for_new_ci(cls, week_label: str, ci_count: int):
         """Persist CI-reset state to disk so new CI detection survives poll cycles."""
+        report_path = os.path.join(OUTPUT_DIR, f"{week_label}.md")
+        if os.path.isfile(report_path):
+            return  # Report already exists, don't overwrite state
         try:
             now_ts = time.strftime("%Y-%m-%dT%H:%M:%S")
             now_hm = time.strftime("%H:%M:%S")
@@ -782,15 +862,15 @@ class FloatingWidget:
 
     def _auto_run(self):
         try:
-            resp = json.loads(self._fetch("/schedule") or "{}")
-            if not resp.get("ci_done"):
+            week = WidgetHandler.selected_week or WidgetHandler._get_active_week_label()
+            data = WidgetHandler._assemble_schedule(week)
+            if not data.get("ci_done"):
                 return
-            # Don't auto-run if report already exists (CI+Browser generated complete report)
-            steps = resp.get("steps", [])
+            steps = data.get("steps", [])
             has_report = any(s.get("done") and s.get("key") == "review_generate" for s in steps)
             if has_report:
                 return
-            if not resp.get("local_running") and not resp.get("local_done"):
+            if not data.get("local_running") and not data.get("local_done"):
                 self._fetch_api("/run-pipeline", method="POST")
         except Exception:
             pass
@@ -812,33 +892,47 @@ class FloatingWidget:
         except Exception:
             pass
 
-    # ====== Polling ======
+    # ====== Polling (direct, no HTTP — same process, no timeout / thread risk) ======
     def poll(self):
         try:
-            s_raw = self._fetch("/status")
-            sch_raw = self._fetch("/schedule")
-            if sch_raw:
-                self._schedule = json.loads(sch_raw)
-                self._ci_samples = self._schedule.get("ci_samples", [])
-                self._update_schedule_ui()
-            if s_raw:
-                self._update_cards(json.loads(s_raw))
-            # Show git feedback if available
-            if self._git_feedback and self._git_feedback_until == 0:
-                self._git_feedback_until = time.time() + 5  # show for 5 seconds
-            # Monitor video workflow process: if it died unexpectedly, mark error
+            week = WidgetHandler.selected_week or WidgetHandler._get_active_week_label()
+
+            # ── Side effect: detect new CI ──
+            state = WidgetHandler._build_steps(week)
+            if state["ci_available"] and not state["report_exists"] and os.path.exists(STATUS_FILE):
+                try:
+                    ci_mtime = os.path.getmtime(CI_RAW_FILE)
+                    with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                        gs = json.load(f)
+                    pipe_start = gs.get("pipeline_started_at", "")
+                    if pipe_start and ci_mtime > 0:
+                        from datetime import datetime as dt2
+                        if dt2.fromtimestamp(ci_mtime) > dt2.strptime(pipe_start, "%Y-%m-%dT%H:%M:%S"):
+                            WidgetHandler._reset_status_for_new_ci(week, state["ci_items_count"])
+                except Exception:
+                    pass
+
+            # ── Assemble data (same helpers used by HTTP endpoints) ──
+            self._schedule = WidgetHandler._assemble_schedule(week)
+            status_data = WidgetHandler._assemble_status(week)
+
+            self._ci_samples = self._schedule.get("ci_samples", [])
+            self._update_schedule_ui()
+            self._update_cards(status_data)
+
+            # Monitor video workflow process
             if WidgetHandler.video_proc is not None:
                 rc = WidgetHandler.video_proc.poll()
                 if rc is not None:
                     WidgetHandler.video_proc = None
-                    # Check if jianying stage is still running (wasn't marked done by notification)
                     schedule_steps = self._schedule.get("steps", [])
                     jy = next((s for s in schedule_steps if s.get("key") == "jianying_draft"), None)
                     if jy and jy.get("running") and rc != 0:
-                        # Process crashed → write error to status file
                         self._update_jianying_status_on_disk("error")
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback
+            print(f"[DEBUG poll ERROR] week={WidgetHandler.selected_week}: {e}", flush=True)
+            traceback.print_exc()
 
         # Dynamic polling interval
         ci_done = self._schedule.get("ci_done", False)
@@ -849,11 +943,9 @@ class FloatingWidget:
             self._auto_git_pull()
         else:
             self._poll_interval = NORMAL_POLL_INTERVAL_MS
-            # Periodically git pull even when ci_done, to detect re-triggered CI
             if not running:
                 self._auto_git_pull()
 
-        # Periodically scan for new reports (every 10th poll ~ 20s)
         if not hasattr(self, '_poll_count'):
             self._poll_count = 0
         self._poll_count += 1
@@ -893,10 +985,8 @@ class FloatingWidget:
                         break
                 if not cur:
                     cur = STAGE_ORDER[-1]  # all done → show last stage
-        self.card_stage_val.config(
-            text=STAGE_DEFS.get(cur, {}).get("label", cur or "空闲"),
-            fg=self.ACCENT if s.get("stages", {}).get(cur, {}).get("status") in ("running",) else self.DIM,
-        )
+        # Card stage text is set by _update_schedule_ui (single source of truth).
+        # Only keep the status-dot / progress / step-label updates here.
 
         # Status dot
         if s.get("overall_done"):
@@ -1012,7 +1102,7 @@ class FloatingWidget:
                     if len(self._ticker_items) > 30:
                         self._ticker_items.pop()
             if self._ticker_items and self._ticker_job is None:
-                self._ticker_label.config(fg=self.FG)
+                self.ticker_label.config(fg=self.FG)
                 self._next_tick()
             elif not self._ticker_items and self._ticker_job is None:
                 sub = running_step.get("sub_stage", "")
@@ -1028,7 +1118,7 @@ class FloatingWidget:
                         if len(self._ticker_items) > 30:
                             self._ticker_items.pop()
             if self._ticker_items and self._ticker_job is None:
-                self._ticker_label.config(fg=self.FG)
+                self.ticker_label.config(fg=self.FG)
                 self._next_tick()
             elif not self._ticker_items and self._ticker_job is None:
                 self.ticker_label.config(text="CI 数据已就绪", fg=self.GREEN)
@@ -1071,15 +1161,26 @@ class FloatingWidget:
         ci_done = self._schedule.get("ci_done", False)
         review_done = self._schedule.get("review_done", False)
 
+        week = self._schedule.get("week_label", "?")
+        print(f"[DEBUG _update_action_bar] week={week} needs_you={needs_you['key'] if needs_you else None} ci_done={ci_done} report_exists={self._schedule.get('report_exists',False)}", flush=True)
+
         msg = "加载中..."
         btn_text = "等待"
         btn_color = "#21262d"
         bar_bg = "#161b22"
         bar_border = "#21262d"
 
-        # Check: pipeline done but manual review not completed
+        # Check: pipeline done but manual review not completed.
+        # Only prompt when NO report exists — for historical weeks the report
+        # was already generated (review either completed or not needed).
         rg = next((s for s in steps if s["key"] == "review_generate"), None)
-        pipeline_done_no_review = (rg and rg.get("done") and not review_done and not running)
+        report_exists = self._schedule.get("report_exists", False)
+        pipeline_done_no_review = (
+            rg and rg.get("done")
+            and not review_done
+            and not running
+            and not report_exists
+        )
 
         if pipeline_done_no_review:
             self._action_key = "review_generate"
@@ -1143,10 +1244,13 @@ class FloatingWidget:
             self.root.after(4000, self.poll)
         elif key == "review_generate":
             proj = os.path.dirname(os.path.abspath(__file__))
-            subprocess.Popen([sys.executable, "review_filtered.py"], cwd=proj,
+            args = [sys.executable, "review_filtered.py"]
+            sw = WidgetHandler.selected_week
+            if sw:
+                args.extend(["--week", sw])
+            subprocess.Popen(args, cwd=proj,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             creationflags=_NO_WINDOW)
-            self.root.after(1000, lambda: webbrowser.open("http://127.0.0.1:8765"))
         elif key == "online_merge":
             self._fetch_api("/run-merge", "POST")
             self.action_btn.config(text="打开中...", bg=self.GREEN)
@@ -1212,6 +1316,13 @@ class FloatingWidget:
                         chosen = best_match
                 except Exception:
                     pass
+            # Fallback: prefer the most recent week that has an actual report file,
+            # not a future/active week with no data yet (which sorts alphabetically first).
+            if chosen is None:
+                for r in WidgetHandler.available_reports:
+                    if os.path.isfile(os.path.join(OUTPUT_DIR, f"{r}.md")):
+                        chosen = r
+                        break
             WidgetHandler.selected_week = chosen or WidgetHandler.available_reports[0]
         self._update_week_label_display()
 
@@ -1229,6 +1340,10 @@ class FloatingWidget:
         """Show dropdown menu to select from available reports."""
         if not WidgetHandler.available_reports:
             return
+        # Visual feedback: flash the label to confirm the click registered
+        self.week_label.config(bg="#58a6ff")
+        self.root.after(200, lambda: self.week_label.config(bg="#1f2a3a"))
+        print(f"[DEBUG _cycle_week] creating menu, selected={WidgetHandler.selected_week} available={WidgetHandler.available_reports}", flush=True)
         menu = tk.Menu(self.root, tearoff=0,
                        bg="#161b22", fg="#c9d1d9",
                        activebackground="#1f6feb", activeforeground="#ffffff",
@@ -1245,6 +1360,7 @@ class FloatingWidget:
 
     def _select_week(self, label):
         WidgetHandler.selected_week = label
+        print(f"[DEBUG _select_week] label={label} selected_week={WidgetHandler.selected_week}", flush=True)
         self._update_week_label_display()
         self._seen_samples.clear()
         self._ticker_items.clear()
@@ -1345,6 +1461,29 @@ if __name__ == "__main__":
         if idx + 1 < len(sys.argv):
             port = int(sys.argv[idx + 1])
 
-    server = start_server(port)
+    # Kill any stale widget already bound to our port
+    if sys.platform == "win32":
+        try:
+            import subprocess as _sp
+            out = _sp.check_output(
+                f'netstat -ano | findstr "127.0.0.1:{port}" | findstr "LISTENING"',
+                shell=True, text=True,
+            )
+            for line in out.strip().splitlines():
+                parts = line.split()
+                if len(parts) >= 5 and parts[1] == f"127.0.0.1:{port}":
+                    _sp.run(["taskkill", "/f", "/pid", parts[4]],
+                           capture_output=True, creationflags=_NO_WINDOW)
+        except Exception:
+            pass
+
+    try:
+        server = start_server(port)
+    except OSError:
+        # Port still in use — another widget is already running, don't start a second one
+        import tkinter.messagebox as _mb
+        _mb.showwarning("Gaming News", "Widget 已在运行中（端口占用），请关闭后重试。")
+        sys.exit(1)
+
     widget = FloatingWidget(run_pipeline=run_pipeline)
     widget.run()

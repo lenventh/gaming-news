@@ -93,6 +93,11 @@ def filter_content_quality(items: list[dict]) -> tuple[list[dict], list[dict]]:
     kept = []
     removed = []
     for item in items:
+        # Human-reviewed recover items bypass quality filter
+        if item.get("raw_data", {}).get("_recovered_from"):
+            kept.append(item)
+            continue
+
         title = (item.get("title") or "").strip()
         summary = (item.get("summary") or "").strip()
         source_type = (item.get("source_type") or "").lower()
@@ -221,11 +226,22 @@ def _is_url_encoded_garbage(title: str, combined: str) -> bool:
 # ===== 非游戏硬件信号词 — 用于 filter_topic_relevance =====
 _NON_HARDWARE_SIGNALS: list[str] = [
     # 自动驾驶/机器人（非游戏）
-    "自动驾驶", "autonomous driving", "self-driving",
+    "自动驾驶", "智能驾驶", "autonomous driving", "self-driving",
     "世界人工智能大会", "WAIC",
+    # 驾考/驾驶员（非游戏设备）
+    "驾考", "驾驶员(?!.*(?:模拟器|Sim))", "科目一", "科目二",
     # 通用AI/世界模型（非游戏专用）
-    "世界模型.*自动驾驶", "VLA.*自动驾驶",
+    "世界模型.*自动驾驶", "世界模型.*社会", "VLA.*自动驾驶",
     "omnidreams", "omni dreams",
+    "境瞳", "境瞳科技",
+    # AI 大模型产品/市场新闻（非游戏AI）
+    r"\bKimi\b.*(?:爆单|停售|半价|降价|涨价|上线|发布)",
+    r"Claude.*Opus.*(?:半价|降价|屠榜|发布|上线)",
+    r"GPT.*(?:模型|发布|上线|降价)",
+    r"DeepSeek.*(?:模型|发布|上线)",
+    r"大模型.*(?:爆单|停售|半价|降价|融资|上线)",
+    # 考研/教育考试（非游戏）
+    "考研", "备考.*题库", "专业课真题", "备考资料.*课件", "考试题库",
     # 半导体/芯片行业法律/商业新闻（非游戏设备）
     "tsmc", "国家安全法.*起诉", "chipmaking.*china",
     # 模拟经营游戏（标题以"XX模拟器"结尾且前面是纯中文游戏名，非Emulator软件）
@@ -254,6 +270,11 @@ def filter_topic_relevance(items: list[dict]) -> tuple[list[dict], list[dict]]:
     kept = []
     removed = []
     for item in items:
+        # Human-reviewed recover items bypass topic filter
+        if item.get("raw_data", {}).get("_recovered_from"):
+            kept.append(item)
+            continue
+
         title = (item.get("title") or "")
         summary = (item.get("summary") or "")
         combined = (title + " " + summary).lower()

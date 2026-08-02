@@ -2372,18 +2372,25 @@ def step3_page():
         _log.write(f"[DEBUG] Segment keys: {[(seg.get('_idx'), seg.get('display_title','')[:30]) for seg in s]}\n")
         _log.close()
 
-        # 1) 图片 — URL 优先，Step 2 裁剪的 bg_{idx}.jpg 作兜底
+        # 1) 图片 — URL 下载优先，相对路径读本地文件，Step 2 裁剪兜底
         p["steps"][0]["status"] = "running"
         p["steps"][0]["text"] = f"准备 {len(s)} 张图片..."
+        output_img_dir = Path(__file__).parent / "output" / "images"
         imgs = 0
         for seg in s:
             idx = seg["_idx"]
             img_url = seg.get("image_url", "")
             bg = None
             if img_url:
-                local = _download_image(img_url, idx)
-                if local:
-                    bg = _prepare_bg(local, idx)
+                if img_url.startswith("http://") or img_url.startswith("https://"):
+                    local = _download_image(img_url, idx)
+                    if local:
+                        bg = _prepare_bg(local, idx)
+                else:
+                    # 相对路径 → 从 output/images/ 读取
+                    local = output_img_dir / Path(img_url).name
+                    if local.exists():
+                        bg = _prepare_bg(str(local), idx)
             if not bg:
                 cropped = WORK_DIR / _bg_name(idx)
                 if cropped.exists():
@@ -2635,6 +2642,18 @@ def api_polish():
         return jsonify({"polished": polished if polished else text})
     except Exception as e:
         return jsonify({"error": str(e)})
+
+
+# ========== 静态图片服务 ==========
+
+@app.route("/images/<path:filename>")
+def serve_output_image(filename):
+    """提供 output/images/ 目录下的配图"""
+    img_dir = Path(__file__).parent / "output" / "images"
+    img_path = img_dir / filename
+    if not img_path.exists():
+        return "", 404
+    return send_file(img_path)
 
 
 # ========== 图片上传 & 裁剪 ==========

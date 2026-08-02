@@ -329,11 +329,15 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     if corrected > 0:
         console.print(f"[dim]  设备映射校正: {corrected} 条 ({dev_stats})[/dim]")
 
-    # 过滤掉 LLM 标记为 irrelevant 的条目
-    irrelevant = [it for it in classified if it.get("category") == "irrelevant"]
+    # 过滤掉 LLM 标记为 irrelevant 的条目（但保留人工审核回捞的条目）
+    irrelevant = [it for it in classified
+                  if it.get("category") == "irrelevant"
+                  and not it.get("raw_data", {}).get("_recovered_from")]
     if irrelevant:
         console.log(f"  丢弃无关条目: {len(irrelevant)} 条")
-    classified = [it for it in classified if it.get("category") != "irrelevant"]
+    classified = [it for it in classified
+                  if it.get("category") != "irrelevant"
+                  or it.get("raw_data", {}).get("_recovered_from")]
 
     # 4.0. 话题相关性兜底过滤（LLM 标记 irrelevant 之外的漏网之鱼）
     classified, _topic_removed = filter_topic_relevance(classified)
@@ -346,6 +350,35 @@ def process(all_items: list[dict]) -> dict[str, list[dict]]:
     system_count = sum(1 for it in classified if it.get("sub_type") == "system")
     general_count = sum(1 for it in classified if it.get("sub_type") == "general")
     console.print(f"  🔮 爆料: {leak_count}  |  🆕 发售: {release_count}  |  📱 系统: {system_count}  |  📋 其他: {general_count}")
+
+    # 4.1. 事件聚类 LLM 合并 — 同事件多源报道综合为一条
+    merged_count = 0
+    event_groups: dict[str, list[dict]] = {}
+    for it in classified:
+        cid = it.get("raw_data", {}).get("_event_cluster_id")
+        if cid:
+            event_groups.setdefault(cid, []).append(it)
+    if event_groups:
+        from pipeline.event_merge import merge_event_cluster
+        merged_items = []
+        used_urls = set()
+        for cid, cluster in event_groups.items():
+            if len(cluster) < 3:
+                continue
+            merged = merge_event_cluster(cluster)
+            if merged:
+                merged_items.append(merged)
+                for it in cluster:
+                    used_urls.add(it.get("url", ""))
+        if merged_items:
+            # 替换：移除原簇条目，插入合并条目
+            classified = [it for it in classified if it.get("url") not in used_urls]
+            classified.extend(merged_items)
+            merged_count = len(merged_items)
+            console.print(
+                f"  [green]事件合并: {sum(len(g) for g in event_groups.values() if len(g) >= 3)} 条"
+                f" → {merged_count} 条综合摘要[/green]"
+            )
 
     # 扩展窗口回收：只保留 sub_type=leak 的候选，剔除其余
     leak_signals = []

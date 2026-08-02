@@ -1,6 +1,7 @@
 """LLM 分类器：将新闻分类到六大板块"""
 
 import json
+import re
 from rich.console import Console
 from openai import OpenAI
 
@@ -89,6 +90,9 @@ class NewsClassifier:
             if not item.get("category") and item["url"] in classified_map:
                 item["category"] = classified_map[item["url"]]
 
+        # LLM 分类后校验：纠正明显的误分类 → irrelevant
+        self._validate_classification(items)
+
         return items
 
     def _classify_batch(self, batch: list[dict], cat_lines: str):
@@ -148,6 +152,48 @@ class NewsClassifier:
                         break
                 if item.get("category"):
                     break
+
+    def _validate_classification(self, items: list[dict]):
+        """LLM 分类后校验：纠正明显误分类 → irrelevant
+
+        当 LLM 错误地将非游戏内容分入 emulator 等类别时，
+        用硬规则强制纠正，作为 LLM 幻觉的最后防线。
+        """
+        # 明确非游戏信号 → 若被误分入 emulator/peripherals，强制 irrelevant
+        _NON_GAMING_FORCE_IRRELEVANT = [
+            # AI 大模型产品/公司
+            r"Kimi\s*[Kk]\d",               # Kimi K3 等 AI 模型
+            r"Claude\s*Opus",                # Claude Opus AI 模型
+            r"境瞳科技",                      # AI 公司
+            r"给人类社会建.*世界模型",           # 通用 AI 世界模型
+            # 教育考试
+            r"考研.*真题", r"备考.*题库", r"专业课.*课件",
+            # 智能驾驶
+            r"智能驾驶.*心理负荷", r"驾驶员.*评估",
+            # AI 行业周报
+            r"AI\s*Weekly",
+        ]
+
+        corrected = 0
+        for item in items:
+            cat = item.get("category", "")
+            if cat in ("irrelevant", ""):
+                continue  # 已经是 irrelevant 或未分类，跳过
+
+            title = item.get("title", "") or ""
+            for pattern in _NON_GAMING_FORCE_IRRELEVANT:
+                if re.search(pattern, title):
+                    old_cat = cat
+                    item["category"] = "irrelevant"
+                    item["raw_data"]["_category_corrected"] = f"{old_cat}→irrelevant"
+                    corrected += 1
+                    break
+
+        if corrected:
+            console.log(
+                f"[yellow]LLM分类后校验: 纠正 {corrected} 条误分类 → irrelevant"
+                f" ({', '.join((it.get('title','') or '')[:30] for it in items if it.get('category') == 'irrelevant' and it.get('raw_data',{}).get('_category_corrected'))})[/yellow]"
+            )
 
 
 def detect_sub_types(items: list[dict]) -> list[dict]:

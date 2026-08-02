@@ -8,6 +8,23 @@ console = Console()
 
 SIMILARITY_THRESHOLD = 0.65
 
+# 模块级事件簇存储 — 去重阶段标记，供后续 LLM 合并步骤读取
+_event_clusters_store: list[tuple[str, list[int]]] = []
+
+
+def set_event_clusters(clusters: list[tuple[str, list[int]]]) -> None:
+    """存储事件簇（去重阶段调用）"""
+    global _event_clusters_store
+    _event_clusters_store = clusters
+
+
+def get_event_clusters() -> list[tuple[str, list[int]]]:
+    """读取事件簇（合并阶段调用），读取后清空"""
+    global _event_clusters_store
+    result = _event_clusters_store
+    _event_clusters_store = []
+    return result
+
 
 def _normalize(text: str) -> str:
     """规范化文本用于比较"""
@@ -99,6 +116,98 @@ def deduplicate(items: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> l
                 product_deduped.append(item)
         console.log(f"[dim]  产品名去重: 移除 {merged_count} 条(同天同产品)[/dim]")
         items = product_deduped
+
+    if len(items) <= 1:
+        return items
+
+    # 阶段 2.5: 主平台事件聚类 — 同天同大平台 + 标题相似 → 合并
+    # Xbox/PlayStation/Nintendo Switch 等大平台新闻经常被中英文多源覆盖，
+    # 但平台名不在 DEVICE_CATEGORY_MAP（仅掌机）中，需要单独处理。
+    # 与阶段 2 的产品名去重不同：这里用标题相似度在平台簇内做子聚类，
+    # 避免把同一天 Xbox 宕机和 Xbox 科隆展当成"同一事件"误删。
+    _MAJOR_PLATFORMS = {
+        # (?a) 强制 ASCII 模式 \b，防止中文被当作 \w 导致无边界
+        "xbox": re.compile(r"(?a)\bxbox\b", re.IGNORECASE),
+        "playstation": re.compile(r"(?a)(?:\bps5\b|\bps4\b|\bplaystation\b|索尼)", re.IGNORECASE),
+        "nintendo": re.compile(r"(?a)(?:\bnintendo\s*switch\b|任天堂\s*switch|ns2|\bswitch\s*2\b)", re.IGNORECASE),
+    }
+    # 先在平台簇内做子聚类（基于标题相似度），只合并"同一事件"
+    plat_groups: dict[str, list[int]] = {}
+    for idx, item in enumerate(items):
+        pub = item.get("published_at")
+        if not pub:
+            continue
+        date_key = pub.strftime("%Y-%m-%d") if hasattr(pub, "strftime") else str(pub)[:10]
+        title = item.get("title", "")
+        for plat_name, plat_re in _MAJOR_PLATFORMS.items():
+            if plat_re.search(title):
+                key = f"{date_key}|{plat_name}"
+                plat_groups.setdefault(key, []).append(idx)
+                break
+
+    # 事件信号词 — 检测同平台同天条目是否报道同一事件
+    # 跨语言覆盖中英文常见游戏硬件事件类型
+    # 模式分为两类：1) 平台/服务词+中间词+事件词  2) 独立强信号词
+    _EVENT_SIGNALS = {
+        "outage": re.compile(
+            # 平台/服务词 + 中间词(<=40,非贪婪) + 宕机信号
+            # \b 边界防止 "download" 匹配 "down", 负向排除中文歧义
+            r"(?:xbox|psn|playstation\s*network|nintendo\s*eshop|nintendo\s*switch\s*online"
+            r"|microsoft\s*store|server|service|live\s*service).{0,40}?"
+            r"(?:\boutage\b|\bdown\b(?!掉)|\boffline\b|\bdisruption\b"
+            r"|中断(?!率)|故障(?!率)|宕机|瘫痪"
+            r"|无法.*(?:登录|游玩|连接|访问))"
+            # 独立强信号 — 直接描述服务中断
+            r"|宕机"
+            r"|服务\s*(?:中断|不可用|停止|瘫痪)"
+            r"|大面积\s*(?:故障|瘫痪|断线)"
+            r"|玩家\s*(?:无法|不能)\s*(?:登录|游玩|游戏)"
+            r"|\boutage\b",
+            re.IGNORECASE,
+        ),
+        "price_change": re.compile(
+            r"(?:宣布|确认|计划|即将|正式|官方).{0,10}(?:涨价|降价|加价)"
+            r"|\bprice\s*(?:hike|increase|rise|jump|surge)"
+            r"|价格\s*(?:上调|上涨|飙升|暴涨|下调|降低)"
+            r"|(?:芯片|组件|零件|gpu|cpu|dram|nand|内存|存储)\s*(?:涨价|降价|加价)"
+            r"|更\s*(?:贵|便宜)\s*了",
+            re.IGNORECASE,
+        ),
+        "layoff": re.compile(
+            r"(?:裁员|layoff|lay.off|job\s*cut)\b"
+            r"|关闭\s*(?:工作室|分部|团队|部门)"
+            r"|\bstudio\s*(?:clos(?:ed?|ing)|shut\s*down)",
+            re.IGNORECASE,
+        ),
+    }
+
+    # 事件簇：收集同事件的条目，标记但不删除
+    # 后续管道（LLM 可用时）会将每簇合并为一条综合摘要
+    _event_clusters = []  # [(cluster_id, [idx, ...]), ...]
+    _next_cluster_id = 0
+    for key, indices in plat_groups.items():
+        if len(indices) < 3:
+            continue
+        for event_name, event_re in _EVENT_SIGNALS.items():
+            event_items = [i for i in indices if event_re.search(
+                (items[i].get("title", "") + " " + items[i].get("summary", "")).lower()
+            )]
+            if len(event_items) >= 3:
+                cluster_id = f"evt_{_next_cluster_id}"
+                _next_cluster_id += 1
+                _event_clusters.append((cluster_id, sorted(event_items)))
+                for i in event_items:
+                    items[i].setdefault("raw_data", {})
+                    items[i]["raw_data"]["_event_cluster_id"] = cluster_id
+                break  # 一个平台组最多匹配一个事件类型
+
+    # 将事件簇信息存储到模块级变量，供后续 LLM 合并步骤使用
+    if _event_clusters:
+        set_event_clusters(_event_clusters)
+        console.log(
+            f"[dim]  事件聚类标记: {len(_event_clusters)} 个事件簇"
+            f" ({sum(len(c[1]) for c in _event_clusters)} 条)，后续将LLM合并[/dim]"
+        )
 
     if len(items) <= 1:
         return items

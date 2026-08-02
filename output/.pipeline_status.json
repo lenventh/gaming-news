@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-07-30T22:08:23",
-  "updated_at": "23:05:44",
+  "pipeline_started_at": "2026-07-30T16:25:02",
+  "updated_at": "16:38:53",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,24 +11,13 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1169,
-      "started_at": "22:08:23",
-      "done_at": "22:27:54",
-      "sub_stage": "Tieba RSS",
+      "elapsed_seconds": 0,
+      "started_at": "16:25:02",
+      "done_at": "16:25:02",
+      "sub_stage": "",
       "progress": null,
-      "items_count": 0,
-      "samples": [
-        "Guide: Best Nintendo Remakes & Remasters Of All Time, Ranked",
-        "Video: Crazy Taxi: World Tour Gets A Crazy New Trailer Highlighting West Coast Map",
-        "一场主播办的《三角洲行动》比赛，怎么就坐满了万人体育场？",
-        "触乐怪话：随时随地“养女儿”",
-        "摆脱制程依赖！东方算芯3D AI芯片DF1000首次展出：获SAIL大奖",
-        "昇腾950超节点真机亮相就拿大奖：华为实现业界最大1024卡规模",
-        "外卖平台 DoorDash 成立无人机外送部门，计划今年秋季开启商业空中配送服务",
-        "IBM 宣布已进入“量子优势”时代，结果可验证",
-        "《战锤40K：战争黎明4》公布最新预告，太空死灵于克洛诺斯再度崛起",
-        "Vol.182｜Meta Phoenix 新品可能真的要来了"
-      ]
+      "items_count": 672,
+      "samples": []
     },
     "local_collect": {
       "key": "local_collect",
@@ -36,18 +25,16 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1551,
-      "started_at": "22:27:54",
-      "done_at": "22:53:46",
+      "elapsed_seconds": 0,
+      "started_at": "16:25:02",
+      "done_at": "16:25:02",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1985,
+      "items_count": 672,
       "samples": [
-        "出SteamDeck OLED 2T 4600",
-        "这是我的小男朋友。ヽ(*≧ω≦)ﾉSteam Deck Oled. 512GB",
-        "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
-        "Steam Deck OLED / 《光环：战役进化》首发性能测试 / SteamOS 3.8.24",
-        "【Steam Deck推荐】OLED屏双系统掌机｜原装512G｜Windows+SteamOS双启动｜免拆封｜原厂全新开箱"
+        "贴吧排行榜",
+        "贴吧排行榜",
+        "贴吧排行榜"
       ]
     },
     "review_generate": {
@@ -56,23 +43,23 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 718,
-      "started_at": "22:53:46",
-      "done_at": "23:05:44",
+      "elapsed_seconds": 820,
+      "started_at": "16:25:02",
+      "done_at": "16:38:42",
       "sub_stage": "",
       "progress": null,
-      "items_count": 147,
+      "items_count": 73,
       "samples": []
     },
     "online_merge": {
       "key": "online_merge",
       "label": "线上整合正式版",
       "emoji": "🔗",
-      "status": "pending",
+      "status": "done",
       "estimated_seconds": 120,
       "elapsed_seconds": 0,
       "started_at": null,
-      "done_at": null,
+      "done_at": "16:38:53",
       "sub_stage": "",
       "progress": null,
       "items_count": 0,
@@ -95,25 +82,20 @@
   },
   "samples": [
     "贴吧排行榜",
-    "其他游戏及话题_游戏",
     "贴吧排行榜",
-    "【Steam Deck推荐】OLED屏双系统掌机｜原装512G｜Windows+SteamOS双启动｜免拆封｜原厂全新开箱",
-    "Steam Deck OLED / 《光环：战役进化》首发性能测试 / SteamOS 3.8.24",
-    "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
-    "这是我的小男朋友。ヽ(*≧ω≦)ﾉSteam Deck Oled. 512GB",
-    "出SteamDeck OLED 2T 4600"
+    "贴吧排行榜"
   ],
   "sources": {
-    "rss_cn": 60,
-    "rss": 425,
-    "web_search": 43,
-    "chinese_web": 70,
-    "bilibili": 1323,
-    "tieba": 64
+    "rss_cn": 73,
+    "rss": 432,
+    "web_search": 27,
+    "chinese_web": 61,
+    "bilibili": 10,
+    "tieba": 69
   },
-  "items_so_far": 147,
+  "items_so_far": 73,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3440
+  "elapsed_seconds": 819
 }

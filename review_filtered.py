@@ -46,6 +46,8 @@ td.m{color:#8b949e;font-size:10px;white-space:nowrap}
 
 class ReviewHandler(BaseHTTPRequestHandler):
     filtered_items: list[dict] = []
+    selection_file: str = SELECTION_FILE
+    selection_write_file: str = SELECTION_FILE
 
     def log_message(self, f, *a):
         pass
@@ -66,8 +68,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
         params = parse_qs(body)
         titles = params.get("titles", [])
 
-        with open(SELECTION_FILE, "w", encoding="utf-8") as f:
+        # Write to per-week file (so widget detects review_done)
+        with open(self.selection_write_file, "w", encoding="utf-8") as f:
             json.dump({"titles": titles, "count": len(titles)}, f, ensure_ascii=False, indent=2)
+
+        # Also write to global file so main.py --recover-reviewed can find it
+        if self.selection_write_file != SELECTION_FILE:
+            with open(SELECTION_FILE, "w", encoding="utf-8") as f:
+                json.dump({"titles": titles, "count": len(titles)}, f, ensure_ascii=False, indent=2)
 
         # Auto-trigger recover if items selected
         if titles:
@@ -146,11 +154,23 @@ h1{{color:#238636}} p{{color:#8b949e;font-size:14px}} .spinner{{width:24px;heigh
         self.wfile.write(html.encode("utf-8"))
 
 
-def start_server(port=DEFAULT_PORT):
+def start_server(port=DEFAULT_PORT, week=None):
+    log_path = _FILTERED_LOG_PATH
+    sel_path = SELECTION_FILE
+    sel_write_path = SELECTION_FILE  # always per-week when week is set
+    if week:
+        pw_log = os.path.join(OUTPUT_DIR, f".filtered_items_{week}.json")
+        pw_sel = os.path.join(OUTPUT_DIR, f".filtered_selection_{week}.json")
+        # For reading: fall back to global if per-week doesn't exist yet
+        log_path = pw_log if os.path.isfile(pw_log) else _FILTERED_LOG_PATH
+        sel_path = pw_sel if os.path.isfile(pw_sel) else SELECTION_FILE
+        # For writing: always use per-week so widget can detect review_done
+        sel_write_path = pw_sel
+
     items = []
     try:
-        if os.path.exists(_FILTERED_LOG_PATH):
-            with open(_FILTERED_LOG_PATH, "r", encoding="utf-8") as f:
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
                 log = json.load(f)
             for run in log.get("runs", []):
                 for it in run.get("items", []):
@@ -165,6 +185,8 @@ def start_server(port=DEFAULT_PORT):
         sys.exit(1)
 
     ReviewHandler.filtered_items = items
+    ReviewHandler.selection_file = sel_path
+    ReviewHandler.selection_write_file = sel_write_path
     server = HTTPServer(("127.0.0.1", port), ReviewHandler)
     url = f"http://127.0.0.1:{port}"
     print(f"Review page: {url}  ({len(items)} items)")
@@ -201,8 +223,14 @@ def load_checked_items() -> list[str]:
 
 if __name__ == "__main__":
     port = DEFAULT_PORT
-    if "--port" in sys.argv:
-        idx = sys.argv.index("--port")
-        if idx + 1 < len(sys.argv):
-            port = int(sys.argv[idx + 1])
-    start_server(port)
+    args = sys.argv[1:]
+    week = None
+    if "--port" in args:
+        idx = args.index("--port")
+        if idx + 1 < len(args):
+            port = int(args[idx + 1])
+    if "--week" in args:
+        idx = args.index("--week")
+        if idx + 1 < len(args):
+            week = args[idx + 1]
+    start_server(port, week=week)
