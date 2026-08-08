@@ -92,7 +92,7 @@ ANDROID_DEVICES = {
     "xu20 v32",
     "罗技 g cloud",
     "雷蛇 edge",
-}}
+}
 
 # ============================================================
 # Linux/开源掌机 — 运行 Linux CFW (ArkOS/AmberELEC/JELOS/MuOS/MinUI 等)
@@ -179,7 +179,7 @@ LINUX_DEVICES = {
     "trimui smart",
     "trimui smart pro",
     "芒米 air y",
-}}
+}
 
 # ============================================================
 # Windows 掌机 (x86_64)
@@ -229,7 +229,7 @@ WINDOWS_DEVICES = {
     "索泰 zone",
     "联想 legion go",
     "联想 拯救者 go",
-}}
+}
 
 # ============================================================
 # Steam Deck 系列
