@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-07-30T16:25:02",
-  "updated_at": "16:38:53",
+  "pipeline_started_at": "2026-08-08T14:26:32",
+  "updated_at": "15:42:07",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,13 +11,24 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 0,
-      "started_at": "16:25:02",
-      "done_at": "16:25:02",
-      "sub_stage": "",
+      "elapsed_seconds": 2222,
+      "started_at": "14:26:32",
+      "done_at": "15:03:35",
+      "sub_stage": "Tieba RSS",
       "progress": null,
-      "items_count": 672,
-      "samples": []
+      "items_count": 0,
+      "samples": [
+        "The gaming site sponsored by Walmart lays off its editorial staff",
+        "Is this $450 laptop from an unknown brand too good to be true?",
+        "触乐怪话：AI做游戏，AI选游戏，可行吗？",
+        "触乐怪话：在商场寻找新鲜事",
+        "AMD最新路线图公布：GPU提升超2000倍、Zen8架构首次确认",
+        "英伟达砸15亿美元！联手Amkor在美国扩产先进封装",
+        "微软 Win11 测试自适应休眠新功能，智能平衡笔记本续航与唤醒速度",
+        "华为在印度推出 MatePad SE 11、MatePad 11.5 平板，麒麟 710A/T82B 芯片",
+        "皮克斯经典动画电影《机器人总动员》引进内地，8月19日上映",
+        "《维修物语》今日正式登陆 Steam，同步支持 PC/Mac 平台"
+      ]
     },
     "local_collect": {
       "key": "local_collect",
@@ -25,16 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 0,
-      "started_at": "16:25:02",
-      "done_at": "16:25:02",
+      "elapsed_seconds": 1556,
+      "started_at": "15:03:35",
+      "done_at": "15:29:32",
       "sub_stage": "",
       "progress": null,
-      "items_count": 672,
+      "items_count": 2360,
       "samples": [
-        "贴吧排行榜",
-        "贴吧排行榜",
-        "贴吧排行榜"
+        "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361",
+        "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
+        "首发2000暴跌至800！PS5串流掌机真香还是智商税？2026全解析（版本+实测+适配人群）",
+        "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
+        "爽玩一切！2026性价比最高的掌机 - ROG ALLY改电池+ Steam OS！"
       ]
     },
     "review_generate": {
@@ -43,23 +56,23 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 820,
-      "started_at": "16:25:02",
-      "done_at": "16:38:42",
+      "elapsed_seconds": 754,
+      "started_at": "15:29:32",
+      "done_at": "15:42:07",
       "sub_stage": "",
       "progress": null,
-      "items_count": 73,
+      "items_count": 156,
       "samples": []
     },
     "online_merge": {
       "key": "online_merge",
       "label": "线上整合正式版",
       "emoji": "🔗",
-      "status": "done",
+      "status": "pending",
       "estimated_seconds": 120,
       "elapsed_seconds": 0,
       "started_at": null,
-      "done_at": "16:38:53",
+      "done_at": null,
       "sub_stage": "",
       "progress": null,
       "items_count": 0,
@@ -81,21 +94,26 @@
     }
   },
   "samples": [
+    "贴吧",
     "贴吧排行榜",
-    "贴吧排行榜",
-    "贴吧排行榜"
+    "贴吧",
+    "爽玩一切！2026性价比最高的掌机 - ROG ALLY改电池+ Steam OS！",
+    "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
+    "首发2000暴跌至800！PS5串流掌机真香还是智商税？2026全解析（版本+实测+适配人群）",
+    "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
+    "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361"
   ],
   "sources": {
-    "rss_cn": 73,
-    "rss": 432,
-    "web_search": 27,
-    "chinese_web": 61,
-    "bilibili": 10,
-    "tieba": 69
+    "rss_cn": 68,
+    "rss": 908,
+    "web_search": 43,
+    "chinese_web": 104,
+    "bilibili": 1213,
+    "tieba": 24
   },
-  "items_so_far": 73,
+  "items_so_far": 156,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 819
+  "elapsed_seconds": 4534
 }
