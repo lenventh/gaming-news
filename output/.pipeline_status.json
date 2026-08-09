@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-08T14:26:32",
-  "updated_at": "15:42:07",
+  "pipeline_started_at": "2026-08-09T21:31:25",
+  "updated_at": "22:28:34",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 2222,
-      "started_at": "14:26:32",
-      "done_at": "15:03:35",
+      "elapsed_seconds": 1127,
+      "started_at": "21:31:25",
+      "done_at": "21:50:13",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "The gaming site sponsored by Walmart lays off its editorial staff",
         "Is this $450 laptop from an unknown brand too good to be true?",
+        "Dropbox is a PC builder’s best friend",
         "触乐怪话：AI做游戏，AI选游戏，可行吗？",
         "触乐怪话：在商场寻找新鲜事",
-        "AMD最新路线图公布：GPU提升超2000倍、Zen8架构首次确认",
-        "英伟达砸15亿美元！联手Amkor在美国扩产先进封装",
-        "微软 Win11 测试自适应休眠新功能，智能平衡笔记本续航与唤醒速度",
-        "华为在印度推出 MatePad SE 11、MatePad 11.5 平板，麒麟 710A/T82B 芯片",
-        "皮克斯经典动画电影《机器人总动员》引进内地，8月19日上映",
-        "《维修物语》今日正式登陆 Steam，同步支持 PC/Mac 平台"
+        "8核X3D进游戏本！AMD筹备锐龙7 9800HX3D：年底上市",
+        "英特尔也看上了！蓝思科技切入TGV先进封装赛道",
+        "《上古卷轴 4：湮灭重制版》Switch 2 版偷跑，帧率表现不稳定",
+        "宏碁 Aspire Go 15 笔记本海外发售：骁龙 C 处理器、8GB 内存，499 英镑",
+        "《胡闹厨房》迎来十周年庆典，全球玩家突破 1 亿",
+        "毫无营养的闲聊：玩不进去游戏，马路上和人发生冲突，小学老师把我忘了，录音笔VOL.759"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1556,
-      "started_at": "15:03:35",
-      "done_at": "15:29:32",
+      "elapsed_seconds": 1633,
+      "started_at": "21:50:13",
+      "done_at": "22:17:27",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2360,
+      "items_count": 1750,
       "samples": [
         "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361",
         "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
-        "首发2000暴跌至800！PS5串流掌机真香还是智商税？2026全解析（版本+实测+适配人群）",
         "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
-        "爽玩一切！2026性价比最高的掌机 - ROG ALLY改电池+ Steam OS！"
+        "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
+        "Steam Deck OLED / 《怪物猎人：荒野》全新序章 Demo 性能测试 / SteamOS 3.8.24"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 754,
-      "started_at": "15:29:32",
-      "done_at": "15:42:07",
+      "elapsed_seconds": 668,
+      "started_at": "22:17:27",
+      "done_at": "22:28:35",
       "sub_stage": "",
       "progress": null,
-      "items_count": 156,
+      "items_count": 153,
       "samples": []
     },
     "online_merge": {
@@ -95,25 +95,25 @@
   },
   "samples": [
     "贴吧",
-    "贴吧排行榜",
-    "贴吧",
-    "爽玩一切！2026性价比最高的掌机 - ROG ALLY改电池+ Steam OS！",
+    "个人贴吧目录",
+    "百度贴吧",
+    "Steam Deck OLED / 《怪物猎人：荒野》全新序章 Demo 性能测试 / SteamOS 3.8.24",
+    "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
     "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
-    "首发2000暴跌至800！PS5串流掌机真香还是智商税？2026全解析（版本+实测+适配人群）",
     "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
     "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361"
   ],
   "sources": {
-    "rss_cn": 68,
-    "rss": 908,
-    "web_search": 43,
-    "chinese_web": 104,
-    "bilibili": 1213,
-    "tieba": 24
+    "rss_cn": 66,
+    "rss": 435,
+    "web_search": 37,
+    "chinese_web": 76,
+    "bilibili": 1115,
+    "tieba": 21
   },
-  "items_so_far": 156,
+  "items_so_far": 153,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 4534
+  "elapsed_seconds": 3429
 }
