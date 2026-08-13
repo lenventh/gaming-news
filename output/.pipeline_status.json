@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-09T21:31:25",
-  "updated_at": "22:28:34",
+  "pipeline_started_at": "2026-08-13T21:46:13",
+  "updated_at": "23:02:08",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1127,
-      "started_at": "21:31:25",
-      "done_at": "21:50:13",
+      "elapsed_seconds": 2065,
+      "started_at": "21:46:13",
+      "done_at": "22:20:40",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Is this $450 laptop from an unknown brand too good to be true?",
-        "Dropbox is a PC builder’s best friend",
-        "触乐怪话：AI做游戏，AI选游戏，可行吗？",
-        "触乐怪话：在商场寻找新鲜事",
-        "8核X3D进游戏本！AMD筹备锐龙7 9800HX3D：年底上市",
-        "英特尔也看上了！蓝思科技切入TGV先进封装赛道",
-        "《上古卷轴 4：湮灭重制版》Switch 2 版偷跑，帧率表现不稳定",
-        "宏碁 Aspire Go 15 笔记本海外发售：骁龙 C 处理器、8GB 内存，499 英镑",
-        "《胡闹厨房》迎来十周年庆典，全球玩家突破 1 亿",
-        "毫无营养的闲聊：玩不进去游戏，马路上和人发生冲突，小学老师把我忘了，录音笔VOL.759"
+        "2K launches new studio to build its &#8216;next blockbuster sports franchise&#8217;",
+        "This school-friendly laptop from HP is $300 off",
+        "专访战马工作室：文化差异不是问题，找准点子才是",
+        "都说AI是提效利器，为什么许多独立开发者偏偏不爱用？",
+        "65W才能满血运行！英特尔Nova Lake核显规格曝光：配12核Xe3P超强GPU",
+        "内存显卡CPU轮番涨价 DIY玩家迎接惨淡一年：Intel称市场下滑10-12%",
+        "华为鸿蒙电脑新品 HarmonyOS 7 花粉 Beta 版招募开启",
+        "微软 Windows 即插即用机制曝安全漏洞“Plug and Pwn”，黑客可伪造 USB 设备获取 SYSTEM 权限",
+        "EP27 AI 时代如何更好地找资料？feat. 六兽",
+        "Steam周销量排行榜:《Big Walk》登顶|2026年8月第1周"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1633,
-      "started_at": "21:50:13",
-      "done_at": "22:17:27",
+      "elapsed_seconds": 1699,
+      "started_at": "22:20:40",
+      "done_at": "22:49:01",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1750,
+      "items_count": 2119,
       "samples": [
-        "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361",
-        "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
-        "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
-        "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
-        "Steam Deck OLED / 《怪物猎人：荒野》全新序章 Demo 性能测试 / SteamOS 3.8.24"
+        "《上古卷轴4：湮没 重制版》Switch 2 对比 Steam Deck OLED：哪一款表现更好？",
+        "Steam Deck OLED / 《人间地狱》性能测试 / SteamOS 3.8.25",
+        "Steam Deck OLED / 《阿吉菲尔德高中》性能测试 / SteamOS 3.8.25",
+        "Steamdeck能玩《幻兽帕鲁》1.0正式版吗？这个视频告诉你！",
+        "《指环王：北方战争 - 遗产版》Steam Deck 性能测试：全新 2026 重制版"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 668,
-      "started_at": "22:17:27",
-      "done_at": "22:28:35",
+      "elapsed_seconds": 787,
+      "started_at": "22:49:01",
+      "done_at": "23:02:09",
       "sub_stage": "",
       "progress": null,
-      "items_count": 153,
+      "items_count": 167,
       "samples": []
     },
     "online_merge": {
@@ -94,26 +94,26 @@
     }
   },
   "samples": [
-    "贴吧",
-    "个人贴吧目录",
     "百度贴吧",
-    "Steam Deck OLED / 《怪物猎人：荒野》全新序章 Demo 性能测试 / SteamOS 3.8.24",
-    "STEAM Deck OLED 掌上Windows电脑游戏机 官方标配",
-    "Steam Deck OLED / 《铁巢重炮》性能实测 / SteamOS 3.8.24",
-    "Eclipse Mod 拯救了 Steam Deck OLED 上的《光环：战役进化》",
-    "【Steam Deck 推荐】OLED 屏双系统掌机｜原装正版 SteamOS + Windows 双启动｜512GB 大容量｜原装原封未拆｜4361"
+    "百度贴吧",
+    "百度贴吧",
+    "《指环王：北方战争 - 遗产版》Steam Deck 性能测试：全新 2026 重制版",
+    "Steamdeck能玩《幻兽帕鲁》1.0正式版吗？这个视频告诉你！",
+    "Steam Deck OLED / 《阿吉菲尔德高中》性能测试 / SteamOS 3.8.25",
+    "Steam Deck OLED / 《人间地狱》性能测试 / SteamOS 3.8.25",
+    "《上古卷轴4：湮没 重制版》Switch 2 对比 Steam Deck OLED：哪一款表现更好？"
   ],
   "sources": {
-    "rss_cn": 66,
-    "rss": 435,
-    "web_search": 37,
-    "chinese_web": 76,
-    "bilibili": 1115,
-    "tieba": 21
+    "rss_cn": 76,
+    "rss": 909,
+    "web_search": 39,
+    "chinese_web": 69,
+    "bilibili": 999,
+    "tieba": 27
   },
-  "items_so_far": 153,
+  "items_so_far": 167,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3429
+  "elapsed_seconds": 4554
 }
