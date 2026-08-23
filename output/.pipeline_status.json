@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-13T21:46:13",
-  "updated_at": "23:02:08",
+  "pipeline_started_at": "2026-08-23T21:21:11",
+  "updated_at": "22:12:52",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 2065,
-      "started_at": "21:46:13",
-      "done_at": "22:20:40",
+      "elapsed_seconds": 1252,
+      "started_at": "21:21:11",
+      "done_at": "21:42:04",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "2K launches new studio to build its &#8216;next blockbuster sports franchise&#8217;",
-        "This school-friendly laptop from HP is $300 off",
-        "专访战马工作室：文化差异不是问题，找准点子才是",
-        "都说AI是提效利器，为什么许多独立开发者偏偏不爱用？",
-        "65W才能满血运行！英特尔Nova Lake核显规格曝光：配12核Xe3P超强GPU",
-        "内存显卡CPU轮番涨价 DIY玩家迎接惨淡一年：Intel称市场下滑10-12%",
-        "华为鸿蒙电脑新品 HarmonyOS 7 花粉 Beta 版招募开启",
-        "微软 Windows 即插即用机制曝安全漏洞“Plug and Pwn”，黑客可伪造 USB 设备获取 SYSTEM 权限",
-        "EP27 AI 时代如何更好地找资料？feat. 六兽",
-        "Steam周销量排行榜:《Big Walk》登顶|2026年8月第1周"
+        "Two great new repairable gadgets",
+        "An okay laptop with 16GB of RAM is better than a nice laptop with 8GB, and this $520 HP OmniBook proves it",
+        "买不起房的年轻人，在房屋装修游戏里缓解愁苦",
+        "从Xbox到PS5：初代《光环》的进化历程",
+        "颠覆传统技术垄断！马斯克或采用FEL技术挑战EUV光刻机",
+        "为第三代半导体产业而生！国产光刻机获行业头部客户重复订单：已获验证 可大规模使用了",
+        "LG 新能源：固态电池在装进汽车之前，可能会先进入手机、无人机",
+        "联想推出 LOQ 15IPH11 游戏本：酷睿 Ultra 7 356H 处理器、RTX5050/5060 显卡",
+        "《又一个僵尸幸存者》现已脱离抢先体验并正式发售",
+        "解锁开学新装备：神影16 魔龙姬限定款领衔微星笔记本晒单有礼"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1699,
-      "started_at": "22:20:40",
-      "done_at": "22:49:01",
+      "elapsed_seconds": 1216,
+      "started_at": "21:42:04",
+      "done_at": "22:02:21",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2119,
+      "items_count": 1399,
       "samples": [
-        "《上古卷轴4：湮没 重制版》Switch 2 对比 Steam Deck OLED：哪一款表现更好？",
-        "Steam Deck OLED / 《人间地狱》性能测试 / SteamOS 3.8.25",
-        "Steam Deck OLED / 《阿吉菲尔德高中》性能测试 / SteamOS 3.8.25",
-        "Steamdeck能玩《幻兽帕鲁》1.0正式版吗？这个视频告诉你！",
-        "《指环王：北方战争 - 遗产版》Steam Deck 性能测试：全新 2026 重制版"
+        "《使命召唤：现代战争4》Steam Deck 性能测试：Win11 双系统",
+        "《博德之门3》Steam Deck 实测：FSR 4.1 + MAKO / LSFG-VK 性能测试",
+        "Steam Deck OLED / 《宝可梦：伽玛绿宝石》虚幻5重制版 / 安装教程 / SteamOS 3.8.25",
+        "这才是真正的爆改啊...",
+        "【宝可梦新巅峰！】Steam Deck爽玩《宝可梦伽马绿宝石》！手把手安装教程！"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 787,
-      "started_at": "22:49:01",
-      "done_at": "23:02:09",
+      "elapsed_seconds": 631,
+      "started_at": "22:02:21",
+      "done_at": "22:12:53",
       "sub_stage": "",
       "progress": null,
-      "items_count": 167,
+      "items_count": 147,
       "samples": []
     },
     "online_merge": {
@@ -97,23 +97,23 @@
     "百度贴吧",
     "百度贴吧",
     "百度贴吧",
-    "《指环王：北方战争 - 遗产版》Steam Deck 性能测试：全新 2026 重制版",
-    "Steamdeck能玩《幻兽帕鲁》1.0正式版吗？这个视频告诉你！",
-    "Steam Deck OLED / 《阿吉菲尔德高中》性能测试 / SteamOS 3.8.25",
-    "Steam Deck OLED / 《人间地狱》性能测试 / SteamOS 3.8.25",
-    "《上古卷轴4：湮没 重制版》Switch 2 对比 Steam Deck OLED：哪一款表现更好？"
+    "【宝可梦新巅峰！】Steam Deck爽玩《宝可梦伽马绿宝石》！手把手安装教程！",
+    "这才是真正的爆改啊...",
+    "Steam Deck OLED / 《宝可梦：伽玛绿宝石》虚幻5重制版 / 安装教程 / SteamOS 3.8.25",
+    "《博德之门3》Steam Deck 实测：FSR 4.1 + MAKO / LSFG-VK 性能测试",
+    "《使命召唤：现代战争4》Steam Deck 性能测试：Win11 双系统"
   ],
   "sources": {
-    "rss_cn": 76,
-    "rss": 909,
-    "web_search": 39,
-    "chinese_web": 69,
-    "bilibili": 999,
-    "tieba": 27
+    "rss_cn": 65,
+    "rss": 453,
+    "web_search": 44,
+    "chinese_web": 139,
+    "bilibili": 684,
+    "tieba": 14
   },
-  "items_so_far": 167,
+  "items_so_far": 147,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 4554
+  "elapsed_seconds": 3101
 }
