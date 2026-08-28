@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-23T21:21:11",
-  "updated_at": "22:12:52",
+  "pipeline_started_at": "2026-08-28T05:08:21",
+  "updated_at": "06:03:19",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1252,
-      "started_at": "21:21:11",
-      "done_at": "21:42:04",
+      "elapsed_seconds": 1129,
+      "started_at": "05:08:21",
+      "done_at": "05:27:11",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Two great new repairable gadgets",
-        "An okay laptop with 16GB of RAM is better than a nice laptop with 8GB, and this $520 HP OmniBook proves it",
-        "买不起房的年轻人，在房屋装修游戏里缓解愁苦",
-        "从Xbox到PS5：初代《光环》的进化历程",
-        "颠覆传统技术垄断！马斯克或采用FEL技术挑战EUV光刻机",
-        "为第三代半导体产业而生！国产光刻机获行业头部客户重复订单：已获验证 可大规模使用了",
-        "LG 新能源：固态电池在装进汽车之前，可能会先进入手机、无人机",
-        "联想推出 LOQ 15IPH11 游戏本：酷睿 Ultra 7 356H 处理器、RTX5050/5060 显卡",
-        "《又一个僵尸幸存者》现已脱离抢先体验并正式发售",
-        "解锁开学新装备：神影16 魔龙姬限定款领衔微星笔记本晒单有礼"
+        "Google’s AI note-taking app now allows you to interact with books",
+        "GTA VI looks just as great as we could hope for",
+        "一家日本厂商制作的游戏，怎样成为巴西游戏行业的宝贵遗产？",
+        "30年后，“打开”宝可梦的方式还在增加",
+        "AMD下代CPU Zen7很疯狂：384核+1.4nm工艺 IPC大涨25%",
+        "英特尔Razor Lake-AX处理器细节曝光：采用Nova Lake架构 但不支持超频",
+        "微软推送 Win11 补丁，修复《漫威斗魂》等游戏不兼容 8 月更新问题",
+        "SK 海力士在美 HBM 生产基地奠基：2029H2 产出首款“美国造”HBM",
+        "生活模拟游戏「Witchbrook」正式确认中文名《巫奇魔法学院》",
+        "中元节消暑必备：心理恐怖游戏《无处安睡》免费试玩现已开启"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1216,
-      "started_at": "21:42:04",
-      "done_at": "22:02:21",
+      "elapsed_seconds": 1507,
+      "started_at": "05:27:11",
+      "done_at": "05:52:19",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1399,
+      "items_count": 2056,
       "samples": [
-        "《使命召唤：现代战争4》Steam Deck 性能测试：Win11 双系统",
-        "《博德之门3》Steam Deck 实测：FSR 4.1 + MAKO / LSFG-VK 性能测试",
-        "Steam Deck OLED / 《宝可梦：伽玛绿宝石》虚幻5重制版 / 安装教程 / SteamOS 3.8.25",
-        "这才是真正的爆改啊...",
-        "【宝可梦新巅峰！】Steam Deck爽玩《宝可梦伽马绿宝石》！手把手安装教程！"
+        "Steam Deck OLED / 《异形：火力小队2》性能测试 / SteamOS 3.8.25",
+        "Steam Deck OLED / 《潜行者2：希望的代价》性能测试 / SteamOS 3.8.25",
+        "steamdeck oled玩战地六",
+        "Steam Deck OLED / 《1666：阿姆斯特丹》性能测试 / SteamOS 3.8.25",
+        "Steam Deck OLED 演示《共鸣：瘟疫传说传承》"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 631,
-      "started_at": "22:02:21",
-      "done_at": "22:12:53",
+      "elapsed_seconds": 660,
+      "started_at": "05:52:19",
+      "done_at": "06:03:19",
       "sub_stage": "",
       "progress": null,
-      "items_count": 147,
+      "items_count": 153,
       "samples": []
     },
     "online_merge": {
@@ -95,25 +95,25 @@
   },
   "samples": [
     "百度贴吧",
-    "百度贴吧",
-    "百度贴吧",
-    "【宝可梦新巅峰！】Steam Deck爽玩《宝可梦伽马绿宝石》！手把手安装教程！",
-    "这才是真正的爆改啊...",
-    "Steam Deck OLED / 《宝可梦：伽玛绿宝石》虚幻5重制版 / 安装教程 / SteamOS 3.8.25",
-    "《博德之门3》Steam Deck 实测：FSR 4.1 + MAKO / LSFG-VK 性能测试",
-    "《使命召唤：现代战争4》Steam Deck 性能测试：Win11 双系统"
+    "贴吧用户_JGtUbU5-个人中心",
+    "%E7%B4%AB%E6%9A%97%E5%A4%A9%E6%9E%B0-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
+    "Steam Deck OLED 演示《共鸣：瘟疫传说传承》",
+    "Steam Deck OLED / 《1666：阿姆斯特丹》性能测试 / SteamOS 3.8.25",
+    "steamdeck oled玩战地六",
+    "Steam Deck OLED / 《潜行者2：希望的代价》性能测试 / SteamOS 3.8.25",
+    "Steam Deck OLED / 《异形：火力小队2》性能测试 / SteamOS 3.8.25"
   ],
   "sources": {
-    "rss_cn": 65,
-    "rss": 453,
-    "web_search": 44,
-    "chinese_web": 139,
-    "bilibili": 684,
-    "tieba": 14
+    "rss_cn": 81,
+    "rss": 438,
+    "web_search": 42,
+    "chinese_web": 133,
+    "bilibili": 1304,
+    "tieba": 58
   },
-  "items_so_far": 147,
+  "items_so_far": 153,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3101
+  "elapsed_seconds": 3297
 }
