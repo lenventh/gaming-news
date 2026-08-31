@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-28T05:08:21",
-  "updated_at": "06:03:19",
+  "pipeline_started_at": "2026-08-30T23:12:46",
+  "updated_at": "00:07:56",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1129,
-      "started_at": "05:08:21",
-      "done_at": "05:27:11",
+      "elapsed_seconds": 1186,
+      "started_at": "23:12:46",
+      "done_at": "23:32:33",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Google’s AI note-taking app now allows you to interact with books",
-        "GTA VI looks just as great as we could hope for",
-        "一家日本厂商制作的游戏，怎样成为巴西游戏行业的宝贵遗产？",
+        "Chess.com launched a poker site and is planning even more classic games",
+        "Enormous 12TB Steam leak includes abandoned Half-Life 2: Episode 3 assets",
         "30年后，“打开”宝可梦的方式还在增加",
-        "AMD下代CPU Zen7很疯狂：384核+1.4nm工艺 IPC大涨25%",
-        "英特尔Razor Lake-AX处理器细节曝光：采用Nova Lake架构 但不支持超频",
-        "微软推送 Win11 补丁，修复《漫威斗魂》等游戏不兼容 8 月更新问题",
-        "SK 海力士在美 HBM 生产基地奠基：2029H2 产出首款“美国造”HBM",
-        "生活模拟游戏「Witchbrook」正式确认中文名《巫奇魔法学院》",
-        "中元节消暑必备：心理恐怖游戏《无处安睡》免费试玩现已开启"
+        "这款生活模拟新游，治好了我的时间焦虑",
+        "Qwen3.8-27B开源即用！昇腾0Day适配：270亿参数推理效率拉满",
+        "Intel开源着色器编译器Jay迎来里程碑！Xe2/Xe3双平台通过Vulkan CTS认证",
+        "特斯拉欧洲入门版 Model 3 更换新轮胎，续航提升 38 公里至 572 公里",
+        "华擎发布 B550M Pro-A WiFi 6E 主板：AMD AM4 平台、8 相供电",
+        "Vol.97 番外：你有多久没回过家乡了？ Ft.小米影像",
+        "“神造帝国”与“天使孔子”：谁在替阿拉伯人想象中国？"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1507,
-      "started_at": "05:27:11",
-      "done_at": "05:52:19",
+      "elapsed_seconds": 1476,
+      "started_at": "23:32:33",
+      "done_at": "23:57:11",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2056,
+      "items_count": 2059,
       "samples": [
-        "Steam Deck OLED / 《异形：火力小队2》性能测试 / SteamOS 3.8.25",
-        "Steam Deck OLED / 《潜行者2：希望的代价》性能测试 / SteamOS 3.8.25",
-        "steamdeck oled玩战地六",
-        "Steam Deck OLED / 《1666：阿姆斯特丹》性能测试 / SteamOS 3.8.25",
-        "Steam Deck OLED 演示《共鸣：瘟疫传说传承》"
+        "《异形：火力小队2》Steam Deck 性能测试：能流畅玩吗？",
+        "《红色沙漠 强化版》Steam Deck 性能测试：能流畅玩吗？",
+        "SteamOS 新手教程 小白如何从零安装 小黄鸭+FSR4+MAKO 畅玩SteamDeck必备插件 性能瞬间起飞!",
+        "PSP爆改Steam掌机实测：20年前的机器能玩3A大作吗 | Macho Nacho Productions",
+        "Steam Deck OLED 演示《鬼武者 剑之道》Demo"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 660,
-      "started_at": "05:52:19",
-      "done_at": "06:03:19",
+      "elapsed_seconds": 645,
+      "started_at": "23:57:11",
+      "done_at": "00:07:56",
       "sub_stage": "",
       "progress": null,
-      "items_count": 153,
+      "items_count": 148,
       "samples": []
     },
     "online_merge": {
@@ -95,25 +95,25 @@
   },
   "samples": [
     "百度贴吧",
-    "贴吧用户_JGtUbU5-个人中心",
-    "%E7%B4%AB%E6%9A%97%E5%A4%A9%E6%9E%B0-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
-    "Steam Deck OLED 演示《共鸣：瘟疫传说传承》",
-    "Steam Deck OLED / 《1666：阿姆斯特丹》性能测试 / SteamOS 3.8.25",
-    "steamdeck oled玩战地六",
-    "Steam Deck OLED / 《潜行者2：希望的代价》性能测试 / SteamOS 3.8.25",
-    "Steam Deck OLED / 《异形：火力小队2》性能测试 / SteamOS 3.8.25"
+    "贴吧用户_QJVWbNy 8-22 08:53",
+    "百度贴吧",
+    "Steam Deck OLED 演示《鬼武者 剑之道》Demo",
+    "PSP爆改Steam掌机实测：20年前的机器能玩3A大作吗 | Macho Nacho Productions",
+    "SteamOS 新手教程 小白如何从零安装 小黄鸭+FSR4+MAKO 畅玩SteamDeck必备插件 性能瞬间起飞!",
+    "《红色沙漠 强化版》Steam Deck 性能测试：能流畅玩吗？",
+    "《异形：火力小队2》Steam Deck 性能测试：能流畅玩吗？"
   ],
   "sources": {
-    "rss_cn": 81,
-    "rss": 438,
-    "web_search": 42,
-    "chinese_web": 133,
-    "bilibili": 1304,
-    "tieba": 58
+    "rss_cn": 70,
+    "rss": 441,
+    "web_search": 46,
+    "chinese_web": 79,
+    "bilibili": 1407,
+    "tieba": 16
   },
-  "items_so_far": 153,
+  "items_so_far": 148,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3297
+  "elapsed_seconds": 3310
 }
