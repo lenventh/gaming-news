@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-08-30T23:12:46",
-  "updated_at": "00:07:56",
+  "pipeline_started_at": "2026-09-03T23:01:04",
+  "updated_at": "23:58:16",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1186,
-      "started_at": "23:12:46",
-      "done_at": "23:32:33",
+      "elapsed_seconds": 1259,
+      "started_at": "23:01:04",
+      "done_at": "23:22:03",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Chess.com launched a poker site and is planning even more classic games",
-        "Enormous 12TB Steam leak includes abandoned Half-Life 2: Episode 3 assets",
-        "30年后，“打开”宝可梦的方式还在增加",
-        "这款生活模拟新游，治好了我的时间焦虑",
-        "Qwen3.8-27B开源即用！昇腾0Day适配：270亿参数推理效率拉满",
-        "Intel开源着色器编译器Jay迎来里程碑！Xe2/Xe3双平台通过Vulkan CTS认证",
-        "特斯拉欧洲入门版 Model 3 更换新轮胎，续航提升 38 公里至 572 公里",
-        "华擎发布 B550M Pro-A WiFi 6E 主板：AMD AM4 平台、8 相供电",
-        "Vol.97 番外：你有多久没回过家乡了？ Ft.小米影像",
-        "“神造帝国”与“天使孔子”：谁在替阿拉伯人想象中国？"
+        "The Moto Watch Ultra is a return to Wear OS",
+        "Microsoft opens up Xbox Cloud Gaming with new pay-as-you-go option",
+        "米哈游开场公布《源初之结》，《无限大》定档：gamescom 2026开幕夜",
+        "玩家坚守20年，这款最佳策略游戏官宣回归",
+        "Intel要把大缓存搬进笔记本！bLLC对标AMD X3D：2028年登场",
+        "百度Q2 GPU云同比增长283% 李彦宏：昆仑芯已完成三代AI芯片研发和商业化",
+        "“国产 GPU 四小龙”之一：燧原科技中签号出炉，发行价 142.18 元 / 股",
+        "TrendForce：苹果 iPhone 18 Pro 内存采购成本暴涨 400%，预估新机涨价 10%-20%",
+        "布拉德·皮特新片《野兽之心》定档9月30日",
+        "《爱氏物语》NS版确定于2026年9月17日发售"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1476,
-      "started_at": "23:32:33",
-      "done_at": "23:57:11",
+      "elapsed_seconds": 1510,
+      "started_at": "23:22:03",
+      "done_at": "23:47:15",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2059,
+      "items_count": 1956,
       "samples": [
-        "《异形：火力小队2》Steam Deck 性能测试：能流畅玩吗？",
-        "《红色沙漠 强化版》Steam Deck 性能测试：能流畅玩吗？",
-        "SteamOS 新手教程 小白如何从零安装 小黄鸭+FSR4+MAKO 畅玩SteamDeck必备插件 性能瞬间起飞!",
-        "PSP爆改Steam掌机实测：20年前的机器能玩3A大作吗 | Macho Nacho Productions",
-        "Steam Deck OLED 演示《鬼武者 剑之道》Demo"
+        "鬼武者：剑之道 - Switch 2 对比 Steam Deck",
+        "《鬼武者 剑之道》 | Switch 2 vs Steam Deck | 画质对比",
+        "SteamOS 3.9 预览版更新至 Linux 7.2 和 KDE Plasma 6.7 桌面环境",
+        "鸣潮3.6 C#编程语言优化 steamos卡在热更新",
+        "SteamOS插件商城稳定版3.2.8更新"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 645,
-      "started_at": "23:57:11",
-      "done_at": "00:07:56",
+      "elapsed_seconds": 660,
+      "started_at": "23:47:15",
+      "done_at": "23:58:16",
       "sub_stage": "",
       "progress": null,
-      "items_count": 148,
+      "items_count": 158,
       "samples": []
     },
     "online_merge": {
@@ -95,25 +95,25 @@
   },
   "samples": [
     "百度贴吧",
-    "贴吧用户_QJVWbNy 8-22 08:53",
     "百度贴吧",
-    "Steam Deck OLED 演示《鬼武者 剑之道》Demo",
-    "PSP爆改Steam掌机实测：20年前的机器能玩3A大作吗 | Macho Nacho Productions",
-    "SteamOS 新手教程 小白如何从零安装 小黄鸭+FSR4+MAKO 畅玩SteamDeck必备插件 性能瞬间起飞!",
-    "《红色沙漠 强化版》Steam Deck 性能测试：能流畅玩吗？",
-    "《异形：火力小队2》Steam Deck 性能测试：能流畅玩吗？"
+    "百度贴吧",
+    "SteamOS插件商城稳定版3.2.8更新",
+    "鸣潮3.6 C#编程语言优化 steamos卡在热更新",
+    "SteamOS 3.9 预览版更新至 Linux 7.2 和 KDE Plasma 6.7 桌面环境",
+    "《鬼武者 剑之道》 | Switch 2 vs Steam Deck | 画质对比",
+    "鬼武者：剑之道 - Switch 2 对比 Steam Deck"
   ],
   "sources": {
-    "rss_cn": 70,
-    "rss": 441,
-    "web_search": 46,
-    "chinese_web": 79,
-    "bilibili": 1407,
-    "tieba": 16
+    "rss_cn": 67,
+    "rss": 438,
+    "web_search": 48,
+    "chinese_web": 107,
+    "bilibili": 1273,
+    "tieba": 23
   },
-  "items_so_far": 148,
+  "items_so_far": 158,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3310
+  "elapsed_seconds": 3432
 }
