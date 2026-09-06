@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-09-03T23:01:04",
-  "updated_at": "23:58:16",
+  "pipeline_started_at": "2026-09-06T22:43:25",
+  "updated_at": "23:41:54",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1259,
-      "started_at": "23:01:04",
-      "done_at": "23:22:03",
+      "elapsed_seconds": 1287,
+      "started_at": "22:43:25",
+      "done_at": "23:04:53",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "The Moto Watch Ultra is a return to Wear OS",
-        "Microsoft opens up Xbox Cloud Gaming with new pay-as-you-go option",
+        "iPhone Handoff will seamlessly share one number between two phones",
+        "Competitive Pokémon is on phones now, but you still need a Switch to become a champion",
         "米哈游开场公布《源初之结》，《无限大》定档：gamescom 2026开幕夜",
         "玩家坚守20年，这款最佳策略游戏官宣回归",
-        "Intel要把大缓存搬进笔记本！bLLC对标AMD X3D：2028年登场",
-        "百度Q2 GPU云同比增长283% 李彦宏：昆仑芯已完成三代AI芯片研发和商业化",
-        "“国产 GPU 四小龙”之一：燧原科技中签号出炉，发行价 142.18 元 / 股",
-        "TrendForce：苹果 iPhone 18 Pro 内存采购成本暴涨 400%，预估新机涨价 10%-20%",
-        "布拉德·皮特新片《野兽之心》定档9月30日",
-        "《爱氏物语》NS版确定于2026年9月17日发售"
+        "胡伟武回忆汉芯之痛：差点浇灭中国自主CPU火苗！龙芯2E只能背水一战",
+        "抢台积电饭碗 Intel芯片代工业务增长近40倍：2030年收入400亿美元",
+        "雷鸟推出鹤 6 Ultra 竞技款 4K 150Hz QD-Mini LED 电视，券后国补价 3999 元起",
+        "小米雷军谈“增程汽车大有可为”：理想等同行也不断证明，用户愿意为优秀的增程汽车买单",
+        "单人团本动作 RPG《Sil与消逝之境》现已推出试玩demo",
+        "《最终幻想VII 启示录》确定2027年4月8日发售，系列三部曲迎来完结"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1510,
-      "started_at": "23:22:03",
-      "done_at": "23:47:15",
+      "elapsed_seconds": 1465,
+      "started_at": "23:04:53",
+      "done_at": "23:29:19",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1956,
+      "items_count": 2054,
       "samples": [
-        "鬼武者：剑之道 - Switch 2 对比 Steam Deck",
-        "《鬼武者 剑之道》 | Switch 2 vs Steam Deck | 画质对比",
-        "SteamOS 3.9 预览版更新至 Linux 7.2 和 KDE Plasma 6.7 桌面环境",
-        "鸣潮3.6 C#编程语言优化 steamos卡在热更新",
-        "SteamOS插件商城稳定版3.2.8更新"
+        "steamdeck还能战斗嘛，与g3e对比",
+        "【steamdeck】《NBA 2k27》小黄鸭高画质90帧，感觉和26差别不大",
+        "Steam Deck《合金装备》全系列全作品演示：运行表现、画质、复古怀旧、模拟器及 3A 巨作展示",
+        "Steam Deck 鬼武者 Way Of The Sword",
+        "Steam Deck 家用游戏设备 黑色 国行"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 660,
-      "started_at": "23:47:15",
-      "done_at": "23:58:16",
+      "elapsed_seconds": 755,
+      "started_at": "23:29:19",
+      "done_at": "23:41:54",
       "sub_stage": "",
       "progress": null,
-      "items_count": 158,
+      "items_count": 156,
       "samples": []
     },
     "online_merge": {
@@ -97,23 +97,23 @@
     "百度贴吧",
     "百度贴吧",
     "百度贴吧",
-    "SteamOS插件商城稳定版3.2.8更新",
-    "鸣潮3.6 C#编程语言优化 steamos卡在热更新",
-    "SteamOS 3.9 预览版更新至 Linux 7.2 和 KDE Plasma 6.7 桌面环境",
-    "《鬼武者 剑之道》 | Switch 2 vs Steam Deck | 画质对比",
-    "鬼武者：剑之道 - Switch 2 对比 Steam Deck"
+    "Steam Deck 家用游戏设备 黑色 国行",
+    "Steam Deck 鬼武者 Way Of The Sword",
+    "Steam Deck《合金装备》全系列全作品演示：运行表现、画质、复古怀旧、模拟器及 3A 巨作展示",
+    "【steamdeck】《NBA 2k27》小黄鸭高画质90帧，感觉和26差别不大",
+    "steamdeck还能战斗嘛，与g3e对比"
   ],
   "sources": {
-    "rss_cn": 67,
-    "rss": 438,
-    "web_search": 48,
-    "chinese_web": 107,
-    "bilibili": 1273,
-    "tieba": 23
+    "rss_cn": 70,
+    "rss": 441,
+    "web_search": 41,
+    "chinese_web": 77,
+    "bilibili": 1416,
+    "tieba": 9
   },
-  "items_so_far": 158,
+  "items_so_far": 156,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3432
+  "elapsed_seconds": 3509
 }
