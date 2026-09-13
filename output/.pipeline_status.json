@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-09-10T22:58:01",
-  "updated_at": "23:52:38",
+  "pipeline_started_at": "2026-09-13T22:54:05",
+  "updated_at": "23:46:02",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1221,
-      "started_at": "22:58:01",
-      "done_at": "23:18:22",
+      "elapsed_seconds": 1129,
+      "started_at": "22:54:05",
+      "done_at": "23:12:55",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "A Trio Of Resident Evil Remakes Hit Switch 2 In October",
-        "Wolverine on the PS5 goes back to a simpler (and bloodier) style of action game",
-        "科隆展上最“小”的游戏，是如何用技术打造真实世界的？",
+        "How Super Mario Sunshine still delights (and frustrates) to this day",
+        "Apple is reportedly working on iPhone game controllers",
         "做了三年AI教程后，他决定自己做一款游戏",
-        "存储涨价压垮DIY！桌面CPU出货暴跌20%：AMD却迎来最高光时刻",
-        "CPU骗局三天踩坑两次！连收两个空盒：锐龙5 9600X不翼而飞",
-        "微软 XBOX 将携《使命召唤：现代战争 4》《我的世界：地下城 2》等作品参加 2026 东京电玩展",
-        "开发者用 Claude 一小时复刻 Win3.1 程序管理器，可在 Win11 和 macOS 上运行",
-        "索尼宣布不再与小岛工作室合作打造IP谍报动作游戏《PHYSINT》",
-        "可折叠iPhone Duo领衔：苹果发布多款新品"
+        "触乐怪话：既要自由度，又要抄作业",
+        "小米玄戒O100推倒内存墙：实现真正的近存计算",
+        "8行代码搞定的事拖了近两年！AMD EPYC Zen 5服务器终获单CCD温度监控",
+        "奇瑞捷豹路虎神行者 8 创“驾驶混动汽车到达的最高海拔”吉尼斯世界纪录",
+        "恺英网络拟斥资 20.3 亿元，间接参股韩国《传奇》IP 母公司娱美德",
+        "让老游戏焕发新生命——gamescom 2026 育碧媒体区资讯汇总",
+        "这是人类能发出的声音吗？《Mimic Party》| 玩的核WonderCores"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1532,
-      "started_at": "23:18:22",
-      "done_at": "23:43:56",
+      "elapsed_seconds": 1476,
+      "started_at": "23:12:55",
+      "done_at": "23:37:33",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2014,
+      "items_count": 2010,
       "samples": [
-        "《赛博朋克 2077》Steam Deck LCD 性能测试：如今还能流畅玩吗？",
-        "《荣耀战魂》Steam Deck 性能测试：2026年仍在 Linux 平台被封禁？",
-        "SteamDeck《最终幻想：共鸣》实机测试 | 绿标 | 体验版",
-        "Steam Deck OLED / 《吞吞堡垒（Wanderburg）》性能测试 / SteamOS 3.9",
-        "《黎明行者之血》SteamDeck实况：前《巫师3》总监新作，掌机表现如何？ | SteamDeck掌机"
+        "Steam Deck OLED / 《蔓延：零号》性能测试 / SteamOS 3.9",
+        "实测20多台Win掌机！2026到底值不值得买？是真便携还是伪需求？对普通玩家来说有没有必要？",
+        "手搓竖版STEAM掌机，我用3D打印机让Steam Deck&quot;站起来&quot;打3A大作",
+        "掌机还是手机？骁龙8 Elite Gen5直面挑战Steam Deck，实测15款AAA大作 | Winlator / GameHub模拟器安卓PC模拟器",
+        "《无主之地4》Steam Deck 性能测试（1.10 补丁更新）：能流畅玩吗？"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 522,
-      "started_at": "23:43:56",
-      "done_at": "23:52:39",
+      "elapsed_seconds": 509,
+      "started_at": "23:37:33",
+      "done_at": "23:46:02",
       "sub_stage": "",
       "progress": null,
-      "items_count": 157,
+      "items_count": 145,
       "samples": []
     },
     "online_merge": {
@@ -94,26 +94,26 @@
     }
   },
   "samples": [
+    "Wsay669-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
     "百度贴吧",
-    "mo%E9%99%8C%E9%BB%98mo-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
-    "百度贴吧",
-    "《黎明行者之血》SteamDeck实况：前《巫师3》总监新作，掌机表现如何？ | SteamDeck掌机",
-    "Steam Deck OLED / 《吞吞堡垒（Wanderburg）》性能测试 / SteamOS 3.9",
-    "SteamDeck《最终幻想：共鸣》实机测试 | 绿标 | 体验版",
-    "《荣耀战魂》Steam Deck 性能测试：2026年仍在 Linux 平台被封禁？",
-    "《赛博朋克 2077》Steam Deck LCD 性能测试：如今还能流畅玩吗？"
+    "Wsay669-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
+    "《无主之地4》Steam Deck 性能测试（1.10 补丁更新）：能流畅玩吗？",
+    "掌机还是手机？骁龙8 Elite Gen5直面挑战Steam Deck，实测15款AAA大作 | Winlator / GameHub模拟器安卓PC模拟器",
+    "手搓竖版STEAM掌机，我用3D打印机让Steam Deck&quot;站起来&quot;打3A大作",
+    "实测20多台Win掌机！2026到底值不值得买？是真便携还是伪需求？对普通玩家来说有没有必要？",
+    "Steam Deck OLED / 《蔓延：零号》性能测试 / SteamOS 3.9"
   ],
   "sources": {
-    "rss_cn": 71,
-    "rss": 439,
-    "web_search": 41,
-    "chinese_web": 104,
-    "bilibili": 1323,
-    "tieba": 36
+    "rss_cn": 75,
+    "rss": 406,
+    "web_search": 31,
+    "chinese_web": 62,
+    "bilibili": 1421,
+    "tieba": 15
   },
-  "items_so_far": 157,
+  "items_so_far": 145,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3277
+  "elapsed_seconds": 3116
 }
