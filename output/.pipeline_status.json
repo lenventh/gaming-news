@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-09-13T22:54:05",
-  "updated_at": "23:46:02",
+  "pipeline_started_at": "2026-09-17T23:25:40",
+  "updated_at": "00:18:30",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1129,
-      "started_at": "22:54:05",
-      "done_at": "23:12:55",
+      "elapsed_seconds": 1168,
+      "started_at": "23:25:40",
+      "done_at": "23:45:10",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "How Super Mario Sunshine still delights (and frustrates) to this day",
-        "Apple is reportedly working on iPhone game controllers",
-        "做了三年AI教程后，他决定自己做一款游戏",
-        "触乐怪话：既要自由度，又要抄作业",
-        "小米玄戒O100推倒内存墙：实现真正的近存计算",
-        "8行代码搞定的事拖了近两年！AMD EPYC Zen 5服务器终获单CCD温度监控",
-        "奇瑞捷豹路虎神行者 8 创“驾驶混动汽车到达的最高海拔”吉尼斯世界纪录",
-        "恺英网络拟斥资 20.3 亿元，间接参股韩国《传奇》IP 母公司娱美德",
-        "让老游戏焕发新生命——gamescom 2026 育碧媒体区资讯汇总",
-        "这是人类能发出的声音吗？《Mimic Party》| 玩的核WonderCores"
+        "Xbox’s clever disc-to-digital feature was 15 years in the making",
+        "Save $30 or more on a refurbished Apple TV 4K",
+        "在电影和电视剧里讲游戏故事，这家公司是专业的",
+        "腾讯游戏的长期战略：拥抱AI、理性投资，打造长青游戏",
+        "英特尔14A工艺表现优异 明年下半年风险试产",
+        "超频超到44亿GHz！玩家开启PBO后CPU跑出逆天频率：功耗够炸月球了",
+        "华硕推出 VA249HG2-R 显示器：23.8 英寸 1080P 144Hz，999 元",
+        "亿咖通科技全球整车搭载量突破 1200 万辆，Flyme Auto 累计装机超 343.9 万台",
+        "《双点博物馆》失落游乐园扩展包将于10月8日发售",
+        "Steam周销量排行榜:《战狗 WARDOGS》登顶|2026年9月第2周"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1476,
-      "started_at": "23:12:55",
-      "done_at": "23:37:33",
+      "elapsed_seconds": 1511,
+      "started_at": "23:45:10",
+      "done_at": "00:10:22",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2010,
+      "items_count": 1909,
       "samples": [
-        "Steam Deck OLED / 《蔓延：零号》性能测试 / SteamOS 3.9",
-        "实测20多台Win掌机！2026到底值不值得买？是真便携还是伪需求？对普通玩家来说有没有必要？",
-        "手搓竖版STEAM掌机，我用3D打印机让Steam Deck&quot;站起来&quot;打3A大作",
-        "掌机还是手机？骁龙8 Elite Gen5直面挑战Steam Deck，实测15款AAA大作 | Winlator / GameHub模拟器安卓PC模拟器",
-        "《无主之地4》Steam Deck 性能测试（1.10 补丁更新）：能流畅玩吗？"
+        "《卧龙2：凤火连天》Steam Deck 性能首发实测：能够流畅游玩吗？",
+        "《伊莫》Steam Deck 性能实测：能够流畅游玩吗？",
+        "Steam Deck OLED / 《迪姆雷斯》性能实测 / SteamOS 3.9",
+        "Steam Deck OLED / 《卢恩传奇：龙之荒野》1.0 正式发售 / SteamOS 3.9",
+        "给我的steam deck 做了一个AI插件，但是现在AI有点大愚若智啊"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 509,
-      "started_at": "23:37:33",
-      "done_at": "23:46:02",
+      "elapsed_seconds": 488,
+      "started_at": "00:10:22",
+      "done_at": "00:18:30",
       "sub_stage": "",
       "progress": null,
-      "items_count": 145,
+      "items_count": 153,
       "samples": []
     },
     "online_merge": {
@@ -94,26 +94,26 @@
     }
   },
   "samples": [
-    "Wsay669-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
     "百度贴吧",
-    "Wsay669-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
-    "《无主之地4》Steam Deck 性能测试（1.10 补丁更新）：能流畅玩吗？",
-    "掌机还是手机？骁龙8 Elite Gen5直面挑战Steam Deck，实测15款AAA大作 | Winlator / GameHub模拟器安卓PC模拟器",
-    "手搓竖版STEAM掌机，我用3D打印机让Steam Deck&quot;站起来&quot;打3A大作",
-    "实测20多台Win掌机！2026到底值不值得买？是真便携还是伪需求？对普通玩家来说有没有必要？",
-    "Steam Deck OLED / 《蔓延：零号》性能测试 / SteamOS 3.9"
+    "百度贴吧",
+    "百度贴吧",
+    "给我的steam deck 做了一个AI插件，但是现在AI有点大愚若智啊",
+    "Steam Deck OLED / 《卢恩传奇：龙之荒野》1.0 正式发售 / SteamOS 3.9",
+    "Steam Deck OLED / 《迪姆雷斯》性能实测 / SteamOS 3.9",
+    "《伊莫》Steam Deck 性能实测：能够流畅游玩吗？",
+    "《卧龙2：凤火连天》Steam Deck 性能首发实测：能够流畅游玩吗？"
   ],
   "sources": {
-    "rss_cn": 75,
-    "rss": 406,
-    "web_search": 31,
-    "chinese_web": 62,
-    "bilibili": 1421,
+    "rss_cn": 67,
+    "rss": 433,
+    "web_search": 25,
+    "chinese_web": 66,
+    "bilibili": 1303,
     "tieba": 15
   },
-  "items_so_far": 145,
+  "items_so_far": 153,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3116
+  "elapsed_seconds": 3169
 }
