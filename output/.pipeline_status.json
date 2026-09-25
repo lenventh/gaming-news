@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-09-20T23:00:17",
-  "updated_at": "23:52:21",
+  "pipeline_started_at": "2026-09-24T23:47:30",
+  "updated_at": "00:41:12",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1216,
-      "started_at": "23:00:17",
-      "done_at": "23:20:34",
+      "elapsed_seconds": 1248,
+      "started_at": "23:47:30",
+      "done_at": "00:08:19",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "A great new video game movie",
-        "Kojima Productions disputes reports the studio is in trouble",
+        "Now Google Chrome shares tabs to new devices that save where you were",
+        "Meta is going to let you build games with AI right on your phone",
         "腾讯游戏的长期战略：拥抱AI、理性投资，打造长青游戏",
         "米哈游宣布停运的AI数字人，被一群玩家“赛博永生”了",
-        "老神U杀疯！AMD 7800X3D价格跳水：比9800X3D便宜34%",
-        "范式智能与华为签订大规模订单：斥资超10亿元采购昇腾950芯片",
-        "《鸣潮》将携手联想拯救者推出联名版 Y700 无极平板电脑、Y7000X 游戏笔记本",
-        "预售 599 元，中兴 M3 Pro 5G 可插卡移动随身 WIFI 上架",
-        "对绝地潜兵的三次转变｜机事本9.12-9.18",
-        "《消逝的光芒：困兽》迎来一周年庆典，确认推出实体版"
+        "Intel不敢干的它干了！神秘x86芯片抛弃32位兼容：只留64位，APX+FRED全都有",
+        "新紫光集团：将与Arm成立通用人工智能联合创新中心",
+        "《生化危机：爆发夜》电影中国内地定档，10 月 5 日上映",
+        "45 人做《求生之路 2》，前V社编剧谈小团队开发的魔力",
+        "《战锤40K：战争黎明4》战报，展现2v2团队小规模冲突",
+        "798个玩具等你归位：收纳游戏《捡起你的玩具来！》试玩版今日上线"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1461,
-      "started_at": "23:20:34",
-      "done_at": "23:44:55",
+      "elapsed_seconds": 1514,
+      "started_at": "00:08:19",
+      "done_at": "00:33:34",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1946,
+      "items_count": 1980,
       "samples": [
-        "2026 SteamDeck还值得入手吗？LCD/OLED优缺点实测，看完不纠结！",
-        "Steam Deck深度评测：史上最强掌机到底有多强？",
-        "【极客湾】观众提问：Steam deck 2大概率什么时候有消息？",
-        "【数码新闻】Steam Deck2进度更新，还得继续等",
-        "扒到V社核心专利！SteamDeck 2代新设计曝光，芯片还在等AMD？2026入初代血赚？SteamDeck2代什么时候可以买到？"
+        "世界首发？用SC手柄玩GBO2终于体会到手柄格斗连招有多不容易了 高达激战任务2 GBO2 高达战斗行动2 Steam手柄二代 Steam Controller",
+        "【中字】老外揭秘V社50吨神秘货柜，手柄30分钟售罄真相",
+        "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9",
+        "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
+        "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 446,
-      "started_at": "23:44:55",
-      "done_at": "23:52:22",
+      "elapsed_seconds": 458,
+      "started_at": "00:33:34",
+      "done_at": "00:41:13",
       "sub_stage": "",
       "progress": null,
-      "items_count": 142,
+      "items_count": 140,
       "samples": []
     },
     "online_merge": {
@@ -97,23 +97,23 @@
     "百度贴吧",
     "百度贴吧",
     "百度贴吧",
-    "扒到V社核心专利！SteamDeck 2代新设计曝光，芯片还在等AMD？2026入初代血赚？SteamDeck2代什么时候可以买到？",
-    "【数码新闻】Steam Deck2进度更新，还得继续等",
-    "【极客湾】观众提问：Steam deck 2大概率什么时候有消息？",
-    "Steam Deck深度评测：史上最强掌机到底有多强？",
-    "2026 SteamDeck还值得入手吗？LCD/OLED优缺点实测，看完不纠结！"
+    "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！",
+    "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
+    "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9",
+    "【中字】老外揭秘V社50吨神秘货柜，手柄30分钟售罄真相",
+    "世界首发？用SC手柄玩GBO2终于体会到手柄格斗连招有多不容易了 高达激战任务2 GBO2 高达战斗行动2 Steam手柄二代 Steam Controller"
   ],
   "sources": {
-    "rss_cn": 63,
-    "rss": 428,
-    "web_search": 24,
-    "chinese_web": 82,
-    "bilibili": 1343,
-    "tieba": 6
+    "rss_cn": 76,
+    "rss": 437,
+    "web_search": 25,
+    "chinese_web": 75,
+    "bilibili": 1357,
+    "tieba": 10
   },
-  "items_so_far": 142,
+  "items_so_far": 140,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3124
+  "elapsed_seconds": 3222
 }
