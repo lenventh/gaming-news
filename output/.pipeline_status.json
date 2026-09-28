@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-09-24T23:47:30",
-  "updated_at": "00:41:12",
+  "pipeline_started_at": "2026-09-27T23:41:05",
+  "updated_at": "00:34:02",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1248,
-      "started_at": "23:47:30",
-      "done_at": "00:08:19",
+      "elapsed_seconds": 1198,
+      "started_at": "23:41:05",
+      "done_at": "00:01:05",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Now Google Chrome shares tabs to new devices that save where you were",
-        "Meta is going to let you build games with AI right on your phone",
-        "腾讯游戏的长期战略：拥抱AI、理性投资，打造长青游戏",
+        "Why OLPC’s $100 laptop never stood a chance",
+        "Out of the Park Baseball lets me enjoy baseball even when the Mets suck",
         "米哈游宣布停运的AI数字人，被一群玩家“赛博永生”了",
-        "Intel不敢干的它干了！神秘x86芯片抛弃32位兼容：只留64位，APX+FRED全都有",
-        "新紫光集团：将与Arm成立通用人工智能联合创新中心",
-        "《生化危机：爆发夜》电影中国内地定档，10 月 5 日上映",
-        "45 人做《求生之路 2》，前V社编剧谈小团队开发的魔力",
-        "《战锤40K：战争黎明4》战报，展现2v2团队小规模冲突",
-        "798个玩具等你归位：收纳游戏《捡起你的玩具来！》试玩版今日上线"
+        "《inZOI》制作人群访：做得艰难但不后悔",
+        "一键让Intel PC游戏帧率狂飙60%！Hypertune正式发布：月费仅67元",
+        "游戏神U杀入数据中心！AMD锐龙9 9950X独服上线：月租仅4494元",
+        "SteamOS 3.8.28 Beta 更新优化 AMD 独显，修复睡眠后性能下降问题",
+        "三星电子 DX 部门员工对绩效奖金不满，CEO 卢泰文下月将亲自沟通",
+        "我那随叫随到的满级队友，和那些藏在游戏设备里的避风港",
+        "IP图鉴【■俄罗斯方块㊦】：博弈、做局、GameBoy、苏联解体、跨国情谊…"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1514,
-      "started_at": "00:08:19",
-      "done_at": "00:33:34",
+      "elapsed_seconds": 1475,
+      "started_at": "00:01:05",
+      "done_at": "00:25:41",
       "sub_stage": "",
       "progress": null,
-      "items_count": 1980,
+      "items_count": 1993,
       "samples": [
-        "世界首发？用SC手柄玩GBO2终于体会到手柄格斗连招有多不容易了 高达激战任务2 GBO2 高达战斗行动2 Steam手柄二代 Steam Controller",
-        "【中字】老外揭秘V社50吨神秘货柜，手柄30分钟售罄真相",
-        "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9",
-        "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
-        "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！"
+        "Steam Deck OLED / 《西部拓荒纪》性能测试 - 一款西部题材城市建造游戏 / SteamOS 3.9",
+        "SteamDeck《猛鬼追魂：复苏》DEMO实机测试",
+        "【全网最详细】ROG XBOX掌机X《控制：共振》1080P 60帧兼顾画质帧数优化设置分享",
+        "我找到了最适合的串流掌机方案！！！",
+        "Steam Deck OLED / 《Slow Roads》性能测试 / SteamOS 3.9"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 458,
-      "started_at": "00:33:34",
-      "done_at": "00:41:13",
+      "elapsed_seconds": 501,
+      "started_at": "00:25:41",
+      "done_at": "00:34:02",
       "sub_stage": "",
       "progress": null,
-      "items_count": 140,
+      "items_count": 152,
       "samples": []
     },
     "online_merge": {
@@ -97,23 +97,23 @@
     "百度贴吧",
     "百度贴吧",
     "百度贴吧",
-    "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！",
-    "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
-    "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9",
-    "【中字】老外揭秘V社50吨神秘货柜，手柄30分钟售罄真相",
-    "世界首发？用SC手柄玩GBO2终于体会到手柄格斗连招有多不容易了 高达激战任务2 GBO2 高达战斗行动2 Steam手柄二代 Steam Controller"
+    "Steam Deck OLED / 《Slow Roads》性能测试 / SteamOS 3.9",
+    "我找到了最适合的串流掌机方案！！！",
+    "【全网最详细】ROG XBOX掌机X《控制：共振》1080P 60帧兼顾画质帧数优化设置分享",
+    "SteamDeck《猛鬼追魂：复苏》DEMO实机测试",
+    "Steam Deck OLED / 《西部拓荒纪》性能测试 - 一款西部题材城市建造游戏 / SteamOS 3.9"
   ],
   "sources": {
-    "rss_cn": 76,
-    "rss": 437,
+    "rss_cn": 67,
+    "rss": 441,
     "web_search": 25,
-    "chinese_web": 75,
-    "bilibili": 1357,
-    "tieba": 10
+    "chinese_web": 71,
+    "bilibili": 1383,
+    "tieba": 6
   },
-  "items_so_far": 140,
+  "items_so_far": 152,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3222
+  "elapsed_seconds": 3176
 }
