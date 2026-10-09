@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-10-04T23:51:07",
-  "updated_at": "00:43:27",
+  "pipeline_started_at": "2026-10-09T01:02:02",
+  "updated_at": "01:53:46",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1213,
-      "started_at": "23:51:07",
-      "done_at": "00:11:21",
+      "elapsed_seconds": 1136,
+      "started_at": "01:02:02",
+      "done_at": "01:20:59",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "'Croc 2' Is Getting The Remaster Treatment Later This Month",
-        "Japanese Charts: Fire Emblem Sales Plummet, But It's Still Enough To Stay On The Podium",
-        "新故事、新玩法与新坑：谈谈《共鸣：瘟疫传说传承》",
+        "Paramount is making a Cyberpunk 2077 film",
+        "AMD will bring FSR 4 to handhelds by the end of 2026",
         "触乐本周行业大事：TGS2026开幕，《世界之外》前制作人璇子创业项目名称曝光，《影之刃零》愿望单突破300万份，《伊莫》Steam同时在线12万",
-        "等不到了！英特尔取消Nova Lake大核显CPU：移至下代Razor Lake",
-        "裸跑3年没硅脂！i7-12700K真能抗：全靠降频保命",
-        "中国汽车加速出海：阿根廷首次举办中国汽车展，8 月销量份额已达 10%",
-        "雪铁龙旗下经典车型 2CV 将以纯电形式复活：10 月 11 日巴黎亮相，量产版预计 2028 年推出",
-        "血鸦与黑暗天使齐聚《战锤40K：战争黎明4》星际战士CGI预告片",
-        "我翻译了一个小游戏！ 茶社波浪05"
+        "触乐怪话：《Fate/EXTRA》和《月姬》：TGS上的TYPE-MOON新作",
+        "国产芯片验证BSPD背部供电设计：无需EUV也能用上18A同款技术",
+        "2nm芯片设计费需5亿元 越来越贵的原因找到了：5%的团队才能一次成功",
+        "泰坦军团推出 P259 PLUS 显示器：24.5\" FHD 260Hz Fast IPS",
+        "铠侠首款 EDSFF E1.L 外形规格固态硬盘 LD4 发布，采用 BiCS8 QLC 闪存",
+        "派拉蒙收购华纳兄弟探索1100亿美元交易落定",
+        "单人悠闲生活游戏《CELESTAY》将于本周五正式发售"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1468,
-      "started_at": "00:11:21",
-      "done_at": "00:35:50",
+      "elapsed_seconds": 1479,
+      "started_at": "01:20:59",
+      "done_at": "01:45:39",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2009,
+      "items_count": 2070,
       "samples": [
-        "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9",
-        "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
-        "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！",
-        "SteamOS稳定版3.8.28系统更新更新后的问题及解决方法",
-        "SteamOS系统更新后虚拟机D加密游戏无法运行解决方法"
+        "steamdeck鸣潮下载教程及流畅高清包体测试",
+        "【中字】海外博主爆料SteamDeck2性能！售价曝光",
+        "【中字】油管博主实测：4年老Steam Deck硬刚《战争机器E-Day》，帧数直接崩了",
+        "Steam Deck OLED 演示《异界揭踪》",
+        "多凯斯Windows掌机灵山扩展底座开箱体验，有点好用的哦"
       ]
     },
     "review_generate": {
@@ -56,12 +56,12 @@
       "emoji": "✅",
       "status": "done",
       "estimated_seconds": 300,
-      "elapsed_seconds": 457,
-      "started_at": "00:35:50",
-      "done_at": "00:43:27",
+      "elapsed_seconds": 486,
+      "started_at": "01:45:39",
+      "done_at": "01:53:46",
       "sub_stage": "",
       "progress": null,
-      "items_count": 143,
+      "items_count": 151,
       "samples": []
     },
     "online_merge": {
@@ -96,24 +96,24 @@
   "samples": [
     "贴吧",
     "贴吧",
-    "贴吧",
-    "SteamOS系统更新后虚拟机D加密游戏无法运行解决方法",
-    "SteamOS稳定版3.8.28系统更新更新后的问题及解决方法",
-    "Odin 3 适配了 STEAMOS！搭配小黄鸭史诗级更新！",
-    "安卓掌机内部存储安装 SteamOS｜安装、升级、恢复，踩坑实录，补全第一期！",
-    "Steam Deck OLED / 《沙丘：觉醒》- 重大更新 1.5 性能测试 / SteamOS 3.9"
+    "百度贴吧",
+    "多凯斯Windows掌机灵山扩展底座开箱体验，有点好用的哦",
+    "Steam Deck OLED 演示《异界揭踪》",
+    "【中字】油管博主实测：4年老Steam Deck硬刚《战争机器E-Day》，帧数直接崩了",
+    "【中字】海外博主爆料SteamDeck2性能！售价曝光",
+    "steamdeck鸣潮下载教程及流畅高清包体测试"
   ],
   "sources": {
-    "rss_cn": 79,
-    "rss": 436,
-    "web_search": 43,
-    "chinese_web": 54,
-    "bilibili": 1379,
-    "tieba": 18
+    "rss_cn": 63,
+    "rss": 441,
+    "web_search": 42,
+    "chinese_web": 77,
+    "bilibili": 1409,
+    "tieba": 38
   },
-  "items_so_far": 143,
+  "items_so_far": 151,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3139
+  "elapsed_seconds": 3103
 }
