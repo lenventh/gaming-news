@@ -1,6 +1,6 @@
 {
-  "pipeline_started_at": "2026-10-12T00:15:20",
-  "updated_at": "01:08:11",
+  "pipeline_started_at": "2026-10-15T23:34:32",
+  "updated_at": "00:28:24",
   "current_stage": null,
   "overall_done": false,
   "error": null,
@@ -11,23 +11,23 @@
       "emoji": "☁️",
       "status": "done",
       "estimated_seconds": 600,
-      "elapsed_seconds": 1184,
-      "started_at": "00:15:20",
-      "done_at": "00:35:05",
+      "elapsed_seconds": 1217,
+      "started_at": "23:34:32",
+      "done_at": "23:54:51",
       "sub_stage": "Tieba RSS",
       "progress": null,
       "items_count": 0,
       "samples": [
-        "Tropico 7 Officially Confirmed For Switch 2, Out 2027",
-        "Silicon Valley is falling in line with Trump’s attempt to rename AI",
-        "触乐怪话：《Fate/EXTRA》和《月姬》：TGS上的TYPE-MOON新作",
-        "《EA Sports FC 27》：足球开放世界、模拟收纳与断舍离",
-        "AMD总市值首次突破1万亿美元 持续加码AI算力",
-        "88核打赢96核！英伟达Vera CPU数据库跑分曝光：领先英特尔至强6达48%",
-        "Meta 为 Quest 头显推送 Horizon OS 2.9 公测版更新：全新多任务界面、经典虚拟环境回归、系统级二维码扫描器...",
-        "Krafton 谈《PUBG Ded.Net》游戏玩法：大逃杀、肉鸽、暴力融合",
-        "DISCO歌单｜带你重返80年代迪斯科舞池派对",
-        "《赛博朋克2077》真人电影官宣"
+        "Bluesky&#8217;s AI tool now lets you make games and apps to share on social",
+        "Sega pulls Total War: Shogun 2 remaster from sale following disastrous launch",
+        "《漫威金刚狼》：第一方独占、失眠组风格之变与巨大心理落差的背后",
+        "模拟游戏门至铁道规划游戏种：《狂热运输3》评测与采访附言",
+        "Intel下代酷睿Nova Lake通过USB接口认证：最高80Gbps速度",
+        "Intel下代Nova Lake离发布又近一步！USB4 80Gbps+PCIe 5.0确认",
+        "小米推出 27 英寸 2K 显示器 REDMI G27Q 240Hz 2026 标准版：首发价不高于 799 元",
+        "索尼 E 卡口首发 2999 元，腾龙 16-50mm F2.8 A 大光圈微单镜头 B091S 价格公布",
+        "AI赋能：Xbox设立全新Xbox Labs团队",
+        "微软公布Xbox Nano手柄，售价49.99美元起"
       ]
     },
     "local_collect": {
@@ -36,18 +36,18 @@
       "emoji": "📡",
       "status": "done",
       "estimated_seconds": 480,
-      "elapsed_seconds": 1424,
-      "started_at": "00:35:05",
-      "done_at": "00:58:50",
+      "elapsed_seconds": 1452,
+      "started_at": "23:54:51",
+      "done_at": "00:19:04",
       "sub_stage": "",
       "progress": null,
-      "items_count": 2058,
+      "items_count": 1996,
       "samples": [
-        "PS4游戏ARM手机大战x86掌机！骁龙8e5（BachataS4）与Steam Deck（ShadPS4）性能对比实测10款大作",
-        "《蜘蛛侠：暗影之网》Steam Deck PC 移植版：全方位性能实测",
-        "个性化steamdeck外观  定制按键  散热优化  大电池套件改装",
-        "SteamDeck《我的世界：地下城2》实机测试",
-        "[中配]SteamOS越狱：Armada OS、GameHub与DroidDeck安卓掌机方案对比"
+        "Steam手柄二代能替代键鼠吗？实测30小时",
+        "换作是你，能接受继续等吗？大家觉得二代什么时候能出？评论聊聊你的看法。",
+        "世界首发？提前预热维罗妮卡重制！用SC手柄玩光枪游戏 生化危机历代记 / 恶灵古堡编年史 Steam手柄二代 Steam Controller",
+        "[中配]宝可梦重制模拟器最新进展：初代体素惊艳，绿宝石与二代更新汇总",
+        "中字 Steam手柄二代开箱系列（1）初次上手与Steam Deck区别 Steam Controller 2026 机翻广东话 Cantonese 粤语"
       ]
     },
     "review_generate": {
@@ -57,11 +57,11 @@
       "status": "done",
       "estimated_seconds": 300,
       "elapsed_seconds": 561,
-      "started_at": "00:58:50",
-      "done_at": "01:08:12",
+      "started_at": "00:19:04",
+      "done_at": "00:28:25",
       "sub_stage": "",
       "progress": null,
-      "items_count": 150,
+      "items_count": 153,
       "samples": []
     },
     "online_merge": {
@@ -94,26 +94,26 @@
     }
   },
   "samples": [
-    "贴吧",
-    "贴吧",
-    "贴吧",
-    "[中配]SteamOS越狱：Armada OS、GameHub与DroidDeck安卓掌机方案对比",
-    "SteamDeck《我的世界：地下城2》实机测试",
-    "个性化steamdeck外观  定制按键  散热优化  大电池套件改装",
-    "《蜘蛛侠：暗影之网》Steam Deck PC 移植版：全方位性能实测",
-    "PS4游戏ARM手机大战x86掌机！骁龙8e5（BachataS4）与Steam Deck（ShadPS4）性能对比实测10款大作"
+    "kaiser%E9%B1%BC-%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83",
+    "贴吧用户_GPMPCQE-个人中心",
+    "贴吧排行榜",
+    "中字 Steam手柄二代开箱系列（1）初次上手与Steam Deck区别 Steam Controller 2026 机翻广东话 Cantonese 粤语",
+    "[中配]宝可梦重制模拟器最新进展：初代体素惊艳，绿宝石与二代更新汇总",
+    "世界首发？提前预热维罗妮卡重制！用SC手柄玩光枪游戏 生化危机历代记 / 恶灵古堡编年史 Steam手柄二代 Steam Controller",
+    "换作是你，能接受继续等吗？大家觉得二代什么时候能出？评论聊聊你的看法。",
+    "Steam手柄二代能替代键鼠吗？实测30小时"
   ],
   "sources": {
-    "rss_cn": 72,
-    "rss": 439,
-    "web_search": 50,
-    "chinese_web": 73,
-    "bilibili": 1395,
-    "tieba": 29
+    "rss_cn": 83,
+    "rss": 436,
+    "web_search": 41,
+    "chinese_web": 87,
+    "bilibili": 1328,
+    "tieba": 21
   },
-  "items_so_far": 150,
+  "items_so_far": 153,
   "stage": "generating",
   "stage_label": "文稿生成 + 配图",
   "sub_stage": "",
-  "elapsed_seconds": 3171
+  "elapsed_seconds": 3231
 }
